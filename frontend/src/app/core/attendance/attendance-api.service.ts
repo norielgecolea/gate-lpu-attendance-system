@@ -18,6 +18,8 @@ export interface TapResponse {
   timeInLocation?: string | null;
   timeOutLocation?: string | null;
   birthday?: boolean;
+  financeTagged?: boolean;
+  warningMessage?: string | null;
   personType?: PersonType | string;
   student?: Student | null;
   employee?: Employee | null;

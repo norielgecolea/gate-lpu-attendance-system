@@ -44,6 +44,9 @@ public class Student {
     @Column(nullable = false)
     private boolean deleted = false;
 
+    @Column(name = "finance_tagged", nullable = false)
+    private boolean financeTagged = false;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 
@@ -128,6 +131,14 @@ public class Student {
 
     public void setDeleted(boolean deleted) {
         this.deleted = deleted;
+    }
+
+    public boolean isFinanceTagged() {
+        return financeTagged;
+    }
+
+    public void setFinanceTagged(boolean financeTagged) {
+        this.financeTagged = financeTagged;
     }
 
     public Instant getCreatedAt() {

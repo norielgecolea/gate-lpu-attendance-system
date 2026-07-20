@@ -135,6 +135,24 @@ public class StudentRepository {
     }
 
     @Transactional(readOnly = true)
+    public Optional<Student> findByStudentNoAnyStatus(String studentNo) {
+        return currentSession()
+                .createQuery("FROM Student s WHERE s.studentNo = :studentNo", Student.class)
+                .setParameter("studentNo", studentNo)
+                .uniqueResultOptional();
+    }
+
+    @Transactional(readOnly = true)
+    public List<Student> findActiveFinanceTagged() {
+        return currentSession()
+                .createQuery(
+                        "FROM Student s WHERE s.deleted = false AND s.financeTagged = true ORDER BY s.name ASC",
+                        Student.class
+                )
+                .getResultList();
+    }
+
+    @Transactional(readOnly = true)
     public boolean existsByStudentNoExcludingId(String studentNo, Long excludeId) {
         Long count = currentSession()
                 .createQuery(

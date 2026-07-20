@@ -74,6 +74,22 @@ public class SchemaMigrationConfig {
             jdbc.execute("ALTER TABLE employees ALTER COLUMN position DROP NOT NULL");
         }
 
+        Boolean studentsExists = jdbc.queryForObject(
+                """
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM information_schema.tables
+                    WHERE table_schema = current_schema()
+                      AND table_name = 'students'
+                )
+                """,
+                Boolean.class
+        );
+        if (Boolean.TRUE.equals(studentsExists)) {
+            jdbc.execute("ALTER TABLE students ADD COLUMN IF NOT EXISTS finance_tagged BOOLEAN NOT NULL DEFAULT FALSE");
+            jdbc.execute("CREATE INDEX IF NOT EXISTS idx_students_finance_tagged ON students (finance_tagged)");
+        }
+
         log.info("Schema migration applied (app_settings, guard_videos, tap_error_logs)");
         return new SchemaMigrator();
     }

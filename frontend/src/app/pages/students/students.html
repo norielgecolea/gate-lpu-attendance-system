@@ -65,7 +65,6 @@
       {{ importMessage() }}
     </p>
   }
-
   <!-- Table -->
   <div
     hlmTableContainer
@@ -137,7 +136,12 @@
                         </hlm-avatar>
                         <div class="leading-tight">
                           <p class="text-foreground font-medium">{{ row.original.name }}</p>
-                          <p class="text-muted-foreground text-xs">{{ row.original.studentNo }}</p>
+                          <p class="text-muted-foreground text-xs">
+                            {{ row.original.studentNo }}
+                            @if (row.original.financeTagged) {
+                              <span class="text-amber-700"> · Finance Tagged</span>
+                            }
+                          </p>
                         </div>
                       </div>
                     }

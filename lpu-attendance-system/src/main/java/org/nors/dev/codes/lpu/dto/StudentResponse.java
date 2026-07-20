@@ -12,7 +12,8 @@ public record StudentResponse(
         LocalDate birthdate,
         String department,
         String course,
-        String school
+        String school,
+        boolean financeTagged
 ) {
     public static StudentResponse from(Student student) {
         return new StudentResponse(
@@ -24,7 +25,8 @@ public record StudentResponse(
                 student.getBirthdate(),
                 student.getDepartment(),
                 student.getCourse(),
-                student.getSchool()
+                student.getSchool(),
+                student.isFinanceTagged()
         );
     }
 }

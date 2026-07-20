@@ -8,6 +8,7 @@ import org.nors.dev.codes.lpu.dto.AttendanceEventPageResponse;
 import org.nors.dev.codes.lpu.dto.AttendancePageResponse;
 import org.nors.dev.codes.lpu.dto.PersonAttendanceSummaryResponse;
 import org.nors.dev.codes.lpu.dto.PhotoUploadResponse;
+import org.nors.dev.codes.lpu.dto.StudentFinanceTagImportResponse;
 import org.nors.dev.codes.lpu.dto.StudentImportResponse;
 import org.nors.dev.codes.lpu.dto.StudentPageResponse;
 import org.nors.dev.codes.lpu.dto.StudentRequest;
@@ -67,6 +68,11 @@ public class StudentController {
     @GetMapping("/inactive")
     public ResponseEntity<List<StudentResponse>> listInactive() {
         return ResponseEntity.ok(studentService.listInactive());
+    }
+
+    @GetMapping("/finance-tagged")
+    public ResponseEntity<List<StudentResponse>> listFinanceTagged() {
+        return ResponseEntity.ok(studentService.listFinanceTagged());
     }
 
     @GetMapping("/{id}")
@@ -146,6 +152,23 @@ public class StudentController {
             @RequestBody List<@Valid StudentRequest> requests
     ) {
         return ResponseEntity.ok(studentService.importStudents(requests));
+    }
+
+    @PostMapping("/finance-tagged/import")
+    public ResponseEntity<StudentFinanceTagImportResponse> importFinanceTagged(
+            @RequestBody List<String> studentNumbers
+    ) {
+        return ResponseEntity.ok(studentService.importFinanceTags(studentNumbers));
+    }
+
+    @PostMapping("/{id}/finance-tagged")
+    public ResponseEntity<StudentResponse> financeTag(@PathVariable Long id) {
+        return ResponseEntity.ok(studentService.setFinanceTagged(id, true));
+    }
+
+    @DeleteMapping("/{id}/finance-tagged")
+    public ResponseEntity<StudentResponse> removeFinanceTag(@PathVariable Long id) {
+        return ResponseEntity.ok(studentService.setFinanceTagged(id, false));
     }
 
     @PutMapping("/{id}")

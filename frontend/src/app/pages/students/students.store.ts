@@ -16,6 +16,7 @@ export interface Student {
   department: string;
   course: string;
   school: string;
+  financeTagged: boolean;
 }
 
 const PAGE_SIZE = 50;

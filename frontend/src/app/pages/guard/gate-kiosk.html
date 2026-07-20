@@ -144,6 +144,9 @@
                   {{ tap.employee ? 'Employee' : 'Student' }}
                 </span>
                 <h2 class="gate-name">{{ personName(tap) }}</h2>
+                @if (tap.student?.financeTagged || tap.financeTagged) {
+                  <p class="gate-error-hint">Please Finance Department</p>
+                }
                 @if (tap.student; as student) {
                   <p class="gate-student-no">{{ student.studentNo }}</p>
                   <div class="gate-tags">

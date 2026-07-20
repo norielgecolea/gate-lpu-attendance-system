@@ -28,3 +28,8 @@ CREATE TABLE IF NOT EXISTS tap_error_logs (
 
 CREATE INDEX IF NOT EXISTS idx_tap_error_logs_tapped
     ON tap_error_logs (tapped_at DESC, id DESC);
+
+ALTER TABLE students
+    ADD COLUMN IF NOT EXISTS finance_tagged BOOLEAN NOT NULL DEFAULT FALSE;
+
+CREATE INDEX IF NOT EXISTS idx_students_finance_tagged ON students (finance_tagged);

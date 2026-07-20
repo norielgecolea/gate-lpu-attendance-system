@@ -17,6 +17,8 @@ public record TapResponse(
         String timeInLocation,
         String timeOutLocation,
         boolean birthday,
+        boolean financeTagged,
+        String warningMessage,
         String personType,
         StudentResponse student,
         EmployeeResponse employee
@@ -32,6 +34,7 @@ public record TapResponse(
         boolean birthday = birthdate != null && date != null
                 && birthdate.getMonthValue() == date.getMonthValue()
                 && birthdate.getDayOfMonth() == date.getDayOfMonth();
+        boolean financeTagged = student != null && student.isFinanceTagged();
         return new TapResponse(
                 action,
                 message,
@@ -43,6 +46,8 @@ public record TapResponse(
                 log.getTimeInLocation(),
                 log.getTimeOutLocation(),
                 birthday,
+                financeTagged,
+                financeTagged ? "Please Finance Department" : null,
                 student != null ? "STUDENT" : "EMPLOYEE",
                 student != null ? StudentResponse.from(student) : null,
                 employee != null ? EmployeeResponse.from(employee) : null

@@ -72,6 +72,18 @@ export class GateSounds {
     this.tone(ctx, 311.13, now + 0.15, 0.22, 0.75, 'triangle'); // Eb4
   }
 
+  /** Distinct warning tone for finance-tagged students (tap is still accepted). */
+  playFinanceWarning(): void {
+    const ctx = this.ensureContext();
+    if (!ctx) {
+      return;
+    }
+    const now = ctx.currentTime;
+    this.tone(ctx, 698.46, now, 0.14, 0.8, 'triangle'); // F5
+    this.tone(ctx, 523.25, now + 0.14, 0.2, 0.72, 'triangle'); // C5
+    this.tone(ctx, 698.46, now + 0.34, 0.16, 0.8, 'triangle'); // F5
+  }
+
   private tone(
     ctx: AudioContext,
     frequency: number,

@@ -11,6 +11,7 @@ import { Subscription, filter } from 'rxjs';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
   lucideBriefcase,
+  lucideBanknote,
   lucideClock,
   lucideGraduationCap,
   lucideLayoutDashboard,
@@ -83,6 +84,7 @@ interface TapErrorAlert {
       lucideUserX,
       lucideUserMinus,
       lucideBriefcase,
+      lucideBanknote,
       lucideScanBarcode,
       lucideShieldCheck,
       lucidePanelLeft,
@@ -137,6 +139,7 @@ export class AdminLayout implements OnDestroy {
         { label: 'Student Attendance', icon: 'lucideClock', route: '/students/attendance' },
         { label: 'RFID Registration', icon: 'lucideScanBarcode', route: '/students/rfid' },
         { label: 'Inactive Students', icon: 'lucideUserX', route: '/students/inactive' },
+        { label: 'Finance Tagged', icon: 'lucideBanknote', route: '/students/finance-tagged' },
       ],
     },
     {

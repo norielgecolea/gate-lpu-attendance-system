@@ -4,10 +4,15 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import type { Student } from '../../pages/students/students.store';
 
-export type StudentPayload = Omit<Student, 'id'>;
+export type StudentPayload = Omit<Student, 'id' | 'financeTagged'>;
 export interface StudentImportResult {
   imported: number;
   skippedDuplicates: number;
+}
+export interface StudentFinanceTagImportResult {
+  tagged: number;
+  alreadyTagged: number;
+  notFound: number;
 }
 export interface StudentPage {
   items: Student[];
@@ -36,6 +41,10 @@ export class StudentsApiService {
     return this.http.get<Student[]>(`${this.baseUrl}/inactive`);
   }
 
+  listFinanceTagged(): Observable<Student[]> {
+    return this.http.get<Student[]>(`${this.baseUrl}/finance-tagged`);
+  }
+
   restore(id: string): Observable<Student> {
     return this.http.post<Student>(`${this.baseUrl}/${id}/restore`, {});
   }
@@ -50,6 +59,21 @@ export class StudentsApiService {
 
   importCsv(payload: StudentPayload[]): Observable<StudentImportResult> {
     return this.http.post<StudentImportResult>(`${this.baseUrl}/import`, payload);
+  }
+
+  importFinanceTagged(studentNumbers: string[]): Observable<StudentFinanceTagImportResult> {
+    return this.http.post<StudentFinanceTagImportResult>(
+      `${this.baseUrl}/finance-tagged/import`,
+      studentNumbers,
+    );
+  }
+
+  financeTag(id: string): Observable<Student> {
+    return this.http.post<Student>(`${this.baseUrl}/${id}/finance-tagged`, {});
+  }
+
+  financeUntag(id: string): Observable<Student> {
+    return this.http.delete<Student>(`${this.baseUrl}/${id}/finance-tagged`);
   }
 
   update(id: string, payload: StudentPayload): Observable<Student> {

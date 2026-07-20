@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.nors.dev.codes.lpu.dto.StudentFinanceTagImportResponse;
 import org.nors.dev.codes.lpu.dto.StudentImportResponse;
 import org.nors.dev.codes.lpu.dto.StudentPageResponse;
 import org.apache.logging.log4j.LogManager;
@@ -132,6 +133,13 @@ public class StudentService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<StudentResponse> listFinanceTagged() {
+        return studentRepository.findActiveFinanceTagged().stream()
+                .map(StudentResponse::from)
+                .toList();
+    }
+
     /** "Delete" only deactivates — the record stays and can be restored. */
     @Transactional
     public void delete(Long id) {
@@ -160,6 +168,60 @@ public class StudentService {
         studentRepository.save(student);
         log.info("Restored student id={} studentNo={}", id, student.getStudentNo());
         return StudentResponse.from(student);
+    }
+
+    @Transactional
+    public StudentResponse setFinanceTagged(Long id, boolean tagged) {
+        Student student = requireActive(id);
+        student.setFinanceTagged(tagged);
+        student.setUpdatedAt(Instant.now());
+        studentRepository.save(student);
+        log.info("{} finance tag student id={} studentNo={}",
+                tagged ? "Applied" : "Removed", id, student.getStudentNo());
+        return StudentResponse.from(student);
+    }
+
+    /**
+     * Tags students with unsettled finance accounts using student numbers.
+     * Unknown student numbers are reported to the caller.
+     */
+    @Transactional
+    public StudentFinanceTagImportResponse importFinanceTags(List<String> studentNumbers) {
+        if (studentNumbers == null || studentNumbers.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one student number is required");
+        }
+        if (studentNumbers.size() > 10_000) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Import is limited to 10,000 rows");
+        }
+        Set<String> unique = new HashSet<>();
+        int tagged = 0;
+        int alreadyTagged = 0;
+        int notFound = 0;
+        Instant now = Instant.now();
+
+        for (String raw : studentNumbers) {
+            String studentNo = normalizeRequired(raw, "Student number");
+            String key = studentNo.toLowerCase(java.util.Locale.ROOT);
+            if (!unique.add(key)) {
+                continue;
+            }
+            Student student = studentRepository.findByStudentNoAnyStatus(studentNo).orElse(null);
+            if (student == null || student.isDeleted()) {
+                notFound++;
+                continue;
+            }
+            if (student.isFinanceTagged()) {
+                alreadyTagged++;
+                continue;
+            }
+            student.setFinanceTagged(true);
+            student.setUpdatedAt(now);
+            studentRepository.save(student);
+            tagged++;
+        }
+
+        log.info("Imported finance tags tagged={} alreadyTagged={} notFound={}", tagged, alreadyTagged, notFound);
+        return new StudentFinanceTagImportResponse(tagged, alreadyTagged, notFound);
     }
 
     private Student requireActive(Long id) {

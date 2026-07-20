@@ -4,6 +4,7 @@ import { AdminLayout } from './layouts/admin-layout/admin-layout';
 import { Dashboard } from './pages/dashboard/dashboard';
 import { Students } from './pages/students/students';
 import { InactiveStudents } from './pages/students/inactive-students';
+import { FinanceTaggedStudents } from './pages/students/finance-tagged-students';
 import { StudentRfidRegistration } from './pages/students/student-rfid-registration';
 import { PersonAttendance } from './pages/attendance/person-attendance';
 import { AttendancePage } from './pages/attendance/attendance-page';
@@ -42,6 +43,7 @@ export const routes: Routes = [
     children: [
       { path: 'dashboard', component: Dashboard },
       { path: 'students/inactive', component: InactiveStudents },
+      { path: 'students/finance-tagged', component: FinanceTaggedStudents },
       { path: 'students/rfid', component: StudentRfidRegistration },
       {
         path: 'students/attendance',
