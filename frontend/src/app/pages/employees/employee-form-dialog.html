@@ -1,0 +1,150 @@
+<div class="flex max-h-[85vh] flex-col gap-4 overflow-y-auto p-1">
+  <div hlmDialogHeader>
+    <h2 hlmDialogTitle>{{ mode === 'create' ? 'New employee' : 'Edit employee' }}</h2>
+    <p hlmDialogDescription>
+      {{
+        mode === 'create'
+          ? 'Add an employee record. Fields marked with * are required.'
+          : 'Update employee details. Fields marked with * are required.'
+      }}
+    </p>
+  </div>
+
+  <form hlmFieldGroup class="gap-4" (ngSubmit)="submit()">
+    @if (error()) {
+      <p
+        class="bg-destructive/10 text-destructive rounded-md px-3 py-2 text-sm"
+        role="alert"
+      >
+        {{ error() }}
+      </p>
+    }
+
+    <!-- Photo -->
+    <div class="border-border bg-muted/40 flex items-center gap-4 rounded-lg border p-3">
+      @if (previewUrl()) {
+        <img
+          [src]="previewUrl()!"
+          alt="Employee photo preview"
+          class="border-border size-20 shrink-0 rounded-lg border object-cover shadow-sm"
+        />
+      } @else {
+        <div
+          class="border-border bg-background text-muted-foreground grid size-20 shrink-0 place-items-center rounded-lg border border-dashed text-[10px] font-medium"
+        >
+          No photo
+        </div>
+      }
+      <div class="flex min-w-0 flex-col gap-2">
+        <div class="flex flex-wrap items-center gap-2">
+          <label
+            hlmBtn
+            variant="outline"
+            size="sm"
+            for="employee-photo"
+            class="cursor-pointer"
+          >
+            {{ previewUrl() ? 'Change photo' : 'Upload photo' }}
+          </label>
+          @if (previewUrl() || selectedFileName()) {
+            <button hlmBtn type="button" variant="ghost" size="sm" class="text-destructive" (click)="removePhoto()">
+              Remove
+            </button>
+          }
+        </div>
+        <p class="text-muted-foreground truncate text-xs">
+          {{ selectedFileName() ?? 'JPEG, PNG, WebP, or GIF. Optional.' }}
+        </p>
+        <input
+          id="employee-photo"
+          name="photoFile"
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          class="hidden"
+          (change)="onFileSelected($event)"
+        />
+      </div>
+    </div>
+
+    <div hlmField>
+      <label hlmFieldLabel for="employee-name">Full name *</label>
+      <input
+        hlmInput
+        id="employee-name"
+        name="name"
+        [(ngModel)]="name"
+        autocomplete="off"
+        placeholder="Dela Cruz, Juan A."
+      />
+    </div>
+
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div hlmField>
+        <label hlmFieldLabel for="employee-no">Employee number *</label>
+        <input
+          hlmInput
+          id="employee-no"
+          name="employeeNo"
+          [(ngModel)]="employeeNo"
+          autocomplete="off"
+          placeholder="EMP-00123"
+        />
+      </div>
+      <div hlmField>
+        <label hlmFieldLabel for="employee-rfid">RFID</label>
+        <input
+          hlmInput
+          id="employee-rfid"
+          name="rfid"
+          [(ngModel)]="rfid"
+          autocomplete="off"
+          placeholder="Tap card or type number"
+        />
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div hlmField>
+        <label hlmFieldLabel for="employee-birthdate">Birthdate</label>
+        <input
+          hlmInput
+          id="employee-birthdate"
+          name="birthdate"
+          type="date"
+          [(ngModel)]="birthdate"
+          autocomplete="off"
+        />
+      </div>
+      <div hlmField>
+        <label hlmFieldLabel for="employee-department">Department *</label>
+        <input
+          hlmInput
+          id="employee-department"
+          name="department"
+          [(ngModel)]="department"
+          autocomplete="off"
+          placeholder="Registrar"
+        />
+      </div>
+    </div>
+
+    <div hlmField>
+      <label hlmFieldLabel for="employee-position">Position *</label>
+      <input
+        hlmInput
+        id="employee-position"
+        name="position"
+        [(ngModel)]="position"
+        autocomplete="off"
+        placeholder="Administrative Assistant"
+      />
+    </div>
+
+    <div hlmDialogFooter class="gap-2">
+      <button hlmBtn type="button" variant="outline" (click)="cancel()">Cancel</button>
+      <button hlmBtn type="submit" [disabled]="saving()">
+        {{ mode === 'create' ? 'Create employee' : 'Save changes' }}
+      </button>
+    </div>
+  </form>
+</div>

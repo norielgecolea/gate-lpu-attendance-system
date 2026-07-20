@@ -1,0 +1,122 @@
+<div class="mx-auto flex max-w-3xl flex-col gap-4">
+  <!-- Lookup -->
+  <section class="bg-card rounded-lg border p-5 shadow-sm">
+    <h3 class="text-foreground text-base font-semibold">RFID Registration</h3>
+    <p class="text-muted-foreground mt-0.5 text-sm">
+      Enter an employee number to bring up the record, then tap the ID card to register it.
+    </p>
+
+    <form class="mt-4 flex flex-wrap items-center gap-2" (ngSubmit)="find()">
+      <div class="relative min-w-0 flex-1">
+        <ng-icon
+          name="lucideSearch"
+          class="text-muted-foreground pointer-events-none absolute inset-y-0 left-3 my-auto text-base"
+        />
+        <input
+          hlmInput
+          class="w-full pl-9"
+          name="employeeNo"
+          placeholder="Employee number (e.g. EMP-00123)"
+          autocomplete="off"
+          [ngModel]="numberInput()"
+          (ngModelChange)="numberInput.set($event)"
+          [disabled]="loading()"
+        />
+      </div>
+      <button hlmBtn type="submit" [disabled]="loading()">
+        {{ loading() ? 'Loading…' : 'Find employee' }}
+      </button>
+      @if (record() || numberInput()) {
+        <button hlmBtn type="button" variant="outline" (click)="reset()">Clear</button>
+      }
+    </form>
+
+    @if (error()) {
+      <p class="text-destructive mt-3 text-sm" role="alert">{{ error() }}</p>
+    }
+  </section>
+
+  <!-- Record + tap-to-register -->
+  @if (record(); as employee) {
+    <section class="bg-card rounded-lg border p-5 shadow-sm">
+      <div class="flex flex-wrap items-center gap-4">
+        @if (photoSrc(employee.photo); as src) {
+          <img
+            [src]="src"
+            [alt]="employee.name"
+            class="border-border size-24 shrink-0 rounded-lg border object-cover"
+          />
+        } @else {
+          <div
+            class="bg-muted text-muted-foreground grid size-24 shrink-0 place-items-center rounded-lg text-xl font-bold"
+          >
+            {{ initials(employee.name) }}
+          </div>
+        }
+        <div class="min-w-0 flex-1">
+          <h4 class="text-foreground text-lg font-bold">{{ employee.name }}</h4>
+          <p class="text-muted-foreground text-sm tabular-nums">{{ employee.employeeNo }}</p>
+          <div class="mt-2 flex flex-wrap gap-1.5">
+            <span class="bg-muted text-foreground rounded-full px-2.5 py-0.5 text-xs font-medium">
+              {{ employee.department }}
+            </span>
+            <span class="bg-muted text-foreground rounded-full px-2.5 py-0.5 text-xs font-medium">
+              {{ employee.position }}
+            </span>
+          </div>
+        </div>
+        <div class="text-end">
+          <p class="text-muted-foreground text-xs font-medium uppercase tracking-wide">Current RFID</p>
+          @if (employee.rfid) {
+            <p class="text-foreground text-sm font-semibold tabular-nums">{{ employee.rfid }}</p>
+          } @else {
+            <p class="text-destructive text-sm font-semibold">None</p>
+          }
+        </div>
+      </div>
+
+      <!-- Tap panel -->
+      @if (success(); as rfid) {
+        <div
+          class="mt-5 flex flex-col items-center gap-2 rounded-lg border-2 border-emerald-500/40 bg-emerald-500/5 p-8 text-center"
+          role="status"
+        >
+          <ng-icon name="lucideCircleCheck" class="text-4xl text-emerald-600" />
+          <p class="text-foreground text-lg font-bold">RFID Registered</p>
+          <p class="text-muted-foreground text-sm">
+            <span class="tabular-nums font-semibold">{{ rfid }}</span> is now linked to
+            {{ employee.name }}.
+          </p>
+          <button hlmBtn variant="outline" class="mt-2" type="button" (click)="reset()">
+            Register another
+          </button>
+        </div>
+      } @else {
+        <form
+          class="border-primary/30 bg-primary/5 mt-5 flex flex-col items-center gap-3 rounded-lg border-2 border-dashed p-8 text-center"
+          (ngSubmit)="register()"
+        >
+          <ng-icon name="lucideScanBarcode" class="text-primary text-4xl" />
+          <p class="text-foreground text-lg font-bold">Tap ID to Register</p>
+          <p class="text-muted-foreground text-sm">
+            Tap the card on the reader, or type the RFID number and press Enter.
+          </p>
+          <input
+            #rfidInput
+            hlmInput
+            class="max-w-xs text-center tabular-nums"
+            name="rfid"
+            placeholder="Waiting for tap…"
+            autocomplete="off"
+            [ngModel]="rfidValue()"
+            (ngModelChange)="rfidValue.set($event)"
+            [disabled]="saving()"
+          />
+          <button hlmBtn type="submit" [disabled]="saving() || !rfidValue().trim()">
+            {{ saving() ? 'Registering…' : 'Register RFID' }}
+          </button>
+        </form>
+      }
+    </section>
+  }
+</div>

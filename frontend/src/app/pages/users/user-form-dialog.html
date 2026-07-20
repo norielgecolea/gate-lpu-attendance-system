@@ -1,0 +1,82 @@
+<div class="flex max-h-[85vh] flex-col gap-4 overflow-y-auto p-1">
+  <div hlmDialogHeader>
+    <h2 hlmDialogTitle>{{ mode === 'create' ? 'New user' : 'Edit user' }}</h2>
+    <p hlmDialogDescription>
+      {{
+        mode === 'create'
+          ? 'Create a system account. Fields marked with * are required.'
+          : 'Update account details. Leave password blank to keep the current one.'
+      }}
+    </p>
+  </div>
+
+  <form hlmFieldGroup class="gap-4" (ngSubmit)="submit()">
+    @if (error()) {
+      <p class="bg-destructive/10 text-destructive rounded-md px-3 py-2 text-sm" role="alert">
+        {{ error() }}
+      </p>
+    }
+
+    <div hlmField>
+      <label hlmFieldLabel for="user-username">Username *</label>
+      <input
+        hlmInput
+        id="user-username"
+        name="username"
+        [(ngModel)]="username"
+        autocomplete="off"
+        placeholder="jdelacruz"
+      />
+    </div>
+
+    <div hlmField>
+      <label hlmFieldLabel for="user-password">
+        {{ mode === 'create' ? 'Password *' : 'New password' }}
+      </label>
+      <input
+        hlmInput
+        id="user-password"
+        name="password"
+        type="password"
+        [(ngModel)]="password"
+        autocomplete="new-password"
+        [placeholder]="mode === 'create' ? 'At least 8 characters' : 'Leave blank to keep current'"
+      />
+    </div>
+
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div hlmField>
+        <label hlmFieldLabel for="user-role">Role *</label>
+        <select
+          hlmInput
+          id="user-role"
+          name="role"
+          class="w-full"
+          [(ngModel)]="role"
+        >
+          @for (r of roles; track r) {
+            <option [value]="r">{{ roleLabels[r] }}</option>
+          }
+        </select>
+      </div>
+      <div hlmField>
+        <label hlmFieldLabel for="user-location">Location / Gate</label>
+        <input
+          hlmInput
+          id="user-location"
+          name="location"
+          [(ngModel)]="location"
+          autocomplete="off"
+          placeholder="e.g. Gate 1 (for guards)"
+        />
+      </div>
+    </div>
+
+    <div hlmDialogFooter class="gap-2">
+      <button hlmBtn type="button" variant="outline" (click)="cancel()">Cancel</button>
+      <button hlmBtn type="submit">
+        {{ mode === 'create' ? 'Create user' : 'Save changes' }}
+      </button>
+    </div>
+  </form>
+</div>

@@ -1,0 +1,142 @@
+<div class="flex min-h-0 flex-1 flex-col gap-4">
+  <!-- Toolbar -->
+  <div class="flex flex-wrap items-center gap-2">
+    <div class="relative min-w-0 flex-1">
+      <ng-icon
+        name="lucideSearch"
+        class="text-muted-foreground pointer-events-none absolute inset-y-0 left-3 my-auto text-base"
+      />
+      <input
+        hlmInput
+        class="bg-card w-full pl-9"
+        type="search"
+        placeholder="Search users by name, role, or location"
+        [ngModel]="filter()"
+        (ngModelChange)="filter.set($event)"
+      />
+    </div>
+    <button hlmBtn class="gap-1.5" type="button" (click)="openCreate()">
+      <ng-icon name="lucidePlus" class="text-base" />
+      New User
+    </button>
+  </div>
+
+  @if (error()) {
+    <p class="text-destructive text-sm" role="alert">{{ error() }}</p>
+  }
+
+  <!-- Table -->
+  <div hlmTableContainer class="bg-card min-h-0 flex-1 overflow-y-auto rounded-lg border shadow-sm">
+    <table hlmTable class="text-sm">
+      <thead hlmTHead class="sticky top-0 z-10">
+        <tr hlmTr class="bg-primary hover:bg-primary [&>th]:text-primary-foreground">
+          <th hlmTh>Username</th>
+          <th hlmTh>Role</th>
+          <th hlmTh>Location</th>
+          <th hlmTh>Status</th>
+          <th hlmTh>Created</th>
+          <th hlmTh class="text-end">Action</th>
+        </tr>
+      </thead>
+      <tbody hlmTBody>
+        @if (loading() && users().length === 0) {
+          <tr hlmTr>
+            <td hlmTd colspan="6" class="text-muted-foreground py-10 text-center">
+              Loading users…
+            </td>
+          </tr>
+        } @else {
+          @for (user of filtered(); track user.id) {
+            <tr hlmTr>
+              <td hlmTd>
+                <div class="leading-tight">
+                  <p class="text-foreground font-medium">
+                    {{ user.username }}
+                    @if (user.username === currentUsername()) {
+                      <span class="text-muted-foreground text-xs">(you)</span>
+                    }
+                  </p>
+                </div>
+              </td>
+              <td hlmTd>
+                <span
+                  class="rounded-full px-2.5 py-0.5 text-xs font-semibold"
+                  [class]="roleBadgeClass(user.role)"
+                >
+                  {{ roleLabels[user.role] ?? user.role }}
+                </span>
+              </td>
+              <td hlmTd>
+                @if (user.location) {
+                  {{ user.location }}
+                } @else {
+                  <span class="text-muted-foreground">—</span>
+                }
+              </td>
+              <td hlmTd>
+                @if (user.active) {
+                  <span hlmBadge class="bg-emerald-500/10 text-emerald-600">Active</span>
+                } @else {
+                  <span hlmBadge variant="destructive">Inactive</span>
+                }
+              </td>
+              <td hlmTd>{{ user.createdAt | date: 'MMM d, y' }}</td>
+              <td hlmTd>
+                <div class="flex items-center justify-end gap-1.5">
+                  <button
+                    hlmBtn
+                    size="icon"
+                    variant="ghost"
+                    class="hover:bg-background"
+                    aria-label="Edit user"
+                    title="Edit user"
+                    type="button"
+                    [disabled]="busyId() === user.id"
+                    (click)="openEdit(user)"
+                  >
+                    <ng-icon name="lucideSquarePen" class="text-base" />
+                  </button>
+                  @if (user.active) {
+                    <button
+                      hlmBtn
+                      size="icon"
+                      variant="ghost"
+                      class="text-destructive hover:text-destructive hover:bg-background"
+                      aria-label="Deactivate user"
+                      title="Deactivate user"
+                      type="button"
+                      [disabled]="busyId() === user.id || user.username === currentUsername()"
+                      (click)="toggleActive(user)"
+                    >
+                      <ng-icon name="lucideUserX" class="text-base" />
+                    </button>
+                  } @else {
+                    <button
+                      hlmBtn
+                      size="icon"
+                      variant="ghost"
+                      class="hover:bg-background text-emerald-600 hover:text-emerald-600"
+                      aria-label="Activate user"
+                      title="Activate user"
+                      type="button"
+                      [disabled]="busyId() === user.id"
+                      (click)="toggleActive(user)"
+                    >
+                      <ng-icon name="lucideUserCheck" class="text-base" />
+                    </button>
+                  }
+                </div>
+              </td>
+            </tr>
+          } @empty {
+            <tr hlmTr>
+              <td hlmTd colspan="6" class="text-muted-foreground py-10 text-center">
+                No users found.
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

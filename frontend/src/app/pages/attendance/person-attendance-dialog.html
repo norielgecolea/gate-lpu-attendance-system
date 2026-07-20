@@ -1,0 +1,249 @@
+<div class="flex flex-col gap-4">
+  <div hlmDialogHeader>
+    <h2 hlmDialogTitle class="text-lg">
+      {{ isStudent ? 'Student Attendance' : 'Employee Attendance' }}
+    </h2>
+  </div>
+
+  @if (personError()) {
+    <p class="text-muted-foreground py-8 text-center">{{ personError() }}</p>
+  } @else if (person(); as p) {
+    <div class="bg-card flex flex-wrap items-center gap-3 rounded-lg border p-3">
+      <hlm-avatar>
+        @if (photoSrc(p.photo); as src) {
+          <img [src]="src" [alt]="p.name" hlmAvatarImage />
+        }
+        <span hlmAvatarFallback>{{ initials(p.name) }}</span>
+      </hlm-avatar>
+      <div class="min-w-0 flex-1 leading-tight">
+        <p class="text-foreground font-medium">{{ p.name }}</p>
+        <p class="text-muted-foreground text-xs">{{ personNo(p) }}</p>
+        <p class="text-muted-foreground mt-1 text-xs">
+          {{ p.department }}
+          @if (isStudent) {
+            · {{ $any(p).course }} · {{ $any(p).school }}
+          } @else {
+            · {{ $any(p).position }}
+          }
+        </p>
+      </div>
+    </div>
+
+    @if (summary(); as s) {
+      <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="rounded-md border px-3 py-2">
+          <p class="text-muted-foreground text-[11px] uppercase">Days present</p>
+          <p class="text-lg font-semibold tabular-nums">{{ s.daysPresent }}</p>
+        </div>
+        <div class="rounded-md border px-3 py-2">
+          <p class="text-muted-foreground text-[11px] uppercase">Complete / Open</p>
+          <p class="text-lg font-semibold tabular-nums">{{ s.completeDays }} / {{ s.openDays }}</p>
+        </div>
+        <div class="rounded-md border px-3 py-2">
+          <p class="text-muted-foreground text-[11px] uppercase">Total taps</p>
+          <p class="text-lg font-semibold tabular-nums">{{ s.totalTaps }}</p>
+        </div>
+        <div class="rounded-md border px-3 py-2">
+          <p class="text-muted-foreground text-[11px] uppercase">First → Latest</p>
+          <p class="text-sm font-medium tabular-nums">
+            {{ s.firstDate ?? '—' }} → {{ s.latestDate ?? '—' }}
+          </p>
+        </div>
+      </div>
+    }
+
+    <div class="flex flex-wrap items-end gap-2">
+      <div class="flex flex-wrap gap-1">
+        @for (option of [
+          { id: 'today', label: 'Today' },
+          { id: 'week', label: 'Week' },
+          { id: 'month', label: 'Month' }
+        ]; track option.id) {
+          <button
+            hlmBtn
+            type="button"
+            size="sm"
+            [variant]="preset() === option.id ? 'default' : 'outline'"
+            (click)="applyPreset($any(option.id))"
+          >
+            {{ option.label }}
+          </button>
+        }
+      </div>
+      <div class="flex flex-col gap-1">
+        <label hlmLabel for="personStart">Start</label>
+        <input
+          hlmInput
+          id="personStart"
+          type="date"
+          [ngModel]="startDate()"
+          (ngModelChange)="startDate.set($event); onCustomDateChange()"
+        />
+      </div>
+      <div class="flex flex-col gap-1">
+        <label hlmLabel for="personEnd">End</label>
+        <input
+          hlmInput
+          id="personEnd"
+          type="date"
+          [ngModel]="endDate()"
+          (ngModelChange)="endDate.set($event); onCustomDateChange()"
+        />
+      </div>
+      @if (tab() === 'timeline') {
+        <div class="flex flex-col gap-1">
+          <label hlmLabel for="personAction">Action</label>
+          <select
+            id="personAction"
+            class="border-input bg-background h-9 rounded-md border px-3 text-sm"
+            [ngModel]="action()"
+            (ngModelChange)="action.set($event); reload()"
+          >
+            <option value="">All</option>
+            <option value="TIME_IN">Time In</option>
+            <option value="TIME_OUT">Time Out</option>
+          </select>
+        </div>
+      }
+      <button hlmBtn variant="outline" class="gap-1.5" type="button" (click)="clear()">
+        <ng-icon name="lucideEraser" class="text-base" />
+        Clear
+      </button>
+      <button
+        hlmBtn
+        class="ml-auto gap-1.5"
+        type="button"
+        [disabled]="exporting()"
+        (click)="exportCsv()"
+      >
+        <ng-icon name="lucideFileUp" class="text-base" />
+        {{ exporting() ? 'Exporting…' : 'Export' }}
+      </button>
+    </div>
+
+    <div class="flex gap-1">
+      <button
+        hlmBtn
+        size="sm"
+        type="button"
+        [variant]="tab() === 'daily' ? 'default' : 'outline'"
+        (click)="setTab('daily'); reload()"
+      >
+        Daily Summary
+      </button>
+      <button
+        hlmBtn
+        size="sm"
+        type="button"
+        [variant]="tab() === 'timeline' ? 'default' : 'outline'"
+        (click)="setTab('timeline'); reload()"
+      >
+        Tap Timeline
+      </button>
+    </div>
+
+    @if (error()) {
+      <p class="text-destructive text-sm" role="alert">{{ error() }}</p>
+    }
+
+    <div
+      hlmTableContainer
+      class="bg-card max-h-96 overflow-y-auto rounded-lg border"
+      (scroll)="onScroll($event)"
+    >
+      <table hlmTable class="text-sm">
+        <thead hlmTHead class="sticky top-0">
+          <tr hlmTr class="bg-primary hover:bg-primary [&>th]:text-primary-foreground">
+            @if (tab() === 'daily') {
+              <th hlmTh>
+                <button
+                  type="button"
+                  class="text-primary-foreground flex items-center gap-1.5 font-medium hover:opacity-80"
+                  (click)="toggleSort()"
+                >
+                  Date
+                  <ng-icon [name]="sortIcon()" class="text-primary-foreground/70 text-sm" />
+                </button>
+              </th>
+              <th hlmTh>Time in</th>
+              <th hlmTh>Time out</th>
+              <th hlmTh>Taps</th>
+              <th hlmTh>Gates</th>
+              <th hlmTh>Status</th>
+            } @else {
+              <th hlmTh>
+                <button
+                  type="button"
+                  class="text-primary-foreground flex items-center gap-1.5 font-medium hover:opacity-80"
+                  (click)="toggleSort()"
+                >
+                  Tapped at
+                  <ng-icon [name]="sortIcon()" class="text-primary-foreground/70 text-sm" />
+                </button>
+              </th>
+              <th hlmTh>Action</th>
+              <th hlmTh>Gate</th>
+              <th hlmTh>Guard</th>
+            }
+          </tr>
+        </thead>
+        <tbody hlmTBody>
+          @if (loading() && (tab() === 'daily' ? dailyRows().length === 0 : eventRows().length === 0)) {
+            <tr hlmTr>
+              <td hlmTd [attr.colspan]="tab() === 'daily' ? 6 : 4" class="text-muted-foreground py-8 text-center">
+                Loading…
+              </td>
+            </tr>
+          } @else if (tab() === 'daily') {
+            @for (row of scroll.take(dailyRows()); track row.id) {
+              <tr hlmTr>
+                <td hlmTd class="tabular-nums">{{ row.attendanceDate }}</td>
+                <td hlmTd class="tabular-nums">{{ formatTime(row.timeIn) }}</td>
+                <td hlmTd class="tabular-nums">{{ formatTime(row.timeOut) }}</td>
+                <td hlmTd class="tabular-nums">{{ row.tapCount }}</td>
+                <td hlmTd class="text-xs">
+                  {{ row.timeInLocation || '—' }}
+                  @if (row.timeOutLocation) {
+                    → {{ row.timeOutLocation }}
+                  }
+                </td>
+                <td hlmTd>
+                  <span hlmBadge [variant]="row.status === 'COMPLETE' ? 'default' : 'secondary'">
+                    {{ row.status === 'COMPLETE' ? 'Complete' : 'Open' }}
+                  </span>
+                </td>
+              </tr>
+            } @empty {
+              <tr hlmTr>
+                <td hlmTd colspan="6" class="text-muted-foreground py-8 text-center">
+                  No attendance records.
+                </td>
+              </tr>
+            }
+          } @else {
+            @for (row of scroll.take(eventRows()); track row.id) {
+              <tr hlmTr>
+                <td hlmTd class="tabular-nums">{{ formatDateTime(row.tappedAt) }}</td>
+                <td hlmTd>
+                  <span hlmBadge [variant]="row.action === 'TIME_IN' ? 'default' : 'secondary'">
+                    {{ row.action === 'TIME_IN' ? 'IN' : 'OUT' }}
+                  </span>
+                </td>
+                <td hlmTd>{{ row.location || '—' }}</td>
+                <td hlmTd>{{ row.tappedByUsername || '—' }}</td>
+              </tr>
+            } @empty {
+              <tr hlmTr>
+                <td hlmTd colspan="4" class="text-muted-foreground py-8 text-center">
+                  No tap events.
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  } @else {
+    <p class="text-muted-foreground py-8 text-center">Loading person…</p>
+  }
+</div>

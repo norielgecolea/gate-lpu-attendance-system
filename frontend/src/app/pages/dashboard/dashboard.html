@@ -1,0 +1,348 @@
+<div class="flex flex-col gap-6">
+  <!-- Hero: today at a glance -->
+  <section
+    class="from-primary via-primary to-primary/80 text-primary-foreground relative overflow-hidden rounded-2xl bg-gradient-to-br p-6 shadow-lg sm:p-8"
+  >
+    <div class="bg-primary-foreground/10 pointer-events-none absolute -top-24 -right-16 size-72 rounded-full blur-2xl"></div>
+    <div class="bg-primary-foreground/5 pointer-events-none absolute -bottom-32 right-40 size-80 rounded-full blur-3xl"></div>
+
+    <div class="relative flex flex-col gap-6">
+      <div class="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p class="text-primary-foreground/70 flex items-center gap-2 text-sm font-medium">
+            <ng-icon name="lucideCalendarDays" class="text-base" />
+            {{ todayLabel }}
+          </p>
+          <h2 class="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Campus Overview</h2>
+          <p class="text-primary-foreground/70 mt-1 text-sm">
+            Realtime gate activity across LPU-Laguna
+          </p>
+        </div>
+        <span
+          class="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold"
+          [class]="
+            notifications.connected()
+              ? 'bg-emerald-400/20 text-emerald-100'
+              : 'bg-primary-foreground/10 text-primary-foreground/60'
+          "
+        >
+          <span class="relative flex size-2">
+            @if (notifications.connected()) {
+              <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-300 opacity-60"></span>
+            }
+            <span
+              class="relative inline-flex size-2 rounded-full"
+              [class]="notifications.connected() ? 'bg-emerald-300' : 'bg-primary-foreground/40'"
+            ></span>
+          </span>
+          {{ notifications.connected() ? 'Live' : 'Offline' }}
+        </span>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div class="bg-primary-foreground/10 flex items-center gap-3 rounded-xl p-4 backdrop-blur-sm">
+          <ng-icon name="lucideGraduationCap" class="text-primary-foreground/80 shrink-0 text-2xl" />
+          <div class="leading-tight">
+            <p class="text-2xl font-bold tabular-nums">{{ hero().students | number }}</p>
+            <p class="text-primary-foreground/70 text-xs font-medium">Students today</p>
+          </div>
+        </div>
+        <div class="bg-primary-foreground/10 flex items-center gap-3 rounded-xl p-4 backdrop-blur-sm">
+          <ng-icon name="lucideBriefcase" class="text-primary-foreground/80 shrink-0 text-2xl" />
+          <div class="leading-tight">
+            <p class="text-2xl font-bold tabular-nums">{{ hero().employees | number }}</p>
+            <p class="text-primary-foreground/70 text-xs font-medium">Employees today</p>
+          </div>
+        </div>
+        <div class="bg-primary-foreground/10 flex items-center gap-3 rounded-xl p-4 backdrop-blur-sm">
+          <ng-icon name="lucideActivity" class="text-primary-foreground/80 shrink-0 text-2xl" />
+          <div class="leading-tight">
+            <p class="text-2xl font-bold tabular-nums">{{ hero().taps | number }}</p>
+            <p class="text-primary-foreground/70 text-xs font-medium">Total taps today</p>
+          </div>
+        </div>
+        <div class="bg-primary-foreground/10 flex items-center gap-3 rounded-xl p-4 backdrop-blur-sm">
+          <ng-icon name="lucideDoorOpen" class="text-primary-foreground/80 shrink-0 text-2xl" />
+          <div class="leading-tight">
+            <p class="text-2xl font-bold tabular-nums">{{ hero().inside | number }}</p>
+            <p class="text-primary-foreground/70 text-xs font-medium">Currently inside</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Recent taps (realtime) -->
+  <section hlmCard class="flex flex-col gap-4 rounded-2xl border-0 p-5 shadow-sm ring-1 ring-black/5">
+    <div class="flex items-center gap-3">
+      <div class="bg-primary/10 text-primary flex size-9 items-center justify-center rounded-lg">
+        <ng-icon name="lucideActivity" class="text-lg" />
+      </div>
+      <div class="leading-tight">
+        <h3 hlmCardTitle class="text-base">Recent Taps</h3>
+        <p hlmCardDescription class="text-xs">Latest gate activity today</p>
+      </div>
+    </div>
+
+    @if (tapsLoading()) {
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        @for (i of [0, 1, 2, 3, 4]; track i) {
+          <div class="border-border/60 animate-pulse rounded-xl border p-4">
+            <div class="flex items-center gap-3">
+              <div class="bg-muted size-11 rounded-full"></div>
+              <div class="flex-1 space-y-2">
+                <div class="bg-muted h-3 w-3/4 rounded"></div>
+                <div class="bg-muted h-2.5 w-1/2 rounded"></div>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    } @else {
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        @for (tap of recentTaps(); track tap.attendanceId + tap.action) {
+          <article
+            class="tap-card border-border/60 bg-background flex min-w-0 flex-col gap-3 rounded-xl border p-4 shadow-sm transition-shadow hover:shadow-md"
+          >
+            <div class="flex items-center gap-3">
+              <hlm-avatar
+                class="ring-offset-background size-11 ring-2 ring-offset-2"
+                [class]="tap.action === 'TIME_IN' ? 'ring-emerald-500/50' : 'ring-amber-500/50'"
+              >
+                @if (personPhoto(tap); as src) {
+                  <img [src]="src" [alt]="personName(tap)" hlmAvatarImage />
+                }
+                <span hlmAvatarFallback>{{ initials(personName(tap)) }}</span>
+              </hlm-avatar>
+              <div class="min-w-0 leading-tight">
+                <p class="text-foreground truncate text-sm font-semibold">{{ personName(tap) }}</p>
+                <p class="text-muted-foreground truncate text-xs">{{ personSub(tap) }}</p>
+              </div>
+            </div>
+            <div class="flex items-center justify-between gap-2">
+              <span
+                class="tap-badge rounded-full px-2 py-0.5 text-[11px] font-bold tracking-wide"
+                [class]="
+                  tap.action === 'TIME_IN'
+                    ? 'bg-emerald-500/10 text-emerald-600'
+                    : 'bg-amber-500/10 text-amber-600'
+                "
+              >
+                {{ tap.action === 'TIME_IN' ? 'IN' : 'OUT' }}
+              </span>
+              <div class="text-end leading-tight">
+                <p class="text-foreground text-xs font-semibold tabular-nums">
+                  {{ tapTime(tap) | date: 'h:mm:ss a' }}
+                </p>
+                @if (tap.location) {
+                  <p class="text-muted-foreground text-[11px]">{{ tap.location }}</p>
+                }
+              </div>
+            </div>
+          </article>
+        } @empty {
+          <p class="text-muted-foreground col-span-full py-6 text-center text-sm">No taps yet today.</p>
+        }
+      </div>
+    }
+  </section>
+
+  <!-- Stat cards -->
+  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    @for (stat of stats(); track stat.label) {
+      <div
+        hlmCard
+        class="group flex flex-col gap-3 rounded-2xl border-0 p-5 shadow-sm ring-1 ring-black/5 transition-all hover:-translate-y-0.5 hover:shadow-md"
+      >
+        <div class="flex items-start justify-between">
+          <p class="text-muted-foreground text-sm font-medium">{{ stat.label }}</p>
+          <div
+            class="flex size-10 shrink-0 items-center justify-center rounded-xl transition-transform group-hover:scale-110"
+            [class]="{
+              'bg-primary/10 text-primary': stat.tone === 'primary',
+              'bg-emerald-500/10 text-emerald-600': stat.tone === 'emerald',
+              'bg-amber-500/10 text-amber-600': stat.tone === 'amber',
+              'bg-rose-500/10 text-rose-600': stat.tone === 'rose',
+            }"
+          >
+            <ng-icon [name]="stat.icon" class="text-xl" />
+          </div>
+        </div>
+        <p class="text-foreground text-3xl font-bold tracking-tight tabular-nums">
+          {{ stat.value | number }}
+        </p>
+        @if (stat.percent !== null) {
+          <div class="flex flex-col gap-1.5">
+            <div class="bg-muted h-1.5 w-full overflow-hidden rounded-full">
+              <div
+                class="h-full rounded-full transition-all duration-700"
+                [class]="{
+                  'bg-primary': stat.tone === 'primary',
+                  'bg-emerald-500': stat.tone === 'emerald',
+                  'bg-amber-500': stat.tone === 'amber',
+                  'bg-rose-500': stat.tone === 'rose',
+                }"
+                [style.width.%]="stat.percent"
+              ></div>
+            </div>
+            @if (stat.caption) {
+              <p class="text-muted-foreground text-xs">{{ stat.caption }}</p>
+            }
+          </div>
+        }
+      </div>
+    }
+  </div>
+
+  <!-- Presence by department + RFID -->
+  <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+    <!-- Student presence by department -->
+    <section hlmCard class="flex flex-col gap-5 rounded-2xl border-0 p-6 shadow-sm ring-1 ring-black/5">
+      <div class="flex items-start gap-3">
+        <div class="bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-lg">
+          <ng-icon name="lucideGraduationCap" class="text-lg" />
+        </div>
+        <div hlmCardHeader class="flex min-w-0 flex-col gap-1 p-0">
+          <h3 hlmCardTitle class="text-lg">Student Presence</h3>
+          <p hlmCardDescription>By department · today</p>
+        </div>
+      </div>
+
+      @if (deptsLoading()) {
+        <div class="flex flex-col gap-3">
+          @for (i of [0, 1, 2, 3, 4]; track i) {
+            <div class="space-y-1.5">
+              <div class="bg-muted h-3 w-1/2 animate-pulse rounded"></div>
+              <div class="bg-muted h-2.5 animate-pulse rounded-full" [style.width.%]="40 + ((i * 17) % 50)"></div>
+            </div>
+          }
+        </div>
+      } @else if (studentDepts().length === 0) {
+        <p class="text-muted-foreground flex flex-1 items-center justify-center py-10 text-center text-sm">
+          No student taps today.
+        </p>
+      } @else {
+        <div class="flex max-h-72 flex-col gap-3 overflow-y-auto pr-1">
+          @for (dept of studentDepts(); track dept.department; let i = $index) {
+            <div class="flex flex-col gap-1.5">
+              <div class="flex items-baseline justify-between gap-2">
+                <span class="text-foreground min-w-0 truncate text-sm font-medium" [title]="dept.department">
+                  {{ dept.department }}
+                </span>
+                <span class="text-muted-foreground shrink-0 text-xs font-semibold tabular-nums">
+                  {{ dept.count | number }}
+                </span>
+              </div>
+              <div class="bg-muted h-2 w-full overflow-hidden rounded-full">
+                <div
+                  class="dept-bar bg-primary h-full rounded-full"
+                  [style.width.%]="barPct(dept.count, studentDeptMax())"
+                  [style.animation-delay.ms]="i * 40"
+                ></div>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </section>
+
+    <!-- Employee presence by department -->
+    <section hlmCard class="flex flex-col gap-5 rounded-2xl border-0 p-6 shadow-sm ring-1 ring-black/5">
+      <div class="flex items-start gap-3">
+        <div class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600">
+          <ng-icon name="lucideBriefcase" class="text-lg" />
+        </div>
+        <div hlmCardHeader class="flex min-w-0 flex-col gap-1 p-0">
+          <h3 hlmCardTitle class="text-lg">Employee Presence</h3>
+          <p hlmCardDescription>By department · today</p>
+        </div>
+      </div>
+
+      @if (deptsLoading()) {
+        <div class="flex flex-col gap-3">
+          @for (i of [0, 1, 2, 3, 4]; track i) {
+            <div class="space-y-1.5">
+              <div class="bg-muted h-3 w-1/2 animate-pulse rounded"></div>
+              <div class="bg-muted h-2.5 animate-pulse rounded-full" [style.width.%]="35 + ((i * 23) % 55)"></div>
+            </div>
+          }
+        </div>
+      } @else if (employeeDepts().length === 0) {
+        <p class="text-muted-foreground flex flex-1 items-center justify-center py-10 text-center text-sm">
+          No employee taps today.
+        </p>
+      } @else {
+        <div class="flex max-h-72 flex-col gap-3 overflow-y-auto pr-1">
+          @for (dept of employeeDepts(); track dept.department; let i = $index) {
+            <div class="flex flex-col gap-1.5">
+              <div class="flex items-baseline justify-between gap-2">
+                <span class="text-foreground min-w-0 truncate text-sm font-medium" [title]="dept.department">
+                  {{ dept.department }}
+                </span>
+                <span class="text-muted-foreground shrink-0 text-xs font-semibold tabular-nums">
+                  {{ dept.count | number }}
+                </span>
+              </div>
+              <div class="bg-muted h-2 w-full overflow-hidden rounded-full">
+                <div
+                  class="dept-bar h-full rounded-full bg-amber-500"
+                  [style.width.%]="barPct(dept.count, employeeDeptMax())"
+                  [style.animation-delay.ms]="i * 40"
+                ></div>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </section>
+
+    <!-- RFID donut -->
+    <section hlmCard class="flex flex-col gap-4 rounded-2xl border-0 p-6 shadow-sm ring-1 ring-black/5">
+      <div hlmCardHeader class="flex flex-col gap-1 p-0">
+        <h3 hlmCardTitle class="text-lg">RFID Coverage</h3>
+        <p hlmCardDescription>Active students with a registered card</p>
+      </div>
+
+      <div class="flex flex-1 flex-col items-center justify-center gap-6">
+        <div class="relative size-48">
+          <svg viewBox="0 0 100 100" class="size-full -rotate-90">
+            <circle cx="50" cy="50" r="42" fill="none" class="stroke-muted" stroke-width="11" />
+            <circle
+              cx="50"
+              cy="50"
+              r="42"
+              fill="none"
+              class="stroke-primary transition-all duration-700"
+              stroke-width="11"
+              stroke-linecap="round"
+              [attr.stroke-dasharray]="donutDash()"
+            />
+          </svg>
+          <div class="absolute inset-0 grid place-items-center text-center">
+            <div class="flex flex-col">
+              <p class="text-foreground text-3xl font-bold tabular-nums">{{ rfidPercent() }}%</p>
+              <p class="text-muted-foreground text-xs">With RFID</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid w-full grid-cols-2 gap-3">
+          <div class="bg-muted/50 flex flex-col items-center gap-0.5 rounded-xl p-3">
+            <span class="flex items-center gap-1.5">
+              <span class="bg-primary size-2.5 rounded-full"></span>
+              <span class="text-muted-foreground text-xs">With RFID</span>
+            </span>
+            <span class="text-foreground text-lg font-bold tabular-nums">{{ withRfid() | number }}</span>
+          </div>
+          <div class="bg-muted/50 flex flex-col items-center gap-0.5 rounded-xl p-3">
+            <span class="flex items-center gap-1.5">
+              <span class="bg-muted-foreground/40 size-2.5 rounded-full"></span>
+              <span class="text-muted-foreground text-xs">No RFID</span>
+            </span>
+            <span class="text-foreground text-lg font-bold tabular-nums">{{ noRfid() | number }}</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>

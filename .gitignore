@@ -1,0 +1,38 @@
+# Secrets / local env
+.env
+.env.local
+.env.*.local
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+*.iml
+.vscode/
+.metadata/
+*.swp
+*~
+
+# Java / Maven
+lpu-attendance-system/target/
+*.class
+*.jar
+
+# Angular / Node
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+frontend/out-tsc/
+npm-debug.log*
+yarn-error.log*
+
+# Runtime data (data/web/templates and data/tomcat/webapps stay tracked)
+data/postgres-data/
+data/pictures/
+data/videos/
+data/tomcat/logs/
+data/cloudflared/
+
+# Logs
+*.log
+logs/

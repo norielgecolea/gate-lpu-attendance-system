@@ -1,0 +1,165 @@
+<div class="bg-muted/40 relative flex h-screen overflow-hidden">
+  <!-- RFID error alerts -->
+  @if (tapErrors().length > 0) {
+    <div
+      class="pointer-events-none absolute top-20 right-4 z-50 flex w-96 max-w-[calc(100vw-2rem)] flex-col gap-2 sm:right-6"
+    >
+      @for (alert of tapErrors(); track alert.id) {
+        <div
+          class="alert-card pointer-events-auto flex items-start gap-3 rounded-xl border border-red-200 bg-white p-4 shadow-2xl"
+          role="alert"
+        >
+          <div class="grid size-10 shrink-0 place-items-center rounded-lg bg-red-100 text-red-600">
+            <ng-icon name="lucideTriangleAlert" class="text-xl" />
+          </div>
+          <div class="min-w-0 flex-1 leading-tight">
+            <p class="text-sm font-bold text-red-700">RFID Reading Error</p>
+            <p class="mt-0.5 text-sm text-slate-700">
+              Unrecognized ID
+              <span class="font-semibold tabular-nums">{{ alert.identifier }}</span>
+            </p>
+            <p class="mt-0.5 text-xs text-slate-500">
+              {{ alert.location }} · {{ alert.time | date: 'h:mm:ss a' }}
+            </p>
+          </div>
+          <button
+            type="button"
+            class="grid size-7 shrink-0 place-items-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+            aria-label="Dismiss alert"
+            (click)="dismissTapError(alert.id)"
+          >
+            <ng-icon name="lucideX" class="text-sm" />
+          </button>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Sidebar -->
+  <aside
+    class="bg-sidebar border-sidebar-border flex shrink-0 flex-col overflow-hidden border-r"
+    [class.w-64]="sidebarOpen()"
+    [class.w-[76px]]="!sidebarOpen()"
+  >
+    <!-- Brand + collapse toggle -->
+    <div class="flex h-16 items-center gap-3 px-3">
+      @if (sidebarOpen()) {
+        <img
+          src="/logo.svg"
+          alt="LPU-Laguna logo"
+          class="size-10 shrink-0 object-contain"
+        />
+        <div class="min-w-0 leading-tight">
+          <p class="text-sidebar-foreground truncate text-sm font-bold tracking-tight">
+            LPU-LAGUNA
+          </p>
+          <p class="text-muted-foreground truncate text-xs">Attendance System</p>
+        </div>
+      }
+      <button
+        hlmBtn
+        variant="ghost"
+        size="icon"
+        class="text-sidebar-foreground/70 hover:bg-sidebar-accent shrink-0"
+        [class.ml-auto]="sidebarOpen()"
+        [class.mx-auto]="!sidebarOpen()"
+        (click)="toggleSidebar()"
+        [attr.aria-label]="sidebarOpen() ? 'Collapse sidebar' : 'Expand sidebar'"
+      >
+        <ng-icon name="lucidePanelLeft" class="text-lg" />
+      </button>
+    </div>
+
+    <!-- Nav -->
+    <nav
+      hlmNavigationMenu
+      orientation="vertical"
+      class="w-full max-w-none flex-1 items-stretch justify-start px-3 py-2"
+    >
+      <ul hlmNavigationMenuList class="w-full flex-col items-stretch justify-start gap-1">
+        @for (section of navSections; track $index) {
+          @if (section.label && sidebarOpen()) {
+            <li class="text-muted-foreground mt-3 px-3 pb-1 text-xs font-semibold tracking-wider uppercase first:mt-0">
+              {{ section.label }}
+            </li>
+          } @else if (section.label && !sidebarOpen()) {
+            <li class="border-sidebar-border mx-2 my-2 border-t"></li>
+          }
+          @for (item of section.items; track item.route) {
+            <li hlmNavigationMenuItem class="w-full">
+              <a
+                hlmNavigationMenuLink
+                [routerLink]="item.route"
+                [active]="isActive(item.route)"
+                [attr.title]="!sidebarOpen() ? item.label : null"
+                class="text-sidebar-foreground/80 text-sm font-medium data-[active=true]:bg-primary/10 data-[active=true]:font-semibold data-[active=true]:text-primary"
+                [class]="
+                  sidebarOpen()
+                    ? 'w-full gap-3 px-3 py-2.5'
+                    : 'mx-auto size-10 justify-center p-0'
+                "
+              >
+                <ng-icon [name]="item.icon" class="shrink-0 text-lg" [class.text-primary]="isActive(item.route)" />
+                @if (sidebarOpen()) {
+                  <span class="truncate">{{ item.label }}</span>
+                  @if (isActive(item.route)) {
+                    <span class="bg-primary ml-auto size-1.5 shrink-0 rounded-full"></span>
+                  }
+                }
+              </a>
+            </li>
+          }
+        }
+      </ul>
+    </nav>
+
+    <!-- Footer -->
+    <div class="border-sidebar-border border-t p-3">
+      <button
+        hlmBtn
+        variant="ghost"
+        class="text-sidebar-foreground/70 hover:text-destructive"
+        [class]="
+          sidebarOpen() ? 'w-full justify-start gap-3' : 'mx-auto size-10 justify-center p-0'
+        "
+        [attr.title]="!sidebarOpen() ? 'Logout' : null"
+        [disabled]="loggingOut()"
+        (click)="logout()"
+      >
+        <ng-icon name="lucideLogOut" class="shrink-0 text-lg" />
+        @if (sidebarOpen()) {
+          <span>{{ loggingOut() ? 'Signing out…' : 'Logout' }}</span>
+        }
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main column -->
+  <div class="flex min-w-0 flex-1 flex-col">
+    <!-- Topbar -->
+    <header
+      class="bg-primary text-primary-foreground flex h-16 shrink-0 items-center gap-4 px-4 shadow-sm sm:px-6"
+    >
+      <h1 class="truncate text-lg font-semibold tracking-tight sm:text-xl">
+        {{ pageTitle() }}
+      </h1>
+
+      <div class="ml-auto flex items-center gap-3">
+        <div class="hidden text-right leading-tight sm:block">
+          <p class="text-sm font-semibold">{{ currentUser()?.username ?? 'Superadmin' }}</p>
+          <p class="text-primary-foreground/70 text-xs">{{ currentUser()?.role ?? 'SUPERADMIN' }}</p>
+        </div>
+        <div
+          class="bg-primary-foreground/15 ring-primary-foreground/20 flex size-10 items-center justify-center rounded-full ring-1"
+        >
+          <ng-icon name="lucideUserRound" class="text-xl" />
+        </div>
+      </div>
+    </header>
+
+    <!-- Content -->
+    <main class="flex-1 overflow-y-auto p-4 sm:p-6">
+      <router-outlet />
+    </main>
+  </div>
+</div>

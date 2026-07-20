@@ -1,0 +1,235 @@
+<div class="flex min-h-0 flex-1 flex-col gap-4">
+  <!-- Overview -->
+  <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="bg-card rounded-lg border p-4 shadow-sm">
+      <p class="text-muted-foreground text-xs uppercase tracking-wide">People present</p>
+      <p class="mt-1 text-2xl font-semibold tabular-nums">{{ summary().uniquePeople }}</p>
+    </div>
+    <div class="bg-card rounded-lg border p-4 shadow-sm">
+      <p class="text-muted-foreground text-xs uppercase tracking-wide">Complete days</p>
+      <p class="mt-1 text-2xl font-semibold tabular-nums">{{ summary().completeDays }}</p>
+    </div>
+    <div class="bg-card rounded-lg border p-4 shadow-sm">
+      <p class="text-muted-foreground text-xs uppercase tracking-wide">Open / missing out</p>
+      <p class="mt-1 text-2xl font-semibold tabular-nums">{{ summary().openDays }}</p>
+    </div>
+    <div class="bg-card rounded-lg border p-4 shadow-sm">
+      <p class="text-muted-foreground text-xs uppercase tracking-wide">Total taps</p>
+      <p class="mt-1 text-2xl font-semibold tabular-nums">{{ summary().totalTaps }}</p>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="flex flex-wrap items-end gap-2">
+    <div class="relative min-w-0 flex-1 basis-48">
+      <ng-icon
+        name="lucideSearch"
+        class="text-muted-foreground pointer-events-none absolute inset-y-0 left-3 my-auto text-base"
+      />
+      <input
+        hlmInput
+        class="bg-card w-full pl-9"
+        type="search"
+        [placeholder]="isStudent() ? 'Search students' : 'Search employees'"
+        [ngModel]="search()"
+        (ngModelChange)="onSearchChange($event)"
+      />
+    </div>
+
+    <div class="flex flex-wrap gap-1">
+      @for (option of [
+        { id: 'today', label: 'Today' },
+        { id: 'week', label: 'This Week' },
+        { id: 'month', label: 'This Month' }
+      ]; track option.id) {
+        <button
+          hlmBtn
+          type="button"
+          size="sm"
+          [variant]="preset() === option.id ? 'default' : 'outline'"
+          (click)="applyPreset($any(option.id))"
+        >
+          {{ option.label }}
+        </button>
+      }
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label hlmLabel for="attStart">Start</label>
+      <input
+        hlmInput
+        id="attStart"
+        type="date"
+        [ngModel]="startDate()"
+        (ngModelChange)="startDate.set($event); onCustomDateChange()"
+      />
+    </div>
+    <div class="flex flex-col gap-1">
+      <label hlmLabel for="attEnd">End</label>
+      <input
+        hlmInput
+        id="attEnd"
+        type="date"
+        [ngModel]="endDate()"
+        (ngModelChange)="endDate.set($event); onCustomDateChange()"
+      />
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label hlmLabel for="attDept">Department</label>
+      <input
+        hlmInput
+        id="attDept"
+        type="text"
+        placeholder="e.g. CITHM"
+        [ngModel]="department()"
+        (ngModelChange)="department.set($event); reload()"
+      />
+    </div>
+
+    <button hlmBtn variant="outline" class="gap-1.5" type="button" (click)="clearFilters()">
+      <ng-icon name="lucideEraser" class="text-base" />
+      Clear
+    </button>
+    <hlm-separator orientation="vertical" class="mx-1 h-6" />
+    <button
+      hlmBtn
+      class="gap-1.5"
+      type="button"
+      [disabled]="exporting()"
+      (click)="exportCsv()"
+    >
+      <ng-icon name="lucideFileUp" class="text-base" />
+      {{ exporting() ? 'Exporting…' : 'Export' }}
+    </button>
+  </div>
+
+  @if (error()) {
+    <p class="text-destructive text-sm" role="alert">{{ error() }}</p>
+  }
+
+  <!-- Table -->
+  <div
+    hlmTableContainer
+    class="bg-card min-h-0 flex-1 overflow-y-auto rounded-lg border shadow-sm"
+    (scroll)="onTableScroll($event)"
+  >
+    <table hlmTable class="text-sm">
+      <thead hlmTHead class="sticky top-0 z-10">
+        @for (headerGroup of table.getHeaderGroups(); track headerGroup.id) {
+          <tr hlmTr class="bg-primary hover:bg-primary [&>th]:text-primary-foreground">
+            @for (header of headerGroup.headers; track header.id) {
+              <th hlmTh [class.text-end]="header.column.id === 'actions'">
+                @if (header.column.id === 'actions' || header.column.id === 'status' || header.column.id === 'department' || header.column.id === 'course' || header.column.id === 'school' || header.column.id === 'position') {
+                  <span>{{ header.column.columnDef.header }}</span>
+                } @else {
+                  <button
+                    type="button"
+                    class="text-primary-foreground -mx-1 flex items-center gap-1.5 rounded px-1 font-medium hover:opacity-80"
+                    (click)="header.column.getToggleSortingHandler()?.($event)"
+                  >
+                    {{ header.column.columnDef.header }}
+                    <ng-icon
+                      [name]="sortIcon(header.column.getIsSorted())"
+                      class="text-primary-foreground/70 text-sm"
+                    />
+                  </button>
+                }
+              </th>
+            }
+          </tr>
+        }
+      </thead>
+      <tbody hlmTBody>
+        @if (loading() && rows().length === 0) {
+          <tr hlmTr>
+            <td hlmTd [attr.colspan]="table.getAllColumns().length" class="text-muted-foreground py-10 text-center">
+              Loading attendance…
+            </td>
+          </tr>
+        } @else {
+          @for (row of scroll.take(table.getRowModel().rows); track row.id) {
+            <tr hlmTr>
+              @for (cell of row.getVisibleCells(); track cell.id) {
+                <td hlmTd [class.text-end]="cell.column.id === 'actions'">
+                  @switch (cell.column.id) {
+                    @case ('name') {
+                      <div class="flex items-center gap-3">
+                        <hlm-avatar>
+                          @if (photoSrc(row.original.photo); as src) {
+                            <img [src]="src" [alt]="row.original.name" hlmAvatarImage />
+                          }
+                          <span hlmAvatarFallback>{{ initials(row.original.name) }}</span>
+                        </hlm-avatar>
+                        <div class="leading-tight">
+                          <p class="text-foreground font-medium">{{ row.original.name }}</p>
+                          <p class="text-muted-foreground text-xs">{{ row.original.personNo }}</p>
+                        </div>
+                      </div>
+                    }
+                    @case ('date') {
+                      <span class="tabular-nums">{{ row.original.attendanceDate }}</span>
+                    }
+                    @case ('timeIn') {
+                      <span class="tabular-nums">{{ formatTime(row.original.timeIn) }}</span>
+                    }
+                    @case ('timeOut') {
+                      <span class="tabular-nums">{{ formatTime(row.original.timeOut) }}</span>
+                    }
+                    @case ('status') {
+                      <span
+                        hlmBadge
+                        [variant]="row.original.status === 'COMPLETE' ? 'default' : 'secondary'"
+                      >
+                        {{ row.original.status === 'COMPLETE' ? 'Complete' : 'Open' }}
+                      </span>
+                    }
+                    @case ('actions') {
+                      <a
+                        hlmBtn
+                        size="icon"
+                        variant="ghost"
+                        class="hover:bg-background inline-flex"
+                        [routerLink]="detailLink(row.original)"
+                        aria-label="View details"
+                        title="View details"
+                      >
+                        <ng-icon name="lucideHistory" class="text-base" />
+                      </a>
+                    }
+                    @default {
+                      {{ cell.getValue() ?? '—' }}
+                    }
+                  }
+                </td>
+              }
+            </tr>
+          } @empty {
+            <tr hlmTr>
+              <td hlmTd [attr.colspan]="table.getAllColumns().length" class="text-muted-foreground py-10 text-center">
+                No attendance records found.
+              </td>
+            </tr>
+          }
+          @if (rows().length > 0) {
+            <tr hlmTr>
+              <td
+                hlmTd
+                [attr.colspan]="table.getAllColumns().length"
+                class="text-muted-foreground py-3 text-center text-xs"
+              >
+                @if (loadingMore()) {
+                  Loading more…
+                } @else if (hasMore()) {
+                  Showing {{ rows().length }} of {{ total() }} — scroll to load more
+                } @else {
+                  Showing all {{ total() }} record(s)
+                }
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

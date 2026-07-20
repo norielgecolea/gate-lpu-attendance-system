@@ -1,0 +1,112 @@
+<div class="flex min-h-0 flex-1 flex-col gap-4">
+  <!-- Toolbar -->
+  <div class="flex flex-wrap items-center gap-2">
+    <div class="relative min-w-0 flex-1">
+      <ng-icon
+        name="lucideSearch"
+        class="text-muted-foreground pointer-events-none absolute inset-y-0 left-3 my-auto text-base"
+      />
+      <input
+        hlmInput
+        class="bg-card w-full pl-9"
+        type="search"
+        placeholder="Search inactive students"
+        [ngModel]="filter()"
+        (ngModelChange)="filter.set($event)"
+      />
+    </div>
+
+  </div>
+
+  @if (error()) {
+    <p class="text-destructive text-sm" role="alert">{{ error() }}</p>
+  }
+
+  <!-- Table -->
+  <div hlmTableContainer class="bg-card min-h-0 flex-1 overflow-y-auto rounded-lg border shadow-sm">
+    <table hlmTable class="text-sm">
+      <thead hlmTHead class="sticky top-0 z-10">
+        <tr hlmTr class="bg-primary hover:bg-primary [&>th]:text-primary-foreground">
+          <th hlmTh>Name</th>
+          <th hlmTh>RFID #</th>
+          <th hlmTh>Department</th>
+          <th hlmTh>Course</th>
+          <th hlmTh>School</th>
+          <th hlmTh class="text-end">Action</th>
+        </tr>
+      </thead>
+      <tbody hlmTBody>
+        @if (loading() && students().length === 0) {
+          <tr hlmTr>
+            <td hlmTd colspan="6" class="text-muted-foreground py-10 text-center">
+              Loading inactive students…
+            </td>
+          </tr>
+        } @else {
+          @for (student of filtered(); track student.id) {
+            <tr hlmTr>
+              <td hlmTd>
+                <div class="flex items-center gap-3">
+                  <hlm-avatar>
+                    @if (photoSrc(student.photo); as src) {
+                      <img [src]="src" [alt]="student.name" hlmAvatarImage />
+                    }
+                    <span hlmAvatarFallback>{{ initials(student.name) }}</span>
+                  </hlm-avatar>
+                  <div class="leading-tight">
+                    <p class="text-foreground font-medium">{{ student.name }}</p>
+                    <p class="text-muted-foreground text-xs">{{ student.studentNo }}</p>
+                  </div>
+                </div>
+              </td>
+              <td hlmTd>
+                @if (student.rfid) {
+                  <span class="tabular-nums">{{ student.rfid }}</span>
+                } @else {
+                  <span class="text-muted-foreground">—</span>
+                }
+              </td>
+              <td hlmTd>{{ student.department }}</td>
+              <td hlmTd>{{ student.course }}</td>
+              <td hlmTd>{{ student.school }}</td>
+              <td hlmTd>
+                <div class="flex items-center justify-end gap-2">
+                  <button
+                    hlmBtn
+                    size="sm"
+                    variant="outline"
+                    class="gap-1.5"
+                    type="button"
+                    [disabled]="restoringId() === student.id || deletingId() === student.id"
+                    (click)="restore(student)"
+                  >
+                    <ng-icon name="lucideRotateCcw" class="text-base" />
+                    {{ restoringId() === student.id ? 'Restoring…' : 'Restore' }}
+                  </button>
+                  <button
+                    hlmBtn
+                    size="sm"
+                    variant="destructive"
+                    class="gap-1.5"
+                    type="button"
+                    [disabled]="restoringId() === student.id || deletingId() === student.id"
+                    (click)="permanentlyDelete(student)"
+                  >
+                    <ng-icon name="lucideTrash2" class="text-base" />
+                    {{ deletingId() === student.id ? 'Deleting…' : 'Delete' }}
+                  </button>
+                </div>
+              </td>
+            </tr>
+          } @empty {
+            <tr hlmTr>
+              <td hlmTd colspan="6" class="text-muted-foreground py-10 text-center">
+                No inactive students.
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

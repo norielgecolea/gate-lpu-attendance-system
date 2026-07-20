@@ -1,0 +1,131 @@
+<div class="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto pb-6">
+  @if (error()) {
+    <p class="text-destructive text-sm" role="alert">{{ error() }}</p>
+  }
+
+  <!-- Display mode -->
+  <section class="bg-card rounded-lg border p-5 shadow-sm">
+    <h2 class="text-foreground text-base font-semibold">Guard Page Side Panel</h2>
+    <p class="text-muted-foreground mt-0.5 text-sm">
+      Choose what guard gate displays show beside the scan result. Changes apply to all guard
+      screens instantly.
+    </p>
+
+    @if (loading()) {
+      <p class="text-muted-foreground mt-4 text-sm">Loading settings…</p>
+    } @else {
+      <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        @for (option of modeOptions; track option.value) {
+          <button
+            type="button"
+            class="rounded-xl border p-4 text-left transition-all"
+            [class.border-primary]="mode() === option.value"
+            [class.ring-2]="mode() === option.value"
+            [class.ring-primary/30]="mode() === option.value"
+            [class.bg-primary/5]="mode() === option.value"
+            [class.hover:border-primary/50]="mode() !== option.value"
+            [disabled]="savingMode()"
+            (click)="selectMode(option.value)"
+          >
+            <div class="flex items-center gap-2">
+              <div
+                class="grid size-9 place-items-center rounded-lg"
+                [class.bg-primary]="mode() === option.value"
+                [class.text-primary-foreground]="mode() === option.value"
+                [class.bg-muted]="mode() !== option.value"
+                [class.text-muted-foreground]="mode() !== option.value"
+              >
+                <ng-icon [name]="option.icon" class="text-lg" />
+              </div>
+              <p class="text-foreground font-semibold">{{ option.label }}</p>
+              @if (mode() === option.value) {
+                <span class="bg-primary/10 text-primary ml-auto rounded-full px-2 py-0.5 text-xs font-semibold">
+                  Active
+                </span>
+              }
+            </div>
+            <p class="text-muted-foreground mt-2 text-sm">{{ option.description }}</p>
+          </button>
+        }
+      </div>
+    }
+  </section>
+
+  <!-- Videos (relevant when mode is VIDEO) -->
+  <section class="bg-card rounded-lg border p-5 shadow-sm" [class.opacity-60]="mode() !== 'VIDEO'">
+    <div class="flex flex-wrap items-center gap-3">
+      <div class="min-w-0 flex-1">
+        <h2 class="text-foreground text-base font-semibold">Guard Display Videos</h2>
+        <p class="text-muted-foreground mt-0.5 text-sm">
+          Videos play muted in a continuous loop, in the order they were uploaded.
+          @if (mode() !== 'VIDEO') {
+            <span class="text-amber-600">Select the Video mode above to show them.</span>
+          }
+        </p>
+      </div>
+      <label
+        hlmBtn
+        class="cursor-pointer gap-1.5"
+        [class.pointer-events-none]="uploading()"
+        [class.opacity-60]="uploading()"
+      >
+        <ng-icon name="lucideUpload" class="text-base" />
+        {{ uploading() ? 'Uploading…' : 'Upload Videos' }}
+        <input
+          type="file"
+          class="hidden"
+          accept="video/mp4,video/webm,video/ogg,video/quicktime"
+          multiple
+          [disabled]="uploading()"
+          (change)="onFilesSelected($event)"
+        />
+      </label>
+    </div>
+
+    <div class="mt-4">
+      @if (videos().length === 0) {
+        <div class="text-muted-foreground rounded-lg border border-dashed py-10 text-center text-sm">
+          No videos uploaded yet. Upload MP4, WebM, Ogg, or QuickTime files (up to 200 MB each).
+        </div>
+      } @else {
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          @for (video of videos(); track video.id) {
+            <div class="overflow-hidden rounded-lg border">
+              <video
+                class="aspect-video w-full bg-black object-contain"
+                [src]="videoSrc(video)"
+                controls
+                muted
+                preload="metadata"
+              ></video>
+              <div class="flex items-center gap-2 p-3">
+                <div class="min-w-0 flex-1 leading-tight">
+                  <p class="text-foreground truncate text-sm font-medium" [title]="video.originalName">
+                    {{ video.originalName }}
+                  </p>
+                  <p class="text-muted-foreground text-xs">
+                    {{ sizeMb(video.sizeBytes) | number: '1.1-1' }} MB ·
+                    {{ video.uploadedAt | date: 'MMM d, y h:mm a' }}
+                  </p>
+                </div>
+                <button
+                  hlmBtn
+                  size="icon"
+                  variant="ghost"
+                  class="text-destructive hover:text-destructive shrink-0"
+                  aria-label="Delete video"
+                  title="Delete video"
+                  type="button"
+                  [disabled]="deletingId() === video.id"
+                  (click)="deleteVideo(video)"
+                >
+                  <ng-icon name="lucideTrash2" class="text-base" />
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </section>
+</div>

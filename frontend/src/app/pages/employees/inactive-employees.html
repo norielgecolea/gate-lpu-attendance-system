@@ -1,0 +1,110 @@
+<div class="flex min-h-0 flex-1 flex-col gap-4">
+  <!-- Toolbar -->
+  <div class="flex flex-wrap items-center gap-2">
+    <div class="relative min-w-0 flex-1">
+      <ng-icon
+        name="lucideSearch"
+        class="text-muted-foreground pointer-events-none absolute inset-y-0 left-3 my-auto text-base"
+      />
+      <input
+        hlmInput
+        class="bg-card w-full pl-9"
+        type="search"
+        placeholder="Search inactive employees"
+        [ngModel]="filter()"
+        (ngModelChange)="filter.set($event)"
+      />
+    </div>
+
+  </div>
+
+  @if (error()) {
+    <p class="text-destructive text-sm" role="alert">{{ error() }}</p>
+  }
+
+  <!-- Table -->
+  <div hlmTableContainer class="bg-card min-h-0 flex-1 overflow-y-auto rounded-lg border shadow-sm">
+    <table hlmTable class="text-sm">
+      <thead hlmTHead class="sticky top-0 z-10">
+        <tr hlmTr class="bg-primary hover:bg-primary [&>th]:text-primary-foreground">
+          <th hlmTh>Name</th>
+          <th hlmTh>RFID #</th>
+          <th hlmTh>Department</th>
+          <th hlmTh>Position</th>
+          <th hlmTh class="text-end">Action</th>
+        </tr>
+      </thead>
+      <tbody hlmTBody>
+        @if (loading() && employees().length === 0) {
+          <tr hlmTr>
+            <td hlmTd colspan="5" class="text-muted-foreground py-10 text-center">
+              Loading inactive employees…
+            </td>
+          </tr>
+        } @else {
+          @for (employee of filtered(); track employee.id) {
+            <tr hlmTr>
+              <td hlmTd>
+                <div class="flex items-center gap-3">
+                  <hlm-avatar>
+                    @if (photoSrc(employee.photo); as src) {
+                      <img [src]="src" [alt]="employee.name" hlmAvatarImage />
+                    }
+                    <span hlmAvatarFallback>{{ initials(employee.name) }}</span>
+                  </hlm-avatar>
+                  <div class="leading-tight">
+                    <p class="text-foreground font-medium">{{ employee.name }}</p>
+                    <p class="text-muted-foreground text-xs">{{ employee.employeeNo }}</p>
+                  </div>
+                </div>
+              </td>
+              <td hlmTd>
+                @if (employee.rfid) {
+                  <span class="tabular-nums">{{ employee.rfid }}</span>
+                } @else {
+                  <span class="text-muted-foreground">—</span>
+                }
+              </td>
+              <td hlmTd>{{ employee.department }}</td>
+              <td hlmTd>{{ employee.position }}</td>
+              <td hlmTd>
+                <div class="flex items-center justify-end gap-2">
+                  <button
+                    hlmBtn
+                    size="sm"
+                    variant="outline"
+                    class="gap-1.5"
+                    type="button"
+                    [disabled]="restoringId() === employee.id || deletingId() === employee.id"
+                    (click)="restore(employee)"
+                  >
+                    <ng-icon name="lucideRotateCcw" class="text-base" />
+                    {{ restoringId() === employee.id ? 'Restoring…' : 'Restore' }}
+                  </button>
+                  <button
+                    hlmBtn
+                    size="sm"
+                    variant="destructive"
+                    class="gap-1.5"
+                    type="button"
+                    [disabled]="restoringId() === employee.id || deletingId() === employee.id"
+                    (click)="permanentlyDelete(employee)"
+                  >
+                    <ng-icon name="lucideTrash2" class="text-base" />
+                    {{ deletingId() === employee.id ? 'Deleting…' : 'Delete' }}
+                  </button>
+                </div>
+              </td>
+            </tr>
+          } @empty {
+            <tr hlmTr>
+              <td hlmTd colspan="5" class="text-muted-foreground py-10 text-center">
+                No inactive employees.
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

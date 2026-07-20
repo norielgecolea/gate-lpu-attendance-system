@@ -1,0 +1,163 @@
+<div class="flex max-h-[85vh] flex-col gap-4 overflow-y-auto p-1">
+  <div hlmDialogHeader>
+    <h2 hlmDialogTitle>{{ mode === 'create' ? 'New student' : 'Edit student' }}</h2>
+    <p hlmDialogDescription>
+      {{
+        mode === 'create'
+          ? 'Add a student record. Fields marked with * are required.'
+          : 'Update student details. Fields marked with * are required.'
+      }}
+    </p>
+  </div>
+
+  <form hlmFieldGroup class="gap-4" (ngSubmit)="submit()">
+    @if (error()) {
+      <p
+        class="bg-destructive/10 text-destructive rounded-md px-3 py-2 text-sm"
+        role="alert"
+      >
+        {{ error() }}
+      </p>
+    }
+
+    <!-- Photo -->
+    <div class="border-border bg-muted/40 flex items-center gap-4 rounded-lg border p-3">
+      @if (previewUrl()) {
+        <img
+          [src]="previewUrl()!"
+          alt="Student photo preview"
+          class="border-border size-20 shrink-0 rounded-lg border object-cover shadow-sm"
+        />
+      } @else {
+        <div
+          class="border-border bg-background text-muted-foreground grid size-20 shrink-0 place-items-center rounded-lg border border-dashed text-[10px] font-medium"
+        >
+          No photo
+        </div>
+      }
+      <div class="flex min-w-0 flex-col gap-2">
+        <div class="flex flex-wrap items-center gap-2">
+          <label
+            hlmBtn
+            variant="outline"
+            size="sm"
+            for="student-photo"
+            class="cursor-pointer"
+          >
+            {{ previewUrl() ? 'Change photo' : 'Upload photo' }}
+          </label>
+          @if (previewUrl() || selectedFileName()) {
+            <button hlmBtn type="button" variant="ghost" size="sm" class="text-destructive" (click)="removePhoto()">
+              Remove
+            </button>
+          }
+        </div>
+        <p class="text-muted-foreground truncate text-xs">
+          {{ selectedFileName() ?? 'JPEG, PNG, WebP, or GIF. Optional.' }}
+        </p>
+        <input
+          id="student-photo"
+          name="photoFile"
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          class="hidden"
+          (change)="onFileSelected($event)"
+        />
+      </div>
+    </div>
+
+    <div hlmField>
+      <label hlmFieldLabel for="student-name">Full name *</label>
+      <input
+        hlmInput
+        id="student-name"
+        name="name"
+        [(ngModel)]="name"
+        autocomplete="off"
+        placeholder="Dela Cruz, Juan A."
+      />
+    </div>
+
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div hlmField>
+        <label hlmFieldLabel for="student-no">Student number *</label>
+        <input
+          hlmInput
+          id="student-no"
+          name="studentNo"
+          [(ngModel)]="studentNo"
+          autocomplete="off"
+          placeholder="2026-00123"
+        />
+      </div>
+      <div hlmField>
+        <label hlmFieldLabel for="student-rfid">RFID</label>
+        <input
+          hlmInput
+          id="student-rfid"
+          name="rfid"
+          [(ngModel)]="rfid"
+          autocomplete="off"
+          placeholder="Tap card or type number"
+        />
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div hlmField>
+        <label hlmFieldLabel for="student-birthdate">Birthdate</label>
+        <input
+          hlmInput
+          id="student-birthdate"
+          name="birthdate"
+          type="date"
+          [(ngModel)]="birthdate"
+          autocomplete="off"
+        />
+      </div>
+      <div hlmField>
+        <label hlmFieldLabel for="student-school">School *</label>
+        <input
+          hlmInput
+          id="student-school"
+          name="school"
+          [(ngModel)]="school"
+          autocomplete="off"
+          placeholder="LPL"
+        />
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div hlmField>
+        <label hlmFieldLabel for="student-department">Department *</label>
+        <input
+          hlmInput
+          id="student-department"
+          name="department"
+          [(ngModel)]="department"
+          autocomplete="off"
+          placeholder="CCS"
+        />
+      </div>
+      <div hlmField>
+        <label hlmFieldLabel for="student-course">Course *</label>
+        <input
+          hlmInput
+          id="student-course"
+          name="course"
+          [(ngModel)]="course"
+          autocomplete="off"
+          placeholder="BSIT"
+        />
+      </div>
+    </div>
+
+    <div hlmDialogFooter class="gap-2">
+      <button hlmBtn type="button" variant="outline" (click)="cancel()">Cancel</button>
+      <button hlmBtn type="submit" [disabled]="saving()">
+        {{ mode === 'create' ? 'Create student' : 'Save changes' }}
+      </button>
+    </div>
+  </form>
+</div>

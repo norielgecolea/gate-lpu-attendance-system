@@ -1,0 +1,92 @@
+<div class="flex min-h-0 flex-1 flex-col gap-4">
+  <div class="flex flex-wrap items-center gap-2">
+    <div class="relative min-w-0 flex-1">
+      <ng-icon
+        name="lucideSearch"
+        class="text-muted-foreground pointer-events-none absolute inset-y-0 left-3 my-auto text-base"
+      />
+      <input
+        hlmInput
+        class="bg-card w-full pl-9"
+        type="search"
+        placeholder="Search by RFID / ID or gate"
+        [ngModel]="filter()"
+        (ngModelChange)="filter.set($event)"
+      />
+    </div>
+    <button hlmBtn variant="outline" class="gap-1.5" type="button" (click)="reload()" [disabled]="loading()">
+      <ng-icon name="lucideRefreshCw" class="text-base" />
+      Refresh
+    </button>
+    <button
+      hlmBtn
+      variant="destructive"
+      class="gap-1.5"
+      type="button"
+      [disabled]="clearing() || logs().length === 0"
+      (click)="clearLogs()"
+    >
+      <ng-icon name="lucideEraser" class="text-base" />
+      {{ clearing() ? 'Clearing…' : 'Clear Logs' }}
+    </button>
+  </div>
+
+  <p class="text-muted-foreground text-sm">
+    Unrecognized RFID / ID taps from any gate. Showing {{ filtered().length }} of
+    {{ logs().length }} log(s).
+  </p>
+
+  @if (error()) {
+    <p class="text-destructive text-sm" role="alert">{{ error() }}</p>
+  }
+
+  <div hlmTableContainer class="bg-card min-h-0 flex-1 overflow-y-auto rounded-lg border shadow-sm">
+    <table hlmTable class="text-sm">
+      <thead hlmTHead class="sticky top-0 z-10">
+        <tr hlmTr class="bg-primary hover:bg-primary [&>th]:text-primary-foreground">
+          <th hlmTh>RFID / ID</th>
+          <th hlmTh>Gate</th>
+          <th hlmTh>Date</th>
+          <th hlmTh>Time</th>
+        </tr>
+      </thead>
+      <tbody hlmTBody>
+        @if (loading() && logs().length === 0) {
+          <tr hlmTr>
+            <td hlmTd colspan="4" class="text-muted-foreground py-10 text-center">
+              Loading RFID error logs…
+            </td>
+          </tr>
+        } @else {
+          @for (row of filtered(); track row.id) {
+            <tr hlmTr>
+              <td hlmTd>
+                <div class="flex items-center gap-2">
+                  <ng-icon name="lucideTriangleAlert" class="text-destructive shrink-0 text-base" />
+                  <span class="font-semibold tabular-nums">{{ row.identifier }}</span>
+                </div>
+              </td>
+              <td hlmTd>
+                @if (row.location) {
+                  {{ row.location }}
+                } @else {
+                  <span class="text-muted-foreground">Unknown gate</span>
+                }
+              </td>
+              <td hlmTd>{{ row.tappedAt | date: 'MMM d, y' : 'Asia/Manila' }}</td>
+              <td hlmTd class="tabular-nums">
+                {{ row.tappedAt | date: 'h:mm:ss a' : 'Asia/Manila' }}
+              </td>
+            </tr>
+          } @empty {
+            <tr hlmTr>
+              <td hlmTd colspan="4" class="text-muted-foreground py-10 text-center">
+                No RFID reading errors logged yet.
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

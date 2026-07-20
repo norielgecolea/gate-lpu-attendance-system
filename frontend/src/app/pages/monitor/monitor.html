@@ -1,0 +1,300 @@
+<div class="relative flex h-full flex-col gap-4 bg-slate-950 p-4 text-slate-100 sm:p-6">
+  <!-- RFID error alerts -->
+  @if (tapErrors().length > 0) {
+    <div class="pointer-events-none absolute top-20 right-4 z-50 flex w-96 max-w-[calc(100vw-2rem)] flex-col gap-2 sm:right-6">
+      @for (alert of tapErrors(); track alert.id) {
+        <div
+          class="alert-card pointer-events-auto flex items-start gap-3 rounded-xl border border-red-500/40 bg-red-950/95 p-4 shadow-2xl backdrop-blur"
+          role="alert"
+        >
+          <div class="grid size-10 shrink-0 place-items-center rounded-lg bg-red-500/20 text-red-400">
+            <ng-icon name="lucideTriangleAlert" class="text-xl" />
+          </div>
+          <div class="min-w-0 flex-1 leading-tight">
+            <p class="text-sm font-bold text-red-200">RFID Reading Error</p>
+            <p class="mt-0.5 text-sm text-red-100/90">
+              Unrecognized ID <span class="font-semibold tabular-nums">{{ alert.identifier }}</span>
+            </p>
+            <p class="mt-0.5 text-xs text-red-200/60">
+              {{ alert.location }} · {{ alert.time | date: 'h:mm:ss a' }}
+            </p>
+          </div>
+          <button
+            class="grid size-7 shrink-0 place-items-center rounded-md text-red-300/70 transition-colors hover:bg-red-500/20 hover:text-red-200"
+            type="button"
+            aria-label="Dismiss alert"
+            (click)="dismissTapError(alert.id)"
+          >
+            <ng-icon name="lucideX" class="text-sm" />
+          </button>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Top bar -->
+  <header class="flex shrink-0 items-center gap-4">
+    <div class="flex items-center gap-3">
+      <img src="/logo.svg" alt="LPU-Laguna logo" class="size-11 shrink-0 object-contain" />
+      <div class="leading-tight">
+        <p class="text-sm font-bold tracking-wide text-white uppercase">LPU-Laguna</p>
+        <p class="text-xs text-slate-400">Gate Monitoring</p>
+      </div>
+    </div>
+
+    <span
+      class="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold"
+      [class]="
+        notifications.connected()
+          ? 'bg-emerald-400/15 text-emerald-300'
+          : 'bg-slate-800 text-slate-400'
+      "
+    >
+      <span class="relative flex size-2">
+        @if (notifications.connected()) {
+          <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60"></span>
+        }
+        <span
+          class="relative inline-flex size-2 rounded-full"
+          [class]="notifications.connected() ? 'bg-emerald-400' : 'bg-slate-500'"
+        ></span>
+      </span>
+      {{ notifications.connected() ? 'LIVE' : 'OFFLINE' }}
+    </span>
+
+    <div class="ml-auto text-right leading-tight">
+      <p class="text-3xl font-bold tracking-tight tabular-nums sm:text-4xl">
+        {{ now() | date: 'h:mm:ss a' }}
+      </p>
+      <p class="text-sm text-slate-400">{{ now() | date: 'EEEE, MMMM d, y' }}</p>
+    </div>
+
+    <div class="flex items-center gap-1">
+      @if (!isFullscreen()) {
+        <button
+          class="grid size-10 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
+          type="button"
+          aria-label="Enter fullscreen"
+          title="Enter fullscreen"
+          (click)="enterFullscreen()"
+        >
+          <ng-icon name="lucideExpand" class="text-lg" />
+        </button>
+      }
+      <button
+        class="grid size-10 place-items-center rounded-lg text-slate-500 transition-colors hover:bg-slate-800 hover:text-red-400"
+        type="button"
+        aria-label="Logout"
+        title="Logout"
+        [disabled]="loggingOut()"
+        (click)="logout()"
+      >
+        <ng-icon name="lucideLogOut" class="text-lg" />
+      </button>
+    </div>
+  </header>
+
+  <!-- Stat tiles -->
+  <div class="grid shrink-0 grid-cols-2 gap-3 lg:grid-cols-4">
+    <div class="flex items-center gap-4 rounded-2xl bg-slate-900 p-4 ring-1 ring-slate-800">
+      <div class="grid size-12 shrink-0 place-items-center rounded-xl bg-sky-500/15 text-sky-400">
+        <ng-icon name="lucideGraduationCap" class="text-2xl" />
+      </div>
+      <div class="leading-tight">
+        <p class="text-3xl font-bold tabular-nums">{{ studentSummary().uniquePeople | number }}</p>
+        <p class="text-xs font-medium text-slate-400">Students today</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-4 rounded-2xl bg-slate-900 p-4 ring-1 ring-slate-800">
+      <div class="grid size-12 shrink-0 place-items-center rounded-xl bg-violet-500/15 text-violet-400">
+        <ng-icon name="lucideBriefcase" class="text-2xl" />
+      </div>
+      <div class="leading-tight">
+        <p class="text-3xl font-bold tabular-nums">{{ employeeSummary().uniquePeople | number }}</p>
+        <p class="text-xs font-medium text-slate-400">Employees today</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-4 rounded-2xl bg-slate-900 p-4 ring-1 ring-slate-800">
+      <div class="grid size-12 shrink-0 place-items-center rounded-xl bg-emerald-500/15 text-emerald-400">
+        <ng-icon name="lucideDoorOpen" class="text-2xl" />
+      </div>
+      <div class="leading-tight">
+        <p class="text-3xl font-bold tabular-nums">{{ currentlyInside() | number }}</p>
+        <p class="text-xs font-medium text-slate-400">Currently inside</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-4 rounded-2xl bg-slate-900 p-4 ring-1 ring-slate-800">
+      <div class="grid size-12 shrink-0 place-items-center rounded-xl bg-amber-500/15 text-amber-400">
+        <ng-icon name="lucideActivity" class="text-2xl" />
+      </div>
+      <div class="leading-tight">
+        <p class="text-3xl font-bold tabular-nums">{{ totalTaps() | number }}</p>
+        <p class="text-xs font-medium text-slate-400">Total taps today</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main grid -->
+  <div class="grid min-h-0 flex-1 grid-cols-1 gap-4 xl:grid-cols-3">
+    <!-- Live activity -->
+    <section class="flex min-h-0 flex-col gap-3 rounded-2xl bg-slate-900 p-5 ring-1 ring-slate-800 xl:col-span-2">
+      <h2 class="shrink-0 text-sm font-semibold tracking-wider text-slate-400 uppercase">
+        Live Gate Activity
+      </h2>
+
+      @if (spotlight(); as tap) {
+        <!-- Spotlight: most recent tap -->
+        <article
+          class="spotlight-card flex shrink-0 items-center gap-5 rounded-2xl p-5 ring-1"
+          [class]="
+            tap.action === 'TIME_IN'
+              ? 'bg-emerald-500/10 ring-emerald-500/30'
+              : 'bg-amber-500/10 ring-amber-500/30'
+          "
+        >
+          <hlm-avatar class="size-24 text-2xl ring-4 sm:size-28"
+            [class]="tap.action === 'TIME_IN' ? 'ring-emerald-500/60' : 'ring-amber-500/60'"
+          >
+            @if (personPhoto(tap); as src) {
+              <img [src]="src" [alt]="personName(tap)" hlmAvatarImage />
+            }
+            <span hlmAvatarFallback class="bg-slate-800 text-slate-200">
+              {{ initials(personName(tap)) }}
+            </span>
+          </hlm-avatar>
+          <div class="min-w-0 flex-1 leading-tight">
+            <p class="truncate text-2xl font-bold text-white sm:text-3xl">{{ personName(tap) }}</p>
+            <p class="mt-1 truncate text-sm text-slate-300">{{ personSub(tap) }}</p>
+            <p class="mt-0.5 text-xs font-medium tracking-wide text-slate-400 uppercase">
+              {{ personKind(tap) }}
+              @if (tap.location) {
+                · {{ tap.location }}
+              }
+            </p>
+          </div>
+          <div class="shrink-0 text-end">
+            <span
+              class="rounded-full px-4 py-1.5 text-lg font-black tracking-wider"
+              [class]="
+                tap.action === 'TIME_IN'
+                  ? 'bg-emerald-500/20 text-emerald-300'
+                  : 'bg-amber-500/20 text-amber-300'
+              "
+            >
+              {{ tap.action === 'TIME_IN' ? 'IN' : 'OUT' }}
+            </span>
+            <p class="mt-2 text-lg font-semibold tabular-nums">
+              {{ tapTime(tap) | date: 'h:mm:ss a' }}
+            </p>
+          </div>
+        </article>
+      } @else {
+        <div class="grid flex-1 place-items-center rounded-2xl bg-slate-800/40 py-10 text-slate-500">
+          Waiting for the first tap of the day…
+        </div>
+      }
+
+      <!-- Recent feed -->
+      <div class="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+        @for (tap of feed(); track tap.attendanceId + tap.action) {
+          <article class="feed-row flex items-center gap-3 rounded-xl bg-slate-800/50 px-4 py-2.5">
+            <hlm-avatar class="size-10">
+              @if (personPhoto(tap); as src) {
+                <img [src]="src" [alt]="personName(tap)" hlmAvatarImage />
+              }
+              <span hlmAvatarFallback class="bg-slate-700 text-slate-200">
+                {{ initials(personName(tap)) }}
+              </span>
+            </hlm-avatar>
+            <div class="min-w-0 flex-1 leading-tight">
+              <p class="truncate text-sm font-semibold text-slate-100">{{ personName(tap) }}</p>
+              <p class="truncate text-xs text-slate-400">{{ personSub(tap) }}</p>
+            </div>
+            @if (tap.location) {
+              <span class="hidden text-xs text-slate-500 sm:block">{{ tap.location }}</span>
+            }
+            <span
+              class="w-12 shrink-0 rounded-full py-0.5 text-center text-[11px] font-bold"
+              [class]="
+                tap.action === 'TIME_IN'
+                  ? 'bg-emerald-500/15 text-emerald-300'
+                  : 'bg-amber-500/15 text-amber-300'
+              "
+            >
+              {{ tap.action === 'TIME_IN' ? 'IN' : 'OUT' }}
+            </span>
+            <span class="w-24 shrink-0 text-end text-xs font-medium text-slate-300 tabular-nums">
+              {{ tapTime(tap) | date: 'h:mm:ss a' }}
+            </span>
+          </article>
+        }
+      </div>
+    </section>
+
+    <!-- Right column: graphs -->
+    <div class="flex min-h-0 flex-col gap-4">
+      <!-- Hourly traffic -->
+      <section class="flex flex-col gap-3 rounded-2xl bg-slate-900 p-5 ring-1 ring-slate-800">
+        <h2 class="text-sm font-semibold tracking-wider text-slate-400 uppercase">
+          Tap Traffic by Hour
+        </h2>
+        <div class="flex h-32 items-end gap-1">
+          @for (bar of hourBars(); track bar.hour) {
+            <div class="group flex h-full min-w-0 flex-1 flex-col justify-end gap-1" [title]="bar.label + ': ' + bar.total + ' taps'">
+              <div
+                class="w-full rounded-t-sm bg-sky-500/80 transition-colors group-hover:bg-sky-400"
+                [style.height.%]="bar.total === 0 ? 2 : barPct(bar.total, hourMax())"
+                [class.bg-slate-800]="bar.total === 0"
+              ></div>
+            </div>
+          }
+        </div>
+        <div class="flex justify-between text-[10px] font-medium text-slate-500">
+          <span>{{ hourBars()[0].label }}</span>
+          <span>{{ hourBars()[hourBars().length - 1].label }}</span>
+        </div>
+      </section>
+
+      <!-- Departments -->
+      <section class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto rounded-2xl bg-slate-900 p-5 ring-1 ring-slate-800">
+        <div class="flex flex-col gap-2.5">
+          <h2 class="text-sm font-semibold tracking-wider text-slate-400 uppercase">
+            Top Student Departments
+          </h2>
+          @for (dept of topStudentDepts(); track dept.department) {
+            <div class="flex flex-col gap-1">
+              <div class="flex items-baseline justify-between gap-2 text-sm">
+                <span class="min-w-0 truncate text-slate-200" [title]="dept.department">{{ dept.department }}</span>
+                <span class="shrink-0 font-semibold text-slate-300 tabular-nums">{{ dept.count | number }}</span>
+              </div>
+              <div class="h-1.5 overflow-hidden rounded-full bg-slate-800">
+                <div class="h-full rounded-full bg-sky-500" [style.width.%]="barPct(dept.count, studentDeptMax())"></div>
+              </div>
+            </div>
+          } @empty {
+            <p class="py-2 text-sm text-slate-500">No student taps yet.</p>
+          }
+        </div>
+
+        <div class="flex flex-col gap-2.5">
+          <h2 class="text-sm font-semibold tracking-wider text-slate-400 uppercase">
+            Top Employee Departments
+          </h2>
+          @for (dept of topEmployeeDepts(); track dept.department) {
+            <div class="flex flex-col gap-1">
+              <div class="flex items-baseline justify-between gap-2 text-sm">
+                <span class="min-w-0 truncate text-slate-200" [title]="dept.department">{{ dept.department }}</span>
+                <span class="shrink-0 font-semibold text-slate-300 tabular-nums">{{ dept.count | number }}</span>
+              </div>
+              <div class="h-1.5 overflow-hidden rounded-full bg-slate-800">
+                <div class="h-full rounded-full bg-violet-500" [style.width.%]="barPct(dept.count, employeeDeptMax())"></div>
+              </div>
+            </div>
+          } @empty {
+            <p class="py-2 text-sm text-slate-500">No employee taps yet.</p>
+          }
+        </div>
+      </section>
+    </div>
+  </div>
+</div>

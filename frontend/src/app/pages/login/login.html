@@ -1,0 +1,147 @@
+<div
+  class="relative flex min-h-dvh w-full items-center justify-center overflow-hidden bg-[#f6f7fb] p-4 sm:p-6"
+>
+  <div
+    class="absolute inset-0 scale-105 bg-slate-200 bg-cover bg-center"
+    style="background-image: url('/background.webp')"
+    aria-hidden="true"
+  ></div>
+  <div
+    class="absolute inset-0 bg-[radial-gradient(circle_at_15%_15%,rgba(141,37,70,0.28),transparent_30%),linear-gradient(120deg,rgba(255,255,255,0.92),rgba(255,255,255,0.68))]"
+    aria-hidden="true"
+  ></div>
+  <div
+    class="animate-float bg-primary/15 absolute -left-20 top-16 h-56 w-56 rounded-full blur-3xl"
+    aria-hidden="true"
+  ></div>
+  <div
+    class="animate-float absolute -right-24 bottom-8 h-72 w-72 rounded-full bg-amber-300/20 blur-3xl [animation-delay:1.2s]"
+    aria-hidden="true"
+  ></div>
+
+  <div
+    class="animate-rise relative z-10 grid w-full max-w-5xl overflow-hidden rounded-3xl bg-white/45 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_16px_40px_-12px_rgba(24,24,27,0.18)] ring-1 ring-inset ring-white/60 backdrop-blur-xl backdrop-saturate-150 md:grid-cols-[1.05fr_0.95fr]"
+  >
+    <!-- Hero imagery -->
+    <div class="relative hidden min-h-[38.75rem] overflow-hidden bg-slate-200 md:block">
+      @for (image of heroImages; track image.src; let i = $index) {
+        <img
+          [src]="image.src"
+          [alt]="image.alt"
+          class="absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ease-in-out"
+          [class.opacity-100]="activeImage() === i"
+          [class.opacity-0]="activeImage() !== i"
+        />
+      }
+      <div
+        class="from-primary/75 via-primary/25 absolute inset-0 bg-gradient-to-tr to-transparent"
+      ></div>
+      <div class="absolute bottom-0 left-0 right-0 p-8 text-white">
+        <div
+          class="mb-5 inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] backdrop-blur"
+        >
+          <span class="h-2 w-2 rounded-full bg-emerald-300"></span>
+          Gate Attendance
+        </div>
+        <h2 class="max-w-sm text-4xl font-black leading-tight">
+          Learn Different. <br />Live Different.
+        </h2>
+      </div>
+    </div>
+
+    <!-- Form panel -->
+    <div class="relative flex flex-col justify-center gap-8 px-6 py-10 sm:px-10 md:py-14">
+      <img
+        src="/logo.svg"
+        alt=""
+        aria-hidden="true"
+        class="pointer-events-none absolute right-5 top-5 h-28 w-28 object-contain opacity-[0.08] grayscale sm:h-36 sm:w-36"
+      />
+
+      <header class="relative flex flex-col gap-3">
+        <div class="flex items-center gap-3 md:hidden">
+          <img src="/logo.svg" alt="LPU Laguna" class="h-12 w-12 object-contain" />
+          <span class="text-primary text-sm font-bold uppercase tracking-[0.18em]">LPU Laguna</span>
+        </div>
+        <p class="text-primary/80 hidden text-sm font-bold uppercase tracking-[0.22em] md:block">
+          Welcome back
+        </p>
+        <h1 class="text-3xl font-black leading-tight text-gray-950 sm:text-4xl">
+          LPU - Laguna<br />Gate Attendance System
+        </h1>
+      </header>
+
+      <form (ngSubmit)="onSubmit()" class="relative flex flex-col gap-5" novalidate>
+        <div class="flex flex-col gap-1.5">
+          <label class="text-sm font-semibold text-gray-800" for="username">Username</label>
+          <input
+            id="username"
+            name="username"
+            type="text"
+            autocomplete="username"
+            class="focus:border-primary/55 focus:ring-primary/35 hover:border-primary/45 hover:ring-primary/25 w-full rounded-lg border border-zinc-950/15 bg-white/70 px-4 py-2 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.75),inset_0_-1px_0_rgba(24,24,27,0.05),0_2px_8px_-3px_rgba(24,24,27,0.2)] ring-1 ring-inset ring-white/75 backdrop-blur-md backdrop-saturate-150 transition-all duration-200 placeholder:text-gray-500 focus:outline-none focus:ring-2 sm:px-3.5 sm:py-2.5"
+            [ngModel]="username()"
+            (ngModelChange)="username.set($event)"
+            [ngModelOptions]="{ standalone: true }"
+            [disabled]="loading()"
+          />
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="text-sm font-semibold text-gray-800" for="password">Password</label>
+          <div class="relative">
+            <input
+              id="password"
+              name="password"
+              [type]="showPassword() ? 'text' : 'password'"
+              autocomplete="current-password"
+              class="focus:border-primary/55 focus:ring-primary/35 hover:border-primary/45 hover:ring-primary/25 w-full rounded-lg border border-zinc-950/15 bg-white/70 px-4 py-2 pr-10 text-sm text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.75),inset_0_-1px_0_rgba(24,24,27,0.05),0_2px_8px_-3px_rgba(24,24,27,0.2)] ring-1 ring-inset ring-white/75 backdrop-blur-md backdrop-saturate-150 transition-all duration-200 placeholder:text-gray-500 focus:outline-none focus:ring-2 sm:px-3.5 sm:py-2.5"
+              [ngModel]="password()"
+              (ngModelChange)="password.set($event)"
+              [ngModelOptions]="{ standalone: true }"
+              [disabled]="loading()"
+            />
+            <button
+              type="button"
+              (click)="showPassword.set(!showPassword())"
+              [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+              [attr.aria-pressed]="showPassword()"
+              class="hover:text-primary focus-visible:text-primary absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 transition-colors duration-200 focus-visible:outline-none"
+            >
+              <ng-icon [name]="showPassword() ? 'lucideEyeOff' : 'lucideEye'" class="text-xl" />
+            </button>
+          </div>
+        </div>
+
+        @if (error()) {
+          <p
+            class="animate-rise rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm font-medium text-red-600"
+            role="alert"
+          >
+            {{ error() }}
+          </p>
+        }
+
+        <label class="flex w-fit cursor-pointer items-center gap-2 text-sm font-semibold text-gray-800">
+          <input
+            type="checkbox"
+            name="remember"
+            class="accent-primary size-4 cursor-pointer"
+            [ngModel]="rememberMe()"
+            (ngModelChange)="rememberMe.set($event)"
+            [ngModelOptions]="{ standalone: true }"
+          />
+          <span>Remember me</span>
+        </label>
+
+        <button
+          type="submit"
+          class="bg-primary border-primary hover:bg-primary/90 focus-visible:ring-primary/40 inline-flex w-full cursor-pointer select-none items-center justify-center gap-2 rounded-lg border px-4 py-3 text-sm font-semibold leading-none text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+          [disabled]="loading()"
+        >
+          {{ loading() ? 'Signing in...' : 'Login' }}
+        </button>
+      </form>
+    </div>
+  </div>
+</div>

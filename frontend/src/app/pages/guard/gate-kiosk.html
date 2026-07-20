@@ -1,0 +1,287 @@
+<div
+  class="gate-stage"
+  [class.is-in]="flash() === 'in'"
+  [class.is-out]="flash() === 'out'"
+  [class.is-error]="flash() === 'error'"
+  [class.has-result]="!!current() || !!error()"
+>
+  <div class="gate-brand-bar" aria-hidden="true"></div>
+
+  <div class="gate-flow" aria-hidden="true">
+    <span class="gate-galaxy"></span>
+    <span class="gate-flow-blob b1"></span>
+    <span class="gate-flow-blob b2"></span>
+    <span class="gate-flow-blob b3"></span>
+    <span class="gate-flow-blob b4"></span>
+  </div>
+
+  @if (current()?.birthday) {
+    <div class="gate-party" aria-hidden="true">
+      @for (c of confetti(); track $index) {
+        <span
+          class="gate-confetti"
+          [style.left]="c.left"
+          [style.background]="c.color"
+          [style.width]="c.size"
+          [style.height]="c.size"
+          [style.animation-delay]="c.delay"
+          [style.animation-duration]="c.duration"
+          [style.--drift]="c.drift"
+          [style.--spin]="c.spin"
+        ></span>
+      }
+      @for (b of balloons(); track $index) {
+        <span
+          class="gate-balloon"
+          [style.left]="b.left"
+          [style.animation-delay]="b.delay"
+          [style.animation-duration]="b.duration"
+          [style.--balloon-color]="b.color"
+          [style.--balloon-scale]="b.scale"
+        ></span>
+      }
+    </div>
+  }
+
+  <header class="gate-header">
+    <div class="gate-brand">
+      <img class="gate-logo" src="/logo.svg" alt="LPU Laguna" />
+      <div class="gate-brand-text">
+        <p class="gate-brand-label">LPU Laguna</p>
+        <h1 class="gate-title">Gate Attendance</h1>
+      </div>
+    </div>
+
+    @if (current() || error()) {
+      <div class="gate-header-clock">
+        <p class="gate-header-time">{{ clock() | date: 'hh:mm:ss a' }}</p>
+      </div>
+    }
+
+    <div class="gate-meta-user">
+      @if (guardName()?.location; as gate) {
+        <span class="gate-location">{{ gate }}</span>
+      }
+      <span class="gate-user">{{ guardName()?.username }}</span>
+      <button
+        hlmBtn
+        type="button"
+        variant="outline"
+        size="sm"
+        class="gate-logout"
+        (click)="logout()"
+      >
+        <ng-icon name="lucideLogOut" />
+        Logout
+      </button>
+    </div>
+  </header>
+
+  <form class="gate-capture" (ngSubmit)="submit()" aria-hidden="true">
+    <input
+      #idInput
+      id="gate-id"
+      name="identifier"
+      type="text"
+      autocomplete="off"
+      autocapitalize="off"
+      spellcheck="false"
+      tabindex="0"
+      [ngModel]="identifier()"
+      (ngModelChange)="identifier.set($event)"
+      [disabled]="loading()"
+    />
+  </form>
+
+  <div
+    class="gate-body"
+    [class.no-side]="sidePanel() === 'none'"
+    [class.video-mode]="sidePanel() === 'video'"
+  >
+    <section class="gate-hero">
+      @if (error(); as errMsg) {
+        @for (_ of [animKey()]; track _) {
+          <div class="gate-error-panel" role="alert" aria-live="assertive">
+            <ng-icon name="lucideCircleAlert" class="gate-error-icon" />
+            <div class="gate-error-copy">
+              <p class="gate-error-title">{{ errMsg }}</p>
+              @if (errorNotFound()) {
+                <p class="gate-error-hint">Please go to OSAS</p>
+              } @else {
+                <p class="gate-error-hint">Please tap again</p>
+              }
+            </div>
+          </div>
+        }
+      } @else if (current(); as tap) {
+        @for (_ of [animKey()]; track _) {
+          <div
+            class="gate-result"
+            [class.result-in]="tap.action === 'TIME_IN'"
+            [class.result-out]="tap.action === 'TIME_OUT'"
+          >
+            <div class="gate-photo-wrap">
+              @if (personPhoto(tap); as src) {
+                <img class="gate-photo" [src]="src" [alt]="personName(tap)" />
+              } @else {
+                <div class="gate-photo-fallback">{{ initials(personName(tap)) }}</div>
+              }
+              <div
+                class="gate-status"
+                [class.in]="tap.action === 'TIME_IN'"
+                [class.out]="tap.action === 'TIME_OUT'"
+              >
+                {{ tap.action === 'TIME_OUT' ? 'Time Out' : 'Time In' }}
+              </div>
+            </div>
+
+            <div class="gate-details">
+              @if (tap.birthday) {
+                <p class="gate-birthday">🎉 Happy Birthday! 🎂</p>
+              }
+              <div class="gate-identity">
+                <span class="gate-person-type" [class.employee]="!!tap.employee">
+                  {{ tap.employee ? 'Employee' : 'Student' }}
+                </span>
+                <h2 class="gate-name">{{ personName(tap) }}</h2>
+                @if (tap.student; as student) {
+                  <p class="gate-student-no">{{ student.studentNo }}</p>
+                  <div class="gate-tags">
+                    <span class="gate-tag">{{ student.department }}</span>
+                    <span class="gate-tag">{{ student.course }}</span>
+                    <span class="gate-tag">{{ student.school }}</span>
+                  </div>
+                } @else if (tap.employee; as employee) {
+                  <!-- Employees show department and position only — no employee number. -->
+                  <div class="gate-tags">
+                    <span class="gate-tag">{{ employee.department }}</span>
+                    <span class="gate-tag">{{ employee.position }}</span>
+                  </div>
+                }
+              </div>
+
+              <div class="gate-times">
+                <div class="gate-time-row in-row" [class.active]="tap.action === 'TIME_IN'">
+                  <span class="gate-time-label">Time In</span>
+                  <span class="gate-time-value">{{ formatTime(tap.timeIn) }}</span>
+                  @if (tap.timeInLocation) {
+                    <span class="gate-time-gate">{{ tap.timeInLocation }}</span>
+                  }
+                </div>
+                <div class="gate-time-row out-row" [class.active]="tap.action === 'TIME_OUT'">
+                  <span class="gate-time-label">Time Out</span>
+                  <span class="gate-time-value">{{ formatTime(tap.timeOut) }}</span>
+                  @if (tap.timeOutLocation) {
+                    <span class="gate-time-gate">{{ tap.timeOutLocation }}</span>
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+      } @else {
+        <div class="gate-idle">
+          <div class="gate-idle-ring" aria-hidden="true"></div>
+          <p class="gate-idle-clock">{{ clock() | date: 'hh:mm:ss a' }}</p>
+          <p class="gate-idle-date">{{ clock() | date: 'EEEE, MMMM d' }}</p>
+          <div class="gate-idle-icon">
+            <ng-icon name="lucideScanBarcode" />
+          </div>
+          <p class="gate-idle-hint">Ready to scan</p>
+        </div>
+      }
+    </section>
+
+    @if (sidePanel() === 'video') {
+      <section class="gate-video" aria-label="Announcement video">
+        @if (currentVideoSrc(); as src) {
+          <video
+            class="gate-video-player"
+            [src]="src"
+            [loop]="guardVideos().length === 1"
+            [muted]="true"
+            autoplay
+            muted
+            playsinline
+            (ended)="onVideoEnded()"
+            (loadedmetadata)="muteVideo($event)"
+          ></video>
+        }
+      </section>
+    } @else if (sidePanel() === 'recent') {
+    <section class="gate-recent">
+      <div class="gate-recent-title">
+        <ng-icon name="lucideClock" />
+        <span>Recent today</span>
+        <span class="gate-recent-count">{{ recent().length }}</span>
+      </div>
+      <div
+        #recentList
+        class="gate-recent-list"
+        (scroll)="onRecentScroll($event)"
+        (wheel)="pauseAutoScroll()"
+        (touchstart)="pauseAutoScroll()"
+        (pointerdown)="pauseAutoScroll()"
+      >
+        @for (row of recent(); track row.attendanceId + row.action + row.timeIn + (row.timeOut ?? ''); let i = $index) {
+          <ng-container
+            *ngTemplateOutlet="recentCard; context: { $implicit: row, i: i, dup: false }"
+          />
+        } @empty {
+          <p class="gate-recent-empty">No taps yet today</p>
+        }
+        @if (loopList()) {
+          <!-- Duplicate set: scroll wraps onto identical content, so the loop is seamless. -->
+          @for (
+            row of recent();
+            track 'dup' + row.attendanceId + row.action + row.timeIn + (row.timeOut ?? '');
+            let i = $index
+          ) {
+            <ng-container
+              *ngTemplateOutlet="recentCard; context: { $implicit: row, i: i, dup: true }"
+            />
+          }
+        } @else if (loadingMore()) {
+          <p class="gate-recent-loading">Loading more…</p>
+        }
+      </div>
+
+      <ng-template #recentCard let-row let-i="i" let-dup="dup">
+        <article
+          class="gate-recent-card"
+          [class.dup-start]="dup && i === 0"
+          [style.animation-delay]="dup ? '0ms' : (i % 20) * 30 + 'ms'"
+        >
+          <div class="gate-recent-photo">
+            @if (personPhoto(row); as src) {
+              <img class="gate-recent-avatar" [src]="src" [alt]="personName(row)" />
+            } @else {
+              <div class="gate-recent-avatar-fallback">{{ initials(personName(row)) }}</div>
+            }
+            <span
+              class="gate-pill"
+              [class.in]="row.action === 'TIME_IN'"
+              [class.out]="row.action === 'TIME_OUT'"
+            >
+              {{ row.action === 'TIME_OUT' ? 'Out' : 'In' }}
+            </span>
+          </div>
+          <div class="gate-recent-body">
+            <p class="gate-recent-name">{{ personName(row) }}</p>
+            <p class="gate-recent-sub">{{ personSub(row) }}</p>
+            <p class="gate-recent-times">
+              {{ formatTime(row.timeIn) }}
+              @if (row.timeOut) {
+                <span> → {{ formatTime(row.timeOut) }}</span>
+              }
+            </p>
+            @if (row.location) {
+              <p class="gate-recent-gate">{{ row.location }}</p>
+            }
+          </div>
+        </article>
+      </ng-template>
+    </section>
+    }
+  </div>
+</div>
