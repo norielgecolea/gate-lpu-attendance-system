@@ -7,8 +7,8 @@ CREATE TABLE IF NOT EXISTS employees (
     photo           TEXT,
     rfid            VARCHAR(100),
     birthdate       DATE,
-    department      VARCHAR(100) NOT NULL,
-    position        VARCHAR(100) NOT NULL,
+    department      VARCHAR(100),
+    position        VARCHAR(100),
     deleted         BOOLEAN      NOT NULL DEFAULT FALSE,
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW()
