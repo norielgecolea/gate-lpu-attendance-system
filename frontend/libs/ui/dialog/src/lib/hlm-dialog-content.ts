@@ -14,7 +14,7 @@ import { lucideX } from '@ng-icons/lucide';
 import { BrnDialogRef, injectBrnDialogContext } from '@spartan-ng/brain/dialog';
 import { HlmButton } from '@spartan-ng/helm/button';
 
-import { classes } from '@spartan-ng/helm/utils';
+import { hlm } from '@spartan-ng/helm/utils';
 import { HlmDialogClose } from './hlm-dialog-close';
 
 type HlmDialogContentContext = {
@@ -31,6 +31,7 @@ type HlmDialogContentContext = {
   host: {
     'data-slot': 'dialog-content',
     '[attr.data-state]': 'state()',
+    '[class]': 'hostClass()',
   },
   template: `
     @if (component) {
@@ -63,12 +64,15 @@ export class HlmDialogContent {
   public readonly state = computed(() => this._dialogRef?.state() ?? 'closed');
 
   public readonly component = this._dialogContext?.$component;
-  private readonly _dynamicComponentClass = this._dialogContext?.$dynamicComponentClass;
 
-  constructor() {
-    classes(() => [
-      'bg-popover text-popover-foreground data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 ring-foreground/10 grid max-w-[calc(100%-2rem)] gap-4 rounded-xl p-4 text-xs/relaxed ring-1 duration-100 sm:max-w-sm relative mx-auto w-full outline-none sm:mx-0',
-      this._dynamicComponentClass,
-    ]);
-  }
+  protected readonly hostClass = computed(() => {
+    const dynamicClass = this._dialogContext?.$dynamicComponentClass;
+    const base =
+      'bg-popover text-popover-foreground data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 ring-foreground/10 grid gap-4 rounded-xl p-4 text-xs/relaxed ring-1 duration-100 relative mx-auto w-full outline-none sm:mx-0';
+
+    return hlm(
+      base,
+      dynamicClass ?? 'max-w-[calc(100%-2rem)] sm:max-w-3xl',
+    );
+  });
 }

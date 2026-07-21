@@ -87,12 +87,12 @@ public class GuardDisplayService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one video file is required");
         }
         for (MultipartFile file : files) {
-            String path = videoStorage.store(file);
+            VideoStorageService.StoredVideo stored = videoStorage.store(file);
             GuardVideo video = new GuardVideo();
-            video.setFilePath(path);
-            video.setOriginalName(file.getOriginalFilename() != null ? file.getOriginalFilename() : path);
-            video.setContentType(file.getContentType() != null ? file.getContentType() : "video/mp4");
-            video.setSizeBytes(file.getSize());
+            video.setFilePath(stored.path());
+            video.setOriginalName(file.getOriginalFilename() != null ? file.getOriginalFilename() : stored.path());
+            video.setContentType(stored.contentType());
+            video.setSizeBytes(stored.sizeBytes());
             videoRepository.persist(video);
         }
         broadcastChange();

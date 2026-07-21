@@ -28,7 +28,11 @@ public class AuthWebSocketHandler extends TextWebSocketHandler {
             return;
         }
         Role role = jwtService.extractRole(token);
-        if (role != Role.SUPERADMIN && role != Role.GUARD && role != Role.MONITORING) {
+        if (role != Role.SUPERADMIN
+                && role != Role.GUARD
+                && role != Role.MONITORING
+                && role != Role.OSAS
+                && role != Role.HR) {
             session.close(CloseStatus.NOT_ACCEPTABLE.withReason("Unauthorized"));
             return;
         }

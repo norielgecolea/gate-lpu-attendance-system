@@ -131,8 +131,40 @@ interface TapErrorAlert {
         animation: none;
       }
     }
+
+    .monitor-toolbar {
+      isolation: isolate;
+    }
+
+    .monitor-action-btn {
+      display: grid;
+      min-height: 2.75rem;
+      min-width: 2.75rem;
+      place-items: center;
+      border-radius: 0.625rem;
+      color: rgb(148 163 184);
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      transition:
+        background-color 0.15s ease,
+        color 0.15s ease;
+    }
+
+    .monitor-action-btn:hover {
+      background-color: rgb(30 41 59);
+      color: rgb(255 255 255);
+    }
+
+    .monitor-action-btn:disabled {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    .monitor-action-btn--danger:hover {
+      color: rgb(248 113 113);
+    }
   `,
-  host: { class: 'block h-screen w-screen overflow-hidden' },
+  host: { class: 'block h-dvh w-full overflow-hidden' },
 })
 export class Monitor implements OnDestroy {
   private static readonly FEED_LIMIT = 8;

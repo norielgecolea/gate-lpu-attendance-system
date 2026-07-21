@@ -38,6 +38,13 @@ app:
   upload:
     pictures-dir: ${APP_PICTURES_DIR:pictures}
     videos-dir: ${APP_VIDEOS_DIR:videos}
+    photo-optimization-enabled: ${APP_PHOTO_OPTIMIZATION_ENABLED:true}
+    photo-max-dimension: ${APP_PHOTO_MAX_DIMENSION:800}
+    photo-jpeg-quality: ${APP_PHOTO_JPEG_QUALITY:0.85}
+    video-optimization-enabled: ${APP_VIDEO_OPTIMIZATION_ENABLED:true}
+    video-max-width: ${APP_VIDEO_MAX_WIDTH:1280}
+    video-crf: ${APP_VIDEO_CRF:28}
+    ffmpeg-path: ${APP_FFMPEG_PATH:ffmpeg}
 
 logging:
   config: classpath:log4j2.xml

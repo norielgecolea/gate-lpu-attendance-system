@@ -283,7 +283,7 @@ export class Employees {
   private openForm(mode: 'create' | 'edit', employee?: Employee): void {
     const ref = this.dialog.open(EmployeeFormDialog, {
       context: { mode, employee },
-      contentClass: 'sm:max-w-lg',
+      contentClass: 'person-form-dialog',
     });
 
     ref.closed$

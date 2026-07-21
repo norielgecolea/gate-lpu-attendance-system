@@ -17,11 +17,18 @@ import { TapErrorLogs } from './pages/tap-errors/tap-error-logs';
 import { GateKiosk } from './pages/guard/gate-kiosk';
 import { Monitor } from './pages/monitor/monitor';
 import {
-  guestGuard,
+  adminPortalGuard,
+  allowRoles,
   guardRoleGuard,
+  guestGuard,
   monitoringGuard,
-  superAdminGuard,
 } from './core/auth/auth.guards';
+
+const ADMIN_ROLES = ['SUPERADMIN', 'OSAS', 'HR'] as const;
+const OSAS_ROLES = ['SUPERADMIN', 'OSAS'] as const;
+const HR_ROLES = ['SUPERADMIN', 'HR'] as const;
+const OSAS_ADMIN_ROLES = ['SUPERADMIN', 'OSAS'] as const;
+const HR_ADMIN_ROLES = ['SUPERADMIN', 'OSAS', 'HR'] as const;
 
 export const routes: Routes = [
   { path: '', component: Login, canActivate: [guestGuard], pathMatch: 'full' },
@@ -39,42 +46,92 @@ export const routes: Routes = [
   {
     path: '',
     component: AdminLayout,
-    canActivate: [superAdminGuard],
+    canActivate: [adminPortalGuard],
     children: [
-      { path: 'dashboard', component: Dashboard },
-      { path: 'students/inactive', component: InactiveStudents },
-      { path: 'students/finance-tagged', component: FinanceTaggedStudents },
-      { path: 'students/rfid', component: StudentRfidRegistration },
+      {
+        path: 'dashboard',
+        component: Dashboard,
+        canActivate: [allowRoles(...ADMIN_ROLES)],
+      },
+      {
+        path: 'students/inactive',
+        component: InactiveStudents,
+        canActivate: [allowRoles(...OSAS_ROLES)],
+      },
+      {
+        path: 'students/finance-tagged',
+        component: FinanceTaggedStudents,
+        canActivate: [allowRoles(...OSAS_ROLES)],
+      },
+      {
+        path: 'students/rfid',
+        component: StudentRfidRegistration,
+        canActivate: [allowRoles(...OSAS_ROLES)],
+      },
       {
         path: 'students/attendance',
         component: AttendancePage,
         data: { personType: 'STUDENT' },
+        canActivate: [allowRoles(...OSAS_ROLES)],
       },
       {
         path: 'students',
         component: Students,
+        canActivate: [allowRoles(...OSAS_ROLES)],
         children: [
-          { path: ':id/attendance', component: PersonAttendance, data: { personType: 'STUDENT' } },
+          {
+            path: ':id/attendance',
+            component: PersonAttendance,
+            data: { personType: 'STUDENT' },
+            canActivate: [allowRoles(...OSAS_ROLES)],
+          },
           { path: ':id/logs', redirectTo: ':id/attendance' },
         ],
       },
-      { path: 'employees/inactive', component: InactiveEmployees },
-      { path: 'employees/rfid', component: EmployeeRfidRegistration },
+      {
+        path: 'employees/inactive',
+        component: InactiveEmployees,
+        canActivate: [allowRoles(...HR_ROLES)],
+      },
+      {
+        path: 'employees/rfid',
+        component: EmployeeRfidRegistration,
+        canActivate: [allowRoles(...HR_ROLES)],
+      },
       {
         path: 'employees/attendance',
         component: AttendancePage,
         data: { personType: 'EMPLOYEE' },
+        canActivate: [allowRoles(...HR_ROLES)],
       },
       {
         path: 'employees',
         component: Employees,
+        canActivate: [allowRoles(...HR_ROLES)],
         children: [
-          { path: ':id/attendance', component: PersonAttendance, data: { personType: 'EMPLOYEE' } },
+          {
+            path: ':id/attendance',
+            component: PersonAttendance,
+            data: { personType: 'EMPLOYEE' },
+            canActivate: [allowRoles(...HR_ROLES)],
+          },
         ],
       },
-      { path: 'users', component: Users },
-      { path: 'settings/guard-display', component: GuardDisplaySettings },
-      { path: 'tap-errors', component: TapErrorLogs },
+      {
+        path: 'users',
+        component: Users,
+        canActivate: [allowRoles(...ADMIN_ROLES)],
+      },
+      {
+        path: 'settings/guard-display',
+        component: GuardDisplaySettings,
+        canActivate: [allowRoles(...OSAS_ADMIN_ROLES)],
+      },
+      {
+        path: 'tap-errors',
+        component: TapErrorLogs,
+        canActivate: [allowRoles(...HR_ADMIN_ROLES)],
+      },
       { path: 'attendance', redirectTo: 'students/attendance' },
       { path: 'deleted-students', redirectTo: 'students/inactive' },
     ],

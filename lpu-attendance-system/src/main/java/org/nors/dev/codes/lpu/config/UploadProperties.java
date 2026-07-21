@@ -17,6 +17,27 @@ public class UploadProperties {
      */
     private String videosDir = "videos";
 
+    /** Resize and re-encode uploaded profile photos to JPEG. */
+    private boolean photoOptimizationEnabled = true;
+
+    /** Longest edge in pixels for stored profile photos. */
+    private int photoMaxDimension = 800;
+
+    /** JPEG quality from 0.1 (smallest) to 1.0 (largest). */
+    private float photoJpegQuality = 0.85f;
+
+    /** Transcode guard videos to H.264 MP4 when FFmpeg is installed. */
+    private boolean videoOptimizationEnabled = true;
+
+    /** Maximum output width in pixels for transcoded videos. */
+    private int videoMaxWidth = 1280;
+
+    /** FFmpeg constant rate factor (lower = higher quality, larger files). */
+    private int videoCrf = 28;
+
+    /** FFmpeg binary name or absolute path. */
+    private String ffmpegPath = "ffmpeg";
+
     public String getPicturesDir() {
         return picturesDir;
     }
@@ -31,5 +52,61 @@ public class UploadProperties {
 
     public void setVideosDir(String videosDir) {
         this.videosDir = videosDir;
+    }
+
+    public boolean isPhotoOptimizationEnabled() {
+        return photoOptimizationEnabled;
+    }
+
+    public void setPhotoOptimizationEnabled(boolean photoOptimizationEnabled) {
+        this.photoOptimizationEnabled = photoOptimizationEnabled;
+    }
+
+    public int getPhotoMaxDimension() {
+        return photoMaxDimension;
+    }
+
+    public void setPhotoMaxDimension(int photoMaxDimension) {
+        this.photoMaxDimension = photoMaxDimension;
+    }
+
+    public float getPhotoJpegQuality() {
+        return photoJpegQuality;
+    }
+
+    public void setPhotoJpegQuality(float photoJpegQuality) {
+        this.photoJpegQuality = photoJpegQuality;
+    }
+
+    public boolean isVideoOptimizationEnabled() {
+        return videoOptimizationEnabled;
+    }
+
+    public void setVideoOptimizationEnabled(boolean videoOptimizationEnabled) {
+        this.videoOptimizationEnabled = videoOptimizationEnabled;
+    }
+
+    public int getVideoMaxWidth() {
+        return videoMaxWidth;
+    }
+
+    public void setVideoMaxWidth(int videoMaxWidth) {
+        this.videoMaxWidth = videoMaxWidth;
+    }
+
+    public int getVideoCrf() {
+        return videoCrf;
+    }
+
+    public void setVideoCrf(int videoCrf) {
+        this.videoCrf = videoCrf;
+    }
+
+    public String getFfmpegPath() {
+        return ffmpegPath;
+    }
+
+    public void setFfmpegPath(String ffmpegPath) {
+        this.ffmpegPath = ffmpegPath;
     }
 }

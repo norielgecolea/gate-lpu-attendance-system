@@ -1,6 +1,7 @@
 package org.nors.dev.codes.lpu.service;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -27,9 +28,14 @@ public class PhotoStorageService {
     );
 
     private final Path picturesDir;
+    private final ImageOptimizationService imageOptimizationService;
 
-    public PhotoStorageService(UploadProperties uploadProperties) {
+    public PhotoStorageService(
+            UploadProperties uploadProperties,
+            ImageOptimizationService imageOptimizationService
+    ) {
         this.picturesDir = Paths.get(uploadProperties.getPicturesDir()).toAbsolutePath().normalize();
+        this.imageOptimizationService = imageOptimizationService;
         try {
             Files.createDirectories(this.picturesDir);
             log.info("Student pictures directory: {}", this.picturesDir);
@@ -54,21 +60,36 @@ public class PhotoStorageService {
             );
         }
 
-        String extension = extensionFor(contentType, file.getOriginalFilename());
-        String filename = UUID.randomUUID() + extension;
+        String filename = UUID.randomUUID() + ".jpg";
         Path destination = picturesDir.resolve(filename).normalize();
         if (!destination.startsWith(picturesDir)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid file path");
         }
 
-        try {
-            file.transferTo(destination);
-        } catch (IOException ex) {
-            log.error("Failed to store photo {}", filename, ex);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to store photo");
+        boolean optimized = false;
+        if (imageOptimizationService.canOptimize(contentType)) {
+            try (InputStream input = file.getInputStream()) {
+                optimized = imageOptimizationService.optimizeToJpeg(input, destination);
+            } catch (IOException ex) {
+                log.warn("Unable to read uploaded photo for optimization: {}", ex.toString());
+            }
         }
 
-        log.info("Stored photo {}", filename);
+        if (!optimized) {
+            filename = UUID.randomUUID() + extensionFor(contentType, file.getOriginalFilename());
+            destination = picturesDir.resolve(filename).normalize();
+            if (!destination.startsWith(picturesDir)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid file path");
+            }
+            try {
+                file.transferTo(destination);
+            } catch (IOException ex) {
+                log.error("Failed to store photo {}", filename, ex);
+                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to store photo");
+            }
+        }
+
+        log.info("Stored photo {} (optimized={})", filename, optimized);
         return "/pictures/" + filename;
     }
 

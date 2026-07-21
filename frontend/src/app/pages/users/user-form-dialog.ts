@@ -13,13 +13,13 @@ import { HlmInput } from '@spartan-ng/helm/input';
 import {
   type AppUser,
   ROLE_LABELS,
-  USER_ROLES,
   type UserPayload,
 } from '../../core/users/users-api.service';
 
 export interface UserFormContext {
   mode: 'create' | 'edit';
   user?: AppUser;
+  roles: readonly string[];
 }
 
 @Component({
@@ -41,13 +41,13 @@ export class UserFormDialog {
   private readonly context = injectBrnDialogContext<UserFormContext>();
 
   protected readonly mode = this.context.mode;
-  protected readonly roles = USER_ROLES;
+  protected readonly roles = this.context.roles;
   protected readonly roleLabels = ROLE_LABELS;
   protected readonly error = signal<string | null>(null);
 
   protected username = this.context.user?.username ?? '';
   protected password = '';
-  protected role = this.context.user?.role ?? 'OSAS';
+  protected role = this.context.user?.role ?? this.context.roles[0] ?? 'OSAS';
   protected location = this.context.user?.location ?? '';
 
   protected cancel(): void {

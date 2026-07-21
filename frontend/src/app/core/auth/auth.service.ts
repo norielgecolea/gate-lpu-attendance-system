@@ -24,8 +24,13 @@ export class AuthService {
   readonly token = this.tokenSignal.asReadonly();
   readonly isAuthenticated = computed(() => !!this.tokenSignal() && !!this.userSignal());
   readonly isSuperAdmin = computed(() => this.userSignal()?.role === 'SUPERADMIN');
+  readonly isOsas = computed(() => this.userSignal()?.role === 'OSAS');
+  readonly isHr = computed(() => this.userSignal()?.role === 'HR');
   readonly isGuard = computed(() => this.userSignal()?.role === 'GUARD');
   readonly isMonitoring = computed(() => this.userSignal()?.role === 'MONITORING');
+  readonly isAdminPortal = computed(
+    () => this.isSuperAdmin() || this.isOsas() || this.isHr(),
+  );
 
   homeRoute(): string {
     if (this.isGuard()) {
@@ -34,7 +39,7 @@ export class AuthService {
     if (this.isMonitoring()) {
       return '/monitor';
     }
-    if (this.isSuperAdmin()) {
+    if (this.isAdminPortal()) {
       return '/dashboard';
     }
     return '/';
@@ -88,7 +93,7 @@ export class AuthService {
 
   restoreSession(): void {
     const token = this.tokenSignal();
-    if (token && (this.isSuperAdmin() || this.isGuard() || this.isMonitoring())) {
+    if (token && (this.isAdminPortal() || this.isGuard() || this.isMonitoring())) {
       this.notifications.connect(token);
     }
   }

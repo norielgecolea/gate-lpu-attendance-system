@@ -7,6 +7,7 @@
 
 @import '@spartan-ng/brain/hlm-tailwind-preset.css';
 @custom-variant dark (&:is(.dark *));
+@custom-variant short (@media (max-height: 720px));
 
 :root {
   color-scheme: light;
@@ -82,5 +83,12 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  .person-form-dialog {
+    width: min(72rem, calc(100vw - 2rem)) !important;
+    max-width: min(72rem, calc(100vw - 2rem)) !important;
   }
 }

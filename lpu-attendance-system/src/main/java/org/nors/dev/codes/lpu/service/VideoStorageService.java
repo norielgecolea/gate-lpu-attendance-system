@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
@@ -27,9 +28,14 @@ public class VideoStorageService {
     );
 
     private final Path videosDir;
+    private final VideoOptimizationService videoOptimizationService;
 
-    public VideoStorageService(UploadProperties uploadProperties) {
+    public VideoStorageService(
+            UploadProperties uploadProperties,
+            VideoOptimizationService videoOptimizationService
+    ) {
         this.videosDir = Paths.get(uploadProperties.getVideosDir()).toAbsolutePath().normalize();
+        this.videoOptimizationService = videoOptimizationService;
         try {
             Files.createDirectories(this.videosDir);
             log.info("Guard videos directory: {}", this.videosDir);
@@ -41,35 +47,64 @@ public class VideoStorageService {
     /**
      * Saves a video under the videos folder and returns a public path like {@code /videos/uuid.mp4}.
      */
-    public String store(MultipartFile file) {
+    public StoredVideo store(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Video file is required");
         }
 
-        String contentType = file.getContentType();
-        if (contentType == null || !ALLOWED_CONTENT_TYPES.contains(contentType.toLowerCase(Locale.ROOT))) {
+        String contentType = normalizeContentType(file.getContentType());
+        if (contentType == null || !ALLOWED_CONTENT_TYPES.contains(contentType)) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Only MP4, WebM, Ogg, or QuickTime videos are allowed"
             );
         }
 
-        String extension = extensionFor(contentType, file.getOriginalFilename());
-        String filename = UUID.randomUUID() + extension;
-        Path destination = videosDir.resolve(filename).normalize();
-        if (!destination.startsWith(videosDir)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid file path");
-        }
-
+        Path tempSource = null;
         try {
-            file.transferTo(destination);
-        } catch (IOException ex) {
-            log.error("Failed to store video {}", filename, ex);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to store video");
-        }
+            tempSource = Files.createTempFile("guard-video-upload-", ".bin");
+            file.transferTo(tempSource);
 
-        log.info("Stored guard video {}", filename);
-        return "/videos/" + filename;
+            String optimizedFilename = UUID.randomUUID() + ".mp4";
+            Path optimizedDestination = videosDir.resolve(optimizedFilename).normalize();
+            if (!optimizedDestination.startsWith(videosDir)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid file path");
+            }
+
+            if (videoOptimizationService.transcodeToMp4(tempSource, optimizedDestination)) {
+                return new StoredVideo(
+                        "/videos/" + optimizedFilename,
+                        "video/mp4",
+                        Files.size(optimizedDestination)
+                );
+            }
+
+            String extension = extensionFor(contentType, file.getOriginalFilename());
+            String filename = UUID.randomUUID() + extension;
+            Path destination = videosDir.resolve(filename).normalize();
+            if (!destination.startsWith(videosDir)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid file path");
+            }
+            Files.move(tempSource, destination, StandardCopyOption.REPLACE_EXISTING);
+            tempSource = null;
+            log.info("Stored guard video {} without transcoding", filename);
+            return new StoredVideo(
+                    "/videos/" + filename,
+                    contentType,
+                    Files.size(destination)
+            );
+        } catch (IOException ex) {
+            log.error("Failed to store video", ex);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to store video");
+        } finally {
+            if (tempSource != null) {
+                try {
+                    Files.deleteIfExists(tempSource);
+                } catch (IOException ex) {
+                    log.warn("Failed to delete temp video upload {}", tempSource, ex);
+                }
+            }
+        }
     }
 
     /** Removes a stored video file; missing files are ignored. */
@@ -88,6 +123,10 @@ public class VideoStorageService {
         }
     }
 
+    private static String normalizeContentType(String contentType) {
+        return contentType == null ? null : contentType.toLowerCase(Locale.ROOT);
+    }
+
     private static String extensionFor(String contentType, String originalFilename) {
         return switch (contentType.toLowerCase(Locale.ROOT)) {
             case "video/mp4" -> ".mp4";
@@ -101,5 +140,8 @@ public class VideoStorageService {
                 yield ".bin";
             }
         };
+    }
+
+    public record StoredVideo(String path, String contentType, long sizeBytes) {
     }
 }

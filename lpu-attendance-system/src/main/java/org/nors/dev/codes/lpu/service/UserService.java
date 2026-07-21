@@ -10,6 +10,7 @@ import org.nors.dev.codes.lpu.dto.UserResponse;
 import org.nors.dev.codes.lpu.model.Role;
 import org.nors.dev.codes.lpu.model.User;
 import org.nors.dev.codes.lpu.repository.UserRepository;
+import org.nors.dev.codes.lpu.security.UserRoleAccess;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -36,14 +37,23 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public List<UserResponse> list() {
+    public List<UserResponse> list(Role actingRole) {
         return userRepository.findAll().stream()
+                .filter(user -> UserRoleAccess.canManage(actingRole, user.getRole()))
                 .map(UserResponse::from)
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<String> assignableRoles(Role actingRole) {
+        return UserRoleAccess.manageableRoles(actingRole).stream()
+                .map(Role::name)
+                .sorted()
+                .toList();
+    }
+
     @Transactional
-    public UserResponse create(UserRequest request) {
+    public UserResponse create(UserRequest request, Role actingRole) {
         String username = normalizeUsername(request.username());
         if (userRepository.existsByUsernameExcludingId(username, null)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Username already exists");
@@ -56,10 +66,13 @@ public class UserService {
             );
         }
 
+        Role newRole = parseRole(request.role());
+        UserRoleAccess.ensureCanManage(actingRole, newRole);
+
         User user = new User();
         user.setUsername(username);
         user.setPasswordHash(passwordEncoder.encode(password));
-        user.setRole(parseRole(request.role()));
+        user.setRole(newRole);
         user.setLocation(blankToNull(request.location()));
         user.setActive(true);
         user.setCreatedAt(Instant.now());
@@ -71,14 +84,16 @@ public class UserService {
     }
 
     @Transactional
-    public UserResponse update(Long id, UserRequest request, Long actingUserId) {
+    public UserResponse update(Long id, UserRequest request, Long actingUserId, Role actingRole) {
         User user = requireUser(id);
+        UserRoleAccess.ensureCanManage(actingRole, user.getRole());
         String username = normalizeUsername(request.username());
         if (userRepository.existsByUsernameExcludingId(username, id)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Username already exists");
         }
 
         Role newRole = parseRole(request.role());
+        UserRoleAccess.ensureCanManage(actingRole, newRole);
         if (user.getRole() == Role.SUPERADMIN && newRole != Role.SUPERADMIN
                 && userRepository.countActiveSuperadminsExcluding(id) == 0) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "At least one active Superadmin is required");
@@ -108,8 +123,9 @@ public class UserService {
     }
 
     @Transactional
-    public UserResponse setActive(Long id, boolean active, Long actingUserId) {
+    public UserResponse setActive(Long id, boolean active, Long actingUserId, Role actingRole) {
         User user = requireUser(id);
+        UserRoleAccess.ensureCanManage(actingRole, user.getRole());
         if (!active) {
             if (id.equals(actingUserId)) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "You cannot deactivate your own account");

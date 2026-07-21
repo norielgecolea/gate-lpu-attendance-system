@@ -302,7 +302,7 @@ export class Students {
   private openForm(mode: 'create' | 'edit', student?: Student): void {
     const ref = this.dialog.open(StudentFormDialog, {
       context: { mode, student },
-      contentClass: 'sm:max-w-lg',
+      contentClass: 'person-form-dialog',
     });
 
     ref.closed$

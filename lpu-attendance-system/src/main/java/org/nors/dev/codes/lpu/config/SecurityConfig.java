@@ -49,21 +49,36 @@ public class SecurityConfig {
                         .requestMatchers("/ws/**").permitAll()
                         // Any signed-in role (Superadmin, OSAS, HR, Monitoring, Guard) can manage its own session.
                         .requestMatchers("/api/auth/**").authenticated()
-                        // Guard kiosks read the display setting; only superadmins change it.
+                        // Guard kiosks read the display setting; OSAS admins manage it.
                         .requestMatchers(HttpMethod.GET, "/api/guard-display")
-                        .hasAnyRole("SUPERADMIN", "GUARD")
-                        // Kiosk endpoints stay available to guards; reporting is superadmin-only.
+                        .hasAnyRole("SUPERADMIN", "GUARD", "OSAS")
+                        .requestMatchers("/api/guard-display/**")
+                        .hasAnyRole("SUPERADMIN", "OSAS")
+                        // Dashboard read access for cross-role summaries.
+                        .requestMatchers(HttpMethod.GET, "/api/students/**")
+                        .hasAnyRole("SUPERADMIN", "OSAS", "HR")
+                        .requestMatchers("/api/students/**")
+                        .hasAnyRole("SUPERADMIN", "OSAS")
+                        .requestMatchers(HttpMethod.GET, "/api/employees/**")
+                        .hasAnyRole("SUPERADMIN", "OSAS", "HR")
+                        .requestMatchers("/api/employees/**")
+                        .hasAnyRole("SUPERADMIN", "HR")
+                        .requestMatchers("/api/users/**")
+                        .hasAnyRole("SUPERADMIN", "OSAS", "HR")
+                        .requestMatchers("/api/tap-errors/**")
+                        .hasAnyRole("SUPERADMIN", "OSAS", "HR")
+                        // Kiosk endpoints stay available to guards; reporting is admin/monitoring.
                         .requestMatchers("/api/attendance/tap").hasAnyRole("SUPERADMIN", "GUARD")
                         .requestMatchers("/api/attendance/recent")
-                        .hasAnyRole("SUPERADMIN", "GUARD", "MONITORING")
-                        // Read-only aggregates power the monitoring wall display.
+                        .hasAnyRole("SUPERADMIN", "GUARD", "MONITORING", "OSAS", "HR")
+                        // Read-only aggregates power the monitoring wall and admin dashboards.
                         .requestMatchers(
                                 "/api/attendance/summary",
                                 "/api/attendance/by-department",
                                 "/api/attendance/by-hour"
                         )
-                        .hasAnyRole("SUPERADMIN", "MONITORING")
-                        .requestMatchers("/api/attendance/**").hasRole("SUPERADMIN")
+                        .hasAnyRole("SUPERADMIN", "MONITORING", "OSAS", "HR")
+                        .requestMatchers("/api/attendance/**").hasAnyRole("SUPERADMIN", "OSAS", "HR")
                         .requestMatchers("/api/**").hasRole("SUPERADMIN")
                         .anyRequest().permitAll()
                 )

@@ -16,6 +16,7 @@ import { HlmInput } from '@spartan-ng/helm/input';
 import { HlmTableImports } from '@spartan-ng/helm/table';
 import { filter, take } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
+import { assignableRolesFor } from '../../core/auth/role-access';
 import {
   type AppUser,
   ROLE_LABELS,
@@ -46,13 +47,18 @@ export class Users {
 
   protected readonly roleLabels = ROLE_LABELS;
   protected readonly currentUsername = computed(() => this.auth.user()?.username ?? '');
+  protected readonly assignableRoles = computed(() =>
+    assignableRolesFor(this.auth.user()?.role),
+  );
 
   protected readonly filtered = computed(() => {
+    const manageable = new Set(this.assignableRoles());
     const term = this.filter().trim().toLowerCase();
+    const scoped = this.users().filter((user) => manageable.has(user.role));
     if (!term) {
-      return this.users();
+      return scoped;
     }
-    return this.users().filter((u) =>
+    return scoped.filter((u) =>
       [u.username, u.role, u.location ?? ''].join(' ').toLowerCase().includes(term),
     );
   });
@@ -120,8 +126,9 @@ export class Users {
   }
 
   private openForm(mode: 'create' | 'edit', user?: AppUser): void {
+    const roles = [...this.assignableRoles()];
     const ref = this.dialog.open(UserFormDialog, {
-      context: { mode, user },
+      context: { mode, user, roles },
       contentClass: 'sm:max-w-lg',
     });
 

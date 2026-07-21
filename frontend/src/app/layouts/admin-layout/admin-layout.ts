@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, OnDestroy, inject, signal } from '@angular/core';
+import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   NavigationEnd,
@@ -16,6 +16,7 @@ import {
   lucideGraduationCap,
   lucideLayoutDashboard,
   lucideLogOut,
+  lucideMenu,
   lucideMonitorPlay,
   lucidePanelLeft,
   lucideScanBarcode,
@@ -36,6 +37,7 @@ import {
 } from '@spartan-ng/helm/navigation-menu';
 import { AlertSoundService } from '../../core/alert-sound.service';
 import { AuthService } from '../../core/auth/auth.service';
+import { canAccessAdminRoute } from '../../core/auth/role-access';
 import { NotificationService } from '../../core/notifications/notification.service';
 
 interface NavItem {
@@ -88,6 +90,7 @@ interface TapErrorAlert {
       lucideScanBarcode,
       lucideShieldCheck,
       lucidePanelLeft,
+      lucideMenu,
       lucideGraduationCap,
       lucideUserRound,
       lucideLogOut,
@@ -117,10 +120,25 @@ interface TapErrorAlert {
         animation: none;
       }
     }
+
+    .sidebar-nav {
+      scrollbar-width: thin;
+      scrollbar-color: color-mix(in oklch, var(--sidebar-border) 80%, transparent) transparent;
+    }
+
+    .sidebar-nav::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .sidebar-nav::-webkit-scrollbar-thumb {
+      border-radius: 9999px;
+      background: color-mix(in oklch, var(--sidebar-border) 80%, transparent);
+    }
   `,
 })
 export class AdminLayout implements OnDestroy {
   protected readonly sidebarOpen = signal(true);
+  protected readonly mobileNavOpen = signal(false);
   protected readonly loggingOut = signal(false);
   protected readonly tapErrors = signal<TapErrorAlert[]>([]);
   private nextAlertId = 1;
@@ -169,7 +187,15 @@ export class AdminLayout implements OnDestroy {
     },
   ];
 
-  private readonly allNavItems: NavItem[] = this.navSections.flatMap((s) => s.items);
+  protected readonly visibleNavSections = computed(() => {
+    const role = this.auth.user()?.role;
+    return this.navSections
+      .map((section) => ({
+        ...section,
+        items: section.items.filter((item) => canAccessAdminRoute(role, item.route)),
+      }))
+      .filter((section) => section.items.length > 0);
+  });
 
   private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
@@ -189,6 +215,7 @@ export class AdminLayout implements OnDestroy {
       .subscribe(() => {
         this.currentUrl.set(this.router.url);
         this.pageTitle.set(this.resolveTitle());
+        this.mobileNavOpen.set(false);
       });
 
     this.tapErrorSub = this.notifications.events$
@@ -212,8 +239,9 @@ export class AdminLayout implements OnDestroy {
 
   private bestMatch(): string | null {
     const url = this.currentUrl().split('?')[0];
+    const items = this.visibleNavSections().flatMap((section) => section.items);
     let best: string | null = null;
-    for (const item of this.allNavItems) {
+    for (const item of items) {
       const matches = url === item.route || url.startsWith(`${item.route}/`);
       if (matches && (best === null || item.route.length > best.length)) {
         best = item.route;
@@ -224,11 +252,24 @@ export class AdminLayout implements OnDestroy {
 
   private resolveTitle(): string {
     const best = this.bestMatch();
-    return this.allNavItems.find((i) => i.route === best)?.label ?? 'Dashboard';
+    const items = this.visibleNavSections().flatMap((section) => section.items);
+    return items.find((i) => i.route === best)?.label ?? 'Dashboard';
   }
 
   protected toggleSidebar(): void {
-    this.sidebarOpen.set(!this.sidebarOpen());
+    if (typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches) {
+      this.mobileNavOpen.update((open) => !open);
+      return;
+    }
+    this.sidebarOpen.update((open) => !open);
+  }
+
+  protected closeMobileNav(): void {
+    this.mobileNavOpen.set(false);
+  }
+
+  protected showSidebarLabels(): boolean {
+    return this.sidebarOpen() || this.mobileNavOpen();
   }
 
   protected logout(): void {
