@@ -27,7 +27,7 @@ export interface EmployeeFormResult {
   rfid: string | null;
   birthdate: string | null;
   department: string;
-  position: string;
+  position: string | null;
 }
 
 @Component({
@@ -103,10 +103,9 @@ export class EmployeeFormDialog {
     if (
       !this.name.trim() ||
       !this.employeeNo.trim() ||
-      !this.department.trim() ||
-      !this.position.trim()
+      !this.department.trim()
     ) {
-      this.error.set('Name, employee number, department, and position are required.');
+      this.error.set('Name, employee number, and department are required.');
       return;
     }
 
@@ -121,7 +120,7 @@ export class EmployeeFormDialog {
       rfid: this.rfid.trim() || null,
       birthdate: this.birthdate.trim() || null,
       department: this.department.trim(),
-      position: this.position.trim(),
+      position: this.position.trim() || null,
     });
   }
 }
