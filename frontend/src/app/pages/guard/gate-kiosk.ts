@@ -284,7 +284,11 @@ export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
     this.errorNotFound.set(notFound);
     this.flash.set('idle');
     this.animKey.update((k) => k + 1);
-    this.sounds.playError();
+    if (notFound) {
+      this.sounds.playNotFound();
+    } else {
+      this.sounds.playError();
+    }
     this.clearErrorTimer();
     queueMicrotask(() => this.flash.set('error'));
     this.errorTimer = setTimeout(() => {
@@ -315,8 +319,10 @@ export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
         this.sounds.playFinanceWarning();
       } else if (tap.birthday) {
         this.sounds.playBirthday();
+      } else if (tap.action === 'TIME_OUT') {
+        this.sounds.playTimeOut();
       } else {
-        this.sounds.playSuccess();
+        this.sounds.playTimeIn();
       }
     }
     this.scheduleHide();
