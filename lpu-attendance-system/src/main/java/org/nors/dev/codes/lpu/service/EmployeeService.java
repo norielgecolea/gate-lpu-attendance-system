@@ -1,5 +1,9 @@
 package org.nors.dev.codes.lpu.service;
 
+import java.io.ByteArrayOutputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -10,11 +14,13 @@ import org.apache.logging.log4j.Logger;
 import org.nors.dev.codes.lpu.dto.EmployeeImportResponse;
 import org.nors.dev.codes.lpu.dto.EmployeeRequest;
 import org.nors.dev.codes.lpu.dto.EmployeeResponse;
+import org.nors.dev.codes.lpu.dto.PhotoBulkUploadResponse;
 import org.nors.dev.codes.lpu.model.Employee;
 import org.nors.dev.codes.lpu.repository.EmployeeRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
@@ -23,9 +29,11 @@ public class EmployeeService {
     private static final Logger log = LogManager.getLogger(EmployeeService.class);
 
     private final EmployeeRepository employeeRepository;
+    private final PhotoStorageService photoStorageService;
 
-    public EmployeeService(EmployeeRepository employeeRepository) {
+    public EmployeeService(EmployeeRepository employeeRepository, PhotoStorageService photoStorageService) {
         this.employeeRepository = employeeRepository;
+        this.photoStorageService = photoStorageService;
     }
 
     @Transactional(readOnly = true)
@@ -152,6 +160,74 @@ public class EmployeeService {
         return EmployeeResponse.from(employee);
     }
 
+    /**
+     * Applies photos whose filenames (without extension) match active employee numbers.
+     */
+    @Transactional
+    public PhotoBulkUploadResponse bulkUploadPhotos(List<MultipartFile> files) {
+        if (files == null || files.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one photo file is required");
+        }
+        if (files.size() > 5_000) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Bulk photo upload is limited to 5,000 files");
+        }
+
+        int updated = 0;
+        int notFound = 0;
+        int skippedInvalid = 0;
+        Instant now = Instant.now();
+
+        for (MultipartFile file : files) {
+            if (file == null || file.isEmpty()) {
+                skippedInvalid++;
+                continue;
+            }
+            if (!photoStorageService.isAllowedImage(file)) {
+                skippedInvalid++;
+                continue;
+            }
+            String employeeNo = PhotoStorageService.personNumberFromFilename(file.getOriginalFilename());
+            if (employeeNo == null) {
+                skippedInvalid++;
+                continue;
+            }
+            Employee employee = employeeRepository.findByEmployeeNo(employeeNo).orElse(null);
+            if (employee == null) {
+                notFound++;
+                continue;
+            }
+            String photoPath = photoStorageService.store(file);
+            employee.setPhoto(photoPath);
+            employee.setUpdatedAt(now);
+            employeeRepository.save(employee);
+            updated++;
+        }
+
+        log.info("Bulk employee photos updated={} notFound={} skippedInvalid={}", updated, notFound, skippedInvalid);
+        return new PhotoBulkUploadResponse(updated, notFound, skippedInvalid);
+    }
+
+    @Transactional(readOnly = true)
+    public byte[] exportCsv() {
+        List<Employee> employees = employeeRepository.findAllActive();
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (PrintWriter writer = new PrintWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8))) {
+            writer.println("Name,ID Number,RFID,Department,Position,Birthday");
+            for (Employee employee : employees) {
+                writer.printf(
+                        "%s,%s,%s,%s,%s,%s%n",
+                        csv(employee.getName()),
+                        csv(employee.getEmployeeNo()),
+                        csv(employee.getRfid()),
+                        csv(employee.getDepartment()),
+                        csv(employee.getPosition()),
+                        employee.getBirthdate() == null ? "" : employee.getBirthdate().toString()
+                );
+            }
+        }
+        return baos.toByteArray();
+    }
+
     private Employee requireActive(Long id) {
         return employeeRepository.findActiveById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Employee not found"));
@@ -179,5 +255,16 @@ public class EmployeeService {
             return null;
         }
         return value.trim();
+    }
+
+    private static String csv(String value) {
+        if (value == null) {
+            return "";
+        }
+        String escaped = value.replace("\"", "\"\"");
+        if (escaped.contains(",") || escaped.contains("\"") || escaped.contains("\n")) {
+            return "\"" + escaped + "\"";
+        }
+        return escaped;
     }
 }

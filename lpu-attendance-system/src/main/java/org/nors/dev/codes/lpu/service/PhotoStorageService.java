@@ -46,8 +46,8 @@ public class PhotoStorageService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Photo file is required");
         }
 
-        String contentType = file.getContentType();
-        if (contentType == null || !ALLOWED_CONTENT_TYPES.contains(contentType.toLowerCase(Locale.ROOT))) {
+        String contentType = resolveContentType(file);
+        if (contentType == null || !ALLOWED_CONTENT_TYPES.contains(contentType)) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Only JPEG, PNG, WebP, or GIF images are allowed"
@@ -68,8 +68,68 @@ public class PhotoStorageService {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to store photo");
         }
 
-        log.info("Stored student photo {}", filename);
+        log.info("Stored photo {}", filename);
         return "/pictures/" + filename;
+    }
+
+    /** Returns true when the file looks like an allowed image (by content type or extension). */
+    public boolean isAllowedImage(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            return false;
+        }
+        String contentType = resolveContentType(file);
+        return contentType != null && ALLOWED_CONTENT_TYPES.contains(contentType);
+    }
+
+    /**
+     * Extracts the person number from a photo filename (basename without extension).
+     * Example: {@code 2021-0001.jpg} → {@code 2021-0001}.
+     */
+    public static String personNumberFromFilename(String originalFilename) {
+        if (originalFilename == null || originalFilename.isBlank()) {
+            return null;
+        }
+        String name = originalFilename.trim();
+        int slash = Math.max(name.lastIndexOf('/'), name.lastIndexOf('\\'));
+        if (slash >= 0) {
+            name = name.substring(slash + 1);
+        }
+        int dot = name.lastIndexOf('.');
+        if (dot > 0) {
+            name = name.substring(0, dot);
+        }
+        name = name.trim();
+        return name.isEmpty() ? null : name;
+    }
+
+    private static String resolveContentType(MultipartFile file) {
+        String contentType = file.getContentType();
+        if (contentType != null) {
+            String normalized = contentType.toLowerCase(Locale.ROOT).trim();
+            if (ALLOWED_CONTENT_TYPES.contains(normalized)) {
+                return normalized;
+            }
+            // Some browsers send octet-stream for bulk picks — fall through to extension.
+            if (!normalized.equals("application/octet-stream") && !normalized.isBlank()) {
+                return normalized;
+            }
+        }
+        return contentTypeFromFilename(file.getOriginalFilename());
+    }
+
+    private static String contentTypeFromFilename(String originalFilename) {
+        if (originalFilename == null || !originalFilename.contains(".")) {
+            return null;
+        }
+        String ext = originalFilename.substring(originalFilename.lastIndexOf('.') + 1)
+                .toLowerCase(Locale.ROOT);
+        return switch (ext) {
+            case "jpg", "jpeg" -> "image/jpeg";
+            case "png" -> "image/png";
+            case "webp" -> "image/webp";
+            case "gif" -> "image/gif";
+            default -> null;
+        };
     }
 
     private static String extensionFor(String contentType, String originalFilename) {

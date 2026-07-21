@@ -56,8 +56,9 @@ public class AuthService {
         }
 
         // All defined roles may sign in; what each role can access is enforced per endpoint.
-        String token = jwtService.generateToken(user);
-        log.info("Login success for username={} role={}", username, user.getRole());
+        boolean rememberMe = Boolean.TRUE.equals(request.rememberMe());
+        String token = jwtService.generateToken(user, rememberMe);
+        log.info("Login success for username={} role={} rememberMe={}", username, user.getRole(), rememberMe);
         notificationService.broadcast(
                 AuthEventMessage.of(
                         "AUTH_LOGIN_SUCCESS",
@@ -72,7 +73,7 @@ public class AuthService {
                 user.getUsername(),
                 user.getRole().name(),
                 user.getLocation(),
-                jwtService.getExpirationMs()
+                jwtService.getExpirationMs(rememberMe)
         );
     }
 

@@ -47,7 +47,7 @@ public record TapResponse(
                 log.getTimeOutLocation(),
                 birthday,
                 financeTagged,
-                financeTagged ? "Please Finance Department" : null,
+                financeTagged ? "PLEASE VISIT FINANCE DEPARTMENT" : null,
                 student != null ? "STUDENT" : "EMPLOYEE",
                 student != null ? StudentResponse.from(student) : null,
                 employee != null ? EmployeeResponse.from(employee) : null

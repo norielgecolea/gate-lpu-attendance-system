@@ -11,6 +11,12 @@ export interface EmployeeImportResult {
   skippedDuplicates: number;
 }
 
+export interface PhotoBulkUploadResult {
+  updated: number;
+  notFound: number;
+  skippedInvalid: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class EmployeesApiService {
   private readonly http = inject(HttpClient);
@@ -38,6 +44,18 @@ export class EmployeesApiService {
 
   importCsv(payload: EmployeePayload[]): Observable<EmployeeImportResult> {
     return this.http.post<EmployeeImportResult>(`${this.baseUrl}/import`, payload);
+  }
+
+  exportCsv(): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/export`, { responseType: 'blob' });
+  }
+
+  bulkUploadPhotos(files: File[]): Observable<PhotoBulkUploadResult> {
+    const formData = new FormData();
+    for (const file of files) {
+      formData.append('files', file, file.name);
+    }
+    return this.http.post<PhotoBulkUploadResult>(`${this.baseUrl}/photos/bulk`, formData);
   }
 
   update(id: string, payload: EmployeePayload): Observable<Employee> {

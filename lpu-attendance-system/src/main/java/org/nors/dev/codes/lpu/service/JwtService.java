@@ -43,14 +43,21 @@ public class JwtService {
     }
 
     public String generateToken(User user) {
+        return generateToken(user, false);
+    }
+
+    public String generateToken(User user, boolean rememberMe) {
         long now = System.currentTimeMillis();
+        long expirationMs = rememberMe
+                ? jwtProperties.getRememberExpirationMs()
+                : jwtProperties.getExpirationMs();
         return Jwts.builder()
                 .subject(user.getUsername())
                 .claim("role", user.getRole().name())
                 .claim("uid", user.getId())
                 .claim("location", user.getLocation() != null ? user.getLocation() : "")
                 .issuedAt(new Date(now))
-                .expiration(new Date(now + jwtProperties.getExpirationMs()))
+                .expiration(new Date(now + expirationMs))
                 .signWith(secretKey)
                 .compact();
     }
@@ -91,6 +98,12 @@ public class JwtService {
 
     public long getExpirationMs() {
         return jwtProperties.getExpirationMs();
+    }
+
+    public long getExpirationMs(boolean rememberMe) {
+        return rememberMe
+                ? jwtProperties.getRememberExpirationMs()
+                : jwtProperties.getExpirationMs();
     }
 
     private Claims parseClaims(String token) {

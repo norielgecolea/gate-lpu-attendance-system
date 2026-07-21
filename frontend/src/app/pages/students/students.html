@@ -48,10 +48,36 @@
       [disabled]="importing()"
       (change)="importCsv($event)"
     />
-    <button hlmBtn class="gap-1.5" type="button" disabled title="Coming soon">
+    <button
+      hlmBtn
+      class="gap-1.5"
+      type="button"
+      [disabled]="exporting()"
+      (click)="exportCsv()"
+    >
       <ng-icon name="lucideFileUp" class="text-base" />
-      Export
+      {{ exporting() ? 'Exporting…' : 'Export' }}
     </button>
+    <button
+      hlmBtn
+      class="gap-1.5"
+      type="button"
+      [disabled]="uploadingPhotos()"
+      (click)="photoInput.click()"
+      title="Filename must match student number (e.g. 2021-0001.jpg)"
+    >
+      <ng-icon name="lucideImages" class="text-base" />
+      {{ uploadingPhotos() ? 'Uploading…' : 'Upload Pictures' }}
+    </button>
+    <input
+      #photoInput
+      class="hidden"
+      type="file"
+      accept="image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif"
+      multiple
+      [disabled]="uploadingPhotos()"
+      (change)="uploadPhotos($event)"
+    />
   </div>
 
   @if (error() || actionError()) {

@@ -41,6 +41,36 @@
       [disabled]="importing()"
       (change)="importCsv($event)"
     />
+    <button
+      hlmBtn
+      class="gap-1.5"
+      type="button"
+      [disabled]="exporting()"
+      (click)="exportCsv()"
+    >
+      <ng-icon name="lucideFileUp" class="text-base" />
+      {{ exporting() ? 'Exporting…' : 'Export' }}
+    </button>
+    <button
+      hlmBtn
+      class="gap-1.5"
+      type="button"
+      [disabled]="uploadingPhotos()"
+      (click)="photoInput.click()"
+      title="Filename must match employee number (e.g. EMP-001.jpg)"
+    >
+      <ng-icon name="lucideImages" class="text-base" />
+      {{ uploadingPhotos() ? 'Uploading…' : 'Upload Pictures' }}
+    </button>
+    <input
+      #photoInput
+      class="hidden"
+      type="file"
+      accept="image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif"
+      multiple
+      [disabled]="uploadingPhotos()"
+      (change)="uploadPhotos($event)"
+    />
     <button hlmBtn variant="destructive" class="gap-1.5" type="button" (click)="deleteSelected()">
       <ng-icon name="lucideUserX" class="text-base" />
       Deactivate

@@ -7,7 +7,9 @@ import {
   lucideChevronsUpDown,
   lucideChevronUp,
   lucideFileDown,
+  lucideFileUp,
   lucideHistory,
+  lucideImages,
   lucidePlus,
   lucideSearch,
   lucideSquarePen,
@@ -66,6 +68,8 @@ import { type Employee, EmployeesStore } from './employees.store';
       lucideHistory,
       lucideSquarePen,
       lucideFileDown,
+      lucideFileUp,
+      lucideImages,
       lucideChevronsUpDown,
       lucideChevronUp,
       lucideChevronDown,
@@ -85,6 +89,8 @@ export class Employees {
   protected readonly actionError = signal<string | null>(null);
   protected readonly importMessage = signal<string | null>(null);
   protected readonly importing = signal(false);
+  protected readonly exporting = signal(false);
+  protected readonly uploadingPhotos = signal(false);
 
   protected readonly sorting = signal<SortingState>([]);
   protected readonly globalFilter = signal('');
@@ -209,6 +215,54 @@ export class Employees {
     } catch (error) {
       this.actionError.set(error instanceof Error ? error.message : 'Invalid CSV file.');
     }
+  }
+
+  protected exportCsv(): void {
+    if (this.exporting()) {
+      return;
+    }
+    this.actionError.set(null);
+    this.exporting.set(true);
+    this.api.exportCsv().subscribe({
+      next: (blob) => {
+        downloadBlob(blob, 'employees.csv');
+        this.exporting.set(false);
+        this.importMessage.set('Exported all active employee records.');
+      },
+      error: (err: { error?: { message?: string } }) => {
+        this.exporting.set(false);
+        this.actionError.set(err?.error?.message ?? 'Failed to export employees.');
+      },
+    });
+  }
+
+  protected uploadPhotos(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const files = input.files ? Array.from(input.files) : [];
+    input.value = '';
+    if (files.length === 0 || this.uploadingPhotos()) {
+      return;
+    }
+    if (!confirm(`Upload ${files.length} photo(s)? Filenames must match employee numbers (e.g. EMP-001.jpg).`)) {
+      return;
+    }
+
+    this.actionError.set(null);
+    this.importMessage.set(null);
+    this.uploadingPhotos.set(true);
+    this.api.bulkUploadPhotos(files).subscribe({
+      next: (result) => {
+        this.uploadingPhotos.set(false);
+        this.importMessage.set(
+          `Photos updated: ${result.updated}. Not found: ${result.notFound}. Skipped invalid: ${result.skippedInvalid}.`,
+        );
+        this.reload();
+      },
+      error: (err: { error?: { message?: string } }) => {
+        this.uploadingPhotos.set(false);
+        this.actionError.set(err?.error?.message ?? 'Failed to upload photos.');
+      },
+    });
   }
 
   protected sortIcon(state: false | 'asc' | 'desc'): string {
@@ -366,4 +420,13 @@ function normalizeBirthdate(value: string, rowNumber: number): string {
   return `${year.toString().padStart(4, '0')}-${month.toString().padStart(2, '0')}-${day
     .toString()
     .padStart(2, '0')}`;
+}
+
+function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }

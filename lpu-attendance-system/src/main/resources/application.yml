@@ -33,6 +33,8 @@ app:
     # Base64-encoded 256-bit secret (override via APP_JWT_SECRET in production)
     secret: ${APP_JWT_SECRET:bHB1LWdhdGUtYXR0ZW5kYW5jZS1qd3Qtc2VjcmV0LWtleS0zMmJ5dGVzIQ==}
     expiration-ms: ${APP_JWT_EXPIRATION_MS:28800000}
+    # ~10 years — "Remember me" sessions last until explicit logout
+    remember-expiration-ms: ${APP_JWT_REMEMBER_EXPIRATION_MS:315360000000}
   upload:
     pictures-dir: ${APP_PICTURES_DIR:pictures}
     videos-dir: ${APP_VIDEOS_DIR:videos}

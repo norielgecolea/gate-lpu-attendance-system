@@ -9,6 +9,11 @@ export interface StudentImportResult {
   imported: number;
   skippedDuplicates: number;
 }
+export interface PhotoBulkUploadResult {
+  updated: number;
+  notFound: number;
+  skippedInvalid: number;
+}
 export interface StudentFinanceTagImportResult {
   tagged: number;
   alreadyTagged: number;
@@ -59,6 +64,18 @@ export class StudentsApiService {
 
   importCsv(payload: StudentPayload[]): Observable<StudentImportResult> {
     return this.http.post<StudentImportResult>(`${this.baseUrl}/import`, payload);
+  }
+
+  exportCsv(): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/export`, { responseType: 'blob' });
+  }
+
+  bulkUploadPhotos(files: File[]): Observable<PhotoBulkUploadResult> {
+    const formData = new FormData();
+    for (const file of files) {
+      formData.append('files', file, file.name);
+    }
+    return this.http.post<PhotoBulkUploadResult>(`${this.baseUrl}/photos/bulk`, formData);
   }
 
   importFinanceTagged(studentNumbers: string[]): Observable<StudentFinanceTagImportResult> {

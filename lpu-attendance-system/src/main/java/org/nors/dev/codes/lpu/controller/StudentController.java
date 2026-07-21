@@ -7,6 +7,7 @@ import java.util.Map;
 import org.nors.dev.codes.lpu.dto.AttendanceEventPageResponse;
 import org.nors.dev.codes.lpu.dto.AttendancePageResponse;
 import org.nors.dev.codes.lpu.dto.PersonAttendanceSummaryResponse;
+import org.nors.dev.codes.lpu.dto.PhotoBulkUploadResponse;
 import org.nors.dev.codes.lpu.dto.PhotoUploadResponse;
 import org.nors.dev.codes.lpu.dto.StudentFinanceTagImportResponse;
 import org.nors.dev.codes.lpu.dto.StudentImportResponse;
@@ -75,6 +76,15 @@ public class StudentController {
         return ResponseEntity.ok(studentService.listFinanceTagged());
     }
 
+    @GetMapping(value = "/export", produces = "text/csv")
+    public ResponseEntity<byte[]> export() {
+        byte[] csv = studentService.exportCsv();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"students.csv\"")
+                .contentType(new MediaType("text", "csv"))
+                .body(csv);
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<StudentResponse> get(@PathVariable Long id) {
         return ResponseEntity.ok(studentService.getById(id));
@@ -140,6 +150,13 @@ public class StudentController {
     public ResponseEntity<PhotoUploadResponse> uploadPhoto(@RequestPart("file") MultipartFile file) {
         String photoPath = photoStorageService.store(file);
         return ResponseEntity.status(HttpStatus.CREATED).body(new PhotoUploadResponse(photoPath));
+    }
+
+    @PostMapping(value = "/photos/bulk", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<PhotoBulkUploadResponse> bulkUploadPhotos(
+            @RequestParam("files") List<MultipartFile> files
+    ) {
+        return ResponseEntity.ok(studentService.bulkUploadPhotos(files));
     }
 
     @PostMapping

@@ -10,6 +10,7 @@ import org.nors.dev.codes.lpu.dto.EmployeeImportResponse;
 import org.nors.dev.codes.lpu.dto.EmployeeRequest;
 import org.nors.dev.codes.lpu.dto.EmployeeResponse;
 import org.nors.dev.codes.lpu.dto.PersonAttendanceSummaryResponse;
+import org.nors.dev.codes.lpu.dto.PhotoBulkUploadResponse;
 import org.nors.dev.codes.lpu.dto.PhotoUploadResponse;
 import org.nors.dev.codes.lpu.service.AttendanceService;
 import org.nors.dev.codes.lpu.service.EmployeeService;
@@ -57,6 +58,15 @@ public class EmployeeController {
     @GetMapping("/inactive")
     public ResponseEntity<List<EmployeeResponse>> listInactive() {
         return ResponseEntity.ok(employeeService.listInactive());
+    }
+
+    @GetMapping(value = "/export", produces = "text/csv")
+    public ResponseEntity<byte[]> export() {
+        byte[] csv = employeeService.exportCsv();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"employees.csv\"")
+                .contentType(new MediaType("text", "csv"))
+                .body(csv);
     }
 
     @GetMapping("/{id}")
@@ -124,6 +134,13 @@ public class EmployeeController {
     public ResponseEntity<PhotoUploadResponse> uploadPhoto(@RequestPart("file") MultipartFile file) {
         String photoPath = photoStorageService.store(file);
         return ResponseEntity.status(HttpStatus.CREATED).body(new PhotoUploadResponse(photoPath));
+    }
+
+    @PostMapping(value = "/photos/bulk", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<PhotoBulkUploadResponse> bulkUploadPhotos(
+            @RequestParam("files") List<MultipartFile> files
+    ) {
+        return ResponseEntity.ok(employeeService.bulkUploadPhotos(files));
     }
 
     @PostMapping

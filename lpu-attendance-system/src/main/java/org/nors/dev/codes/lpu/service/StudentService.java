@@ -1,10 +1,15 @@
 package org.nors.dev.codes.lpu.service;
 
+import java.io.ByteArrayOutputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.nors.dev.codes.lpu.dto.PhotoBulkUploadResponse;
 import org.nors.dev.codes.lpu.dto.StudentFinanceTagImportResponse;
 import org.nors.dev.codes.lpu.dto.StudentImportResponse;
 import org.nors.dev.codes.lpu.dto.StudentPageResponse;
@@ -17,6 +22,7 @@ import org.nors.dev.codes.lpu.repository.StudentRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
@@ -25,9 +31,11 @@ public class StudentService {
     private static final Logger log = LogManager.getLogger(StudentService.class);
 
     private final StudentRepository studentRepository;
+    private final PhotoStorageService photoStorageService;
 
-    public StudentService(StudentRepository studentRepository) {
+    public StudentService(StudentRepository studentRepository, PhotoStorageService photoStorageService) {
         this.studentRepository = studentRepository;
+        this.photoStorageService = photoStorageService;
     }
 
     @Transactional(readOnly = true)
@@ -224,6 +232,75 @@ public class StudentService {
         return new StudentFinanceTagImportResponse(tagged, alreadyTagged, notFound);
     }
 
+    /**
+     * Applies photos whose filenames (without extension) match active student numbers.
+     */
+    @Transactional
+    public PhotoBulkUploadResponse bulkUploadPhotos(List<MultipartFile> files) {
+        if (files == null || files.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one photo file is required");
+        }
+        if (files.size() > 5_000) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Bulk photo upload is limited to 5,000 files");
+        }
+
+        int updated = 0;
+        int notFound = 0;
+        int skippedInvalid = 0;
+        Instant now = Instant.now();
+
+        for (MultipartFile file : files) {
+            if (file == null || file.isEmpty()) {
+                skippedInvalid++;
+                continue;
+            }
+            if (!photoStorageService.isAllowedImage(file)) {
+                skippedInvalid++;
+                continue;
+            }
+            String studentNo = PhotoStorageService.personNumberFromFilename(file.getOriginalFilename());
+            if (studentNo == null) {
+                skippedInvalid++;
+                continue;
+            }
+            Student student = studentRepository.findByStudentNo(studentNo).orElse(null);
+            if (student == null) {
+                notFound++;
+                continue;
+            }
+            String photoPath = photoStorageService.store(file);
+            student.setPhoto(photoPath);
+            student.setUpdatedAt(now);
+            studentRepository.save(student);
+            updated++;
+        }
+
+        log.info("Bulk student photos updated={} notFound={} skippedInvalid={}", updated, notFound, skippedInvalid);
+        return new PhotoBulkUploadResponse(updated, notFound, skippedInvalid);
+    }
+
+    @Transactional(readOnly = true)
+    public byte[] exportCsv() {
+        List<Student> students = studentRepository.findAllActive();
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (PrintWriter writer = new PrintWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8))) {
+            writer.println("Name,ID Number,RFID,Department,Course,School,Birthday");
+            for (Student student : students) {
+                writer.printf(
+                        "%s,%s,%s,%s,%s,%s,%s%n",
+                        csv(student.getName()),
+                        csv(student.getStudentNo()),
+                        csv(student.getRfid()),
+                        csv(student.getDepartment()),
+                        csv(student.getCourse()),
+                        csv(student.getSchool()),
+                        student.getBirthdate() == null ? "" : student.getBirthdate().toString()
+                );
+            }
+        }
+        return baos.toByteArray();
+    }
+
     private Student requireActive(Long id) {
         return studentRepository.findActiveById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Student not found"));
@@ -253,5 +330,16 @@ public class StudentService {
             return null;
         }
         return value.trim();
+    }
+
+    private static String csv(String value) {
+        if (value == null) {
+            return "";
+        }
+        String escaped = value.replace("\"", "\"\"");
+        if (escaped.contains(",") || escaped.contains("\"") || escaped.contains("\n")) {
+            return "\"" + escaped + "\"";
+        }
+        return escaped;
     }
 }

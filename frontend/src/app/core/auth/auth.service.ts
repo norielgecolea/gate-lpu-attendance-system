@@ -41,12 +41,17 @@ export class AuthService {
   }
 
   login(request: LoginRequest, rememberMe: boolean): Observable<LoginResponse> {
-    return this.http.post<LoginResponse>(`${environment.apiBaseUrl}/auth/login`, request).pipe(
-      tap((response) => {
-        this.persistSession(response, rememberMe);
-        this.notifications.connect(response.token);
-      }),
-    );
+    return this.http
+      .post<LoginResponse>(`${environment.apiBaseUrl}/auth/login`, {
+        ...request,
+        rememberMe,
+      })
+      .pipe(
+        tap((response) => {
+          this.persistSession(response, rememberMe);
+          this.notifications.connect(response.token);
+        }),
+      );
   }
 
   logout(): Observable<unknown> {
