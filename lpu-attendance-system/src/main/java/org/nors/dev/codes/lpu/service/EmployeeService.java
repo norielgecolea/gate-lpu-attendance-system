@@ -30,10 +30,16 @@ public class EmployeeService {
 
     private final EmployeeRepository employeeRepository;
     private final PhotoStorageService photoStorageService;
+    private final RfidUniquenessService rfidUniquenessService;
 
-    public EmployeeService(EmployeeRepository employeeRepository, PhotoStorageService photoStorageService) {
+    public EmployeeService(
+            EmployeeRepository employeeRepository,
+            PhotoStorageService photoStorageService,
+            RfidUniquenessService rfidUniquenessService
+    ) {
         this.employeeRepository = employeeRepository;
         this.photoStorageService = photoStorageService;
+        this.rfidUniquenessService = rfidUniquenessService;
     }
 
     @Transactional(readOnly = true)
@@ -61,6 +67,11 @@ public class EmployeeService {
         if (employeeRepository.findByEmployeeNo(employeeNo).isPresent()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Employee number already exists");
         }
+        rfidUniquenessService.assertAvailable(
+                normalizeOptional(request.rfid()),
+                RfidUniquenessService.OwnerType.EMPLOYEE,
+                null
+        );
 
         Employee employee = new Employee();
         applyRequest(employee, request, employeeNo);
@@ -75,8 +86,9 @@ public class EmployeeService {
 
     /**
      * Imports new employees only. Employee numbers already present (active or inactive),
-     * or repeated inside the same CSV, are skipped. RFID, department, position, and
-     * birthdate may be blank.
+     * or repeated inside the same CSV, are skipped. Rows whose RFID is already assigned
+     * to any active student/employee (or repeated in the CSV) are also skipped.
+     * RFID, department, position, and birthdate may be blank.
      */
     @Transactional
     public EmployeeImportResponse importEmployees(List<EmployeeRequest> requests) {
@@ -87,15 +99,28 @@ public class EmployeeService {
         Set<String> knownNumbers = employeeRepository.findAllEmployeeNumbers().stream()
                 .map(number -> number.toLowerCase(java.util.Locale.ROOT))
                 .collect(java.util.stream.Collectors.toCollection(HashSet::new));
+        Set<String> knownRfids = rfidUniquenessService.findAllActiveRfids();
         List<Employee> employees = new ArrayList<>();
         int skippedDuplicates = 0;
         Instant now = Instant.now();
 
         for (EmployeeRequest request : requests) {
             String employeeNo = normalizeRequired(request.employeeNo(), "Employee number");
-            if (!knownNumbers.add(employeeNo.toLowerCase(java.util.Locale.ROOT))) {
+            String numberKey = employeeNo.toLowerCase(java.util.Locale.ROOT);
+            if (knownNumbers.contains(numberKey)) {
                 skippedDuplicates++;
                 continue;
+            }
+
+            String rfid = normalizeOptional(request.rfid());
+            if (rfid != null && knownRfids.contains(rfid)) {
+                skippedDuplicates++;
+                continue;
+            }
+
+            knownNumbers.add(numberKey);
+            if (rfid != null) {
+                knownRfids.add(rfid);
             }
 
             Employee employee = new Employee();
@@ -121,6 +146,11 @@ public class EmployeeService {
         if (employeeRepository.existsByEmployeeNoExcludingId(employeeNo, id)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Employee number already exists");
         }
+        rfidUniquenessService.assertAvailable(
+                normalizeOptional(request.rfid()),
+                RfidUniquenessService.OwnerType.EMPLOYEE,
+                id
+        );
 
         applyRequest(employee, request, employeeNo);
         employee.setUpdatedAt(Instant.now());

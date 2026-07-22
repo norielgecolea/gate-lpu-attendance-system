@@ -156,7 +156,7 @@
     <div hlmDialogFooter class="gap-2">
       <button hlmBtn type="button" variant="outline" (click)="cancel()">Cancel</button>
       <button hlmBtn type="submit" [disabled]="saving()">
-        {{ mode === 'create' ? 'Create student' : 'Save changes' }}
+        {{ saving() ? 'Checking…' : mode === 'create' ? 'Create student' : 'Save changes' }}
       </button>
     </div>
   </form>

@@ -89,7 +89,6 @@ export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
   private static readonly PAGE_SIZE = 20;
 
   protected readonly identifier = signal('');
-  protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly errorNotFound = signal(false);
   protected readonly current = signal<TapResponse | null>(null);
@@ -169,8 +168,8 @@ export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
 
   ngAfterViewInit(): void {
     this.focusInput();
-    // Retry if login gesture fullscreen was blocked or session restored.
-    void this.fullscreen.enter();
+    // Keep fullscreen from login; only attempt again for remember-me cold starts.
+    void this.fullscreen.enterOnLaunch();
     this.startAutoScroll();
   }
 
@@ -197,23 +196,28 @@ export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
   }
 
   protected submit(): void {
-    const value = this.identifier().trim();
-    if (!value || this.loading()) {
+    const el = this.idInput?.nativeElement;
+    // Prefer the native value — wedge scanners can finish Enter before ngModel catches up.
+    const value = (el?.value ?? this.identifier()).trim();
+    if (!value) {
       return;
     }
-    this.loading.set(true);
+
+    // Clear immediately so the next rapid tap starts a fresh scan buffer.
+    this.identifier.set('');
+    if (el) {
+      el.value = '';
+    }
+    this.focusInput();
+
     this.clearErrorTimer();
     this.api.tap(value).subscribe({
       next: (tap) => {
-        this.loading.set(false);
-        this.identifier.set('');
         this.error.set(null);
         this.applyTap(tap, true);
         this.focusInput();
       },
       error: (err: { status?: number; error?: { message?: string } | string }) => {
-        this.loading.set(false);
-        this.identifier.set('');
         const body = err?.error;
         const apiMessage =
           typeof body === 'string'
@@ -530,7 +534,7 @@ export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
 
   private focusInput(): void {
     const el = this.idInput?.nativeElement;
-    if (!el || this.loading()) {
+    if (!el) {
       return;
     }
     if (document.activeElement !== el) {

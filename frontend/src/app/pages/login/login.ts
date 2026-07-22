@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideEye, lucideEyeOff } from '@ng-icons/lucide';
+import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
 import { FullscreenService } from '../../core/fullscreen.service';
 
@@ -75,7 +76,7 @@ export class Login implements OnDestroy {
     clearInterval(this.slideshowTimer);
   }
 
-  protected onSubmit(): void {
+  protected async onSubmit(): Promise<void> {
     this.error.set(null);
     const username = this.username().trim();
     const password = this.password();
@@ -86,19 +87,21 @@ export class Login implements OnDestroy {
     }
 
     this.loading.set(true);
-    this.auth.login({ username, password }, this.rememberMe()).subscribe({
-      next: () => {
-        this.loading.set(false);
-        // Must run in the login click gesture chain for browsers to allow fullscreen.
-        if (this.auth.isGuard() || this.auth.isMonitoring()) {
-          void this.fullscreen.enter();
-        }
-        void this.router.navigateByUrl(this.auth.homeRoute());
-      },
-      error: (err: { error?: { message?: string }; status?: number }) => {
-        this.loading.set(false);
-        this.error.set(err?.error?.message ?? 'Login failed. Please try again.');
-      },
-    });
+    try {
+      await firstValueFrom(this.auth.login({ username, password }, this.rememberMe()));
+      // Fullscreen only for kiosk roles — admin must never enter then exit.
+      if (this.auth.isGuard() || this.auth.isMonitoring()) {
+        await this.fullscreen.enter();
+      }
+      await this.router.navigateByUrl(this.auth.homeRoute());
+    } catch (err: unknown) {
+      const message =
+        err && typeof err === 'object' && 'error' in err
+          ? ((err as { error?: { message?: string } }).error?.message ?? null)
+          : null;
+      this.error.set(message ?? 'Login failed. Please try again.');
+    } finally {
+      this.loading.set(false);
+    }
   }
 }

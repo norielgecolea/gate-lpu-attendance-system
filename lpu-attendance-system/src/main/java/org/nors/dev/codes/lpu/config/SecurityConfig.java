@@ -63,6 +63,8 @@ public class SecurityConfig {
                         .hasAnyRole("SUPERADMIN", "OSAS", "HR")
                         .requestMatchers("/api/employees/**")
                         .hasAnyRole("SUPERADMIN", "HR")
+                        .requestMatchers(HttpMethod.GET, "/api/rfid/**")
+                        .hasAnyRole("SUPERADMIN", "OSAS", "HR")
                         .requestMatchers("/api/users/**")
                         .hasAnyRole("SUPERADMIN", "OSAS", "HR")
                         .requestMatchers("/api/tap-errors/**")

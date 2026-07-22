@@ -10,6 +10,7 @@ import {
 } from '@spartan-ng/helm/dialog';
 import { HlmFieldImports } from '@spartan-ng/helm/field';
 import { HlmInput } from '@spartan-ng/helm/input';
+import { RfidApiService } from '../../core/rfid/rfid-api.service';
 import { studentPhotoUrl } from '../../core/students/student-photo.util';
 import type { Employee } from './employees.store';
 
@@ -47,6 +48,7 @@ export interface EmployeeFormResult {
 export class EmployeeFormDialog {
   private readonly dialogRef = inject<BrnDialogRef<EmployeeFormResult | null>>(BrnDialogRef);
   private readonly context = injectBrnDialogContext<EmployeeFormContext>();
+  private readonly rfidApi = inject(RfidApiService);
 
   protected readonly mode = this.context.mode;
   protected readonly error = signal<string | null>(null);
@@ -108,19 +110,40 @@ export class EmployeeFormDialog {
       this.error.set('Name, employee number, and department are required.');
       return;
     }
+    if (this.saving()) {
+      return;
+    }
 
     const photo = this.clearPhoto() ? null : (this.existingPhoto ?? null);
-
-    this.dialogRef.close({
+    const rfid = this.rfid.trim() || null;
+    const result: EmployeeFormResult = {
       name: this.name.trim(),
       employeeNo: this.employeeNo.trim(),
       photo,
       photoFile: this.photoFile,
       clearPhoto: this.clearPhoto(),
-      rfid: this.rfid.trim() || null,
+      rfid,
       birthdate: this.birthdate.trim() || null,
       department: this.department.trim(),
       position: this.position.trim() || null,
-    });
+    };
+
+    this.saving.set(true);
+    this.rfidApi
+      .checkDuplicate(rfid, 'EMPLOYEE', this.context.employee?.id)
+      .subscribe({
+        next: (conflict) => {
+          if (conflict) {
+            this.saving.set(false);
+            this.error.set(conflict);
+            return;
+          }
+          this.dialogRef.close(result);
+        },
+        error: () => {
+          this.saving.set(false);
+          this.error.set('Failed to verify RFID. Please try again.');
+        },
+      });
   }
 }

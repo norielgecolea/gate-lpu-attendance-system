@@ -79,6 +79,17 @@ public class EmployeeRepository {
     }
 
     @Transactional(readOnly = true)
+    public Optional<Employee> findByRfid(String rfid) {
+        return currentSession()
+                .createQuery(
+                        "FROM Employee e WHERE e.rfid = :rfid AND e.deleted = false",
+                        Employee.class
+                )
+                .setParameter("rfid", rfid)
+                .uniqueResultOptional();
+    }
+
+    @Transactional(readOnly = true)
     public Optional<Employee> findByRfidOrEmployeeNo(String identifier) {
         return currentSession()
                 .createQuery(
@@ -88,6 +99,17 @@ public class EmployeeRepository {
                 )
                 .setParameter("identifier", identifier)
                 .uniqueResultOptional();
+    }
+
+    @Transactional(readOnly = true)
+    public Set<String> findAllActiveRfids() {
+        return currentSession()
+                .createQuery(
+                        "SELECT e.rfid FROM Employee e WHERE e.deleted = false AND e.rfid IS NOT NULL",
+                        String.class
+                )
+                .getResultStream()
+                .collect(Collectors.toSet());
     }
 
     @Transactional(readOnly = true)

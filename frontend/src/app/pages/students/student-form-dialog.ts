@@ -10,6 +10,7 @@ import {
 } from '@spartan-ng/helm/dialog';
 import { HlmFieldImports } from '@spartan-ng/helm/field';
 import { HlmInput } from '@spartan-ng/helm/input';
+import { RfidApiService } from '../../core/rfid/rfid-api.service';
 import { studentPhotoUrl } from '../../core/students/student-photo.util';
 import type { Student } from './students.store';
 
@@ -48,6 +49,7 @@ export interface StudentFormResult {
 export class StudentFormDialog {
   private readonly dialogRef = inject<BrnDialogRef<StudentFormResult | null>>(BrnDialogRef);
   private readonly context = injectBrnDialogContext<StudentFormContext>();
+  private readonly rfidApi = inject(RfidApiService);
 
   protected readonly mode = this.context.mode;
   protected readonly error = signal<string | null>(null);
@@ -112,24 +114,45 @@ export class StudentFormDialog {
       this.error.set('Name, student number, department, course, and school are required.');
       return;
     }
+    if (this.saving()) {
+      return;
+    }
 
     const photo = this.clearPhoto()
       ? null
       : this.photoFile
         ? this.existingPhoto
         : (this.existingPhoto ?? null);
-
-    this.dialogRef.close({
+    const rfid = this.rfid.trim() || null;
+    const result: StudentFormResult = {
       name: this.name.trim(),
       studentNo: this.studentNo.trim(),
       photo,
       photoFile: this.photoFile,
       clearPhoto: this.clearPhoto(),
-      rfid: this.rfid.trim() || null,
+      rfid,
       birthdate: this.birthdate.trim() || null,
       department: this.department.trim(),
       course: this.course.trim(),
       school: this.school.trim(),
-    });
+    };
+
+    this.saving.set(true);
+    this.rfidApi
+      .checkDuplicate(rfid, 'STUDENT', this.context.student?.id)
+      .subscribe({
+        next: (conflict) => {
+          if (conflict) {
+            this.saving.set(false);
+            this.error.set(conflict);
+            return;
+          }
+          this.dialogRef.close(result);
+        },
+        error: () => {
+          this.saving.set(false);
+          this.error.set('Failed to verify RFID. Please try again.');
+        },
+      });
   }
 }

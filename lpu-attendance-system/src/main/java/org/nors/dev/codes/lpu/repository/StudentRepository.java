@@ -153,6 +153,17 @@ public class StudentRepository {
     }
 
     @Transactional(readOnly = true)
+    public Set<String> findAllActiveRfids() {
+        return currentSession()
+                .createQuery(
+                        "SELECT s.rfid FROM Student s WHERE s.deleted = false AND s.rfid IS NOT NULL",
+                        String.class
+                )
+                .getResultStream()
+                .collect(Collectors.toSet());
+    }
+
+    @Transactional(readOnly = true)
     public boolean existsByStudentNoExcludingId(String studentNo, Long excludeId) {
         Long count = currentSession()
                 .createQuery(

@@ -8,6 +8,7 @@ import {
 } from '@ng-icons/lucide';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmInput } from '@spartan-ng/helm/input';
+import { RfidApiService } from '../../core/rfid/rfid-api.service';
 import { studentPhotoUrl } from '../../core/students/student-photo.util';
 import { StudentsApiService } from '../../core/students/students-api.service';
 import type { Student } from './students.store';
@@ -29,6 +30,7 @@ export class StudentRfidRegistration {
   @ViewChild('rfidInput') private readonly rfidInput?: ElementRef<HTMLInputElement>;
 
   private readonly api = inject(StudentsApiService);
+  private readonly rfidApi = inject(RfidApiService);
 
   protected readonly students = signal<Student[]>([]);
   protected readonly loading = signal(true);
@@ -77,39 +79,47 @@ export class StudentRfidRegistration {
     if (!student || !rfid || this.saving()) {
       return;
     }
-    const taken = this.students().find((s) => s.rfid === rfid && s.id !== student.id);
-    if (taken) {
-      this.error.set(`This RFID is already assigned to ${taken.name}.`);
-      this.rfidValue.set('');
-      setTimeout(() => this.rfidInput?.nativeElement.focus());
-      return;
-    }
     this.error.set(null);
     this.saving.set(true);
-    this.api
-      .update(student.id, {
-        name: student.name,
-        studentNo: student.studentNo,
-        photo: student.photo ?? null,
-        rfid,
-        birthdate: student.birthdate ?? null,
-        department: student.department,
-        course: student.course,
-        school: student.school,
-      })
-      .subscribe({
-        next: (updated) => {
+    this.rfidApi.checkDuplicate(rfid, 'STUDENT', student.id).subscribe({
+      next: (conflict) => {
+        if (conflict) {
           this.saving.set(false);
-          this.students.update((list) => list.map((s) => (s.id === updated.id ? updated : s)));
-          this.record.set(updated);
+          this.error.set(conflict);
           this.rfidValue.set('');
-          this.success.set(rfid);
-        },
-        error: (err: { error?: { message?: string } }) => {
-          this.saving.set(false);
-          this.error.set(err?.error?.message ?? 'Failed to register RFID.');
-        },
-      });
+          setTimeout(() => this.rfidInput?.nativeElement.focus());
+          return;
+        }
+        this.api
+          .update(student.id, {
+            name: student.name,
+            studentNo: student.studentNo,
+            photo: student.photo ?? null,
+            rfid,
+            birthdate: student.birthdate ?? null,
+            department: student.department,
+            course: student.course,
+            school: student.school,
+          })
+          .subscribe({
+            next: (updated) => {
+              this.saving.set(false);
+              this.students.update((list) => list.map((s) => (s.id === updated.id ? updated : s)));
+              this.record.set(updated);
+              this.rfidValue.set('');
+              this.success.set(rfid);
+            },
+            error: (err: { error?: { message?: string } }) => {
+              this.saving.set(false);
+              this.error.set(err?.error?.message ?? 'Failed to register RFID.');
+            },
+          });
+      },
+      error: () => {
+        this.saving.set(false);
+        this.error.set('Failed to verify RFID. Please try again.');
+      },
+    });
   }
 
   protected reset(): void {

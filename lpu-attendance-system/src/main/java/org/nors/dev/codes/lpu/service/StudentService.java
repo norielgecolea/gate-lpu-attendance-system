@@ -32,10 +32,16 @@ public class StudentService {
 
     private final StudentRepository studentRepository;
     private final PhotoStorageService photoStorageService;
+    private final RfidUniquenessService rfidUniquenessService;
 
-    public StudentService(StudentRepository studentRepository, PhotoStorageService photoStorageService) {
+    public StudentService(
+            StudentRepository studentRepository,
+            PhotoStorageService photoStorageService,
+            RfidUniquenessService rfidUniquenessService
+    ) {
         this.studentRepository = studentRepository;
         this.photoStorageService = photoStorageService;
+        this.rfidUniquenessService = rfidUniquenessService;
     }
 
     @Transactional(readOnly = true)
@@ -56,6 +62,11 @@ public class StudentService {
         if (studentRepository.findByStudentNo(studentNo).isPresent()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Student number already exists");
         }
+        rfidUniquenessService.assertAvailable(
+                normalizeOptional(request.rfid()),
+                RfidUniquenessService.OwnerType.STUDENT,
+                null
+        );
 
         Student student = new Student();
         applyRequest(student, request, studentNo);
@@ -71,6 +82,8 @@ public class StudentService {
     /**
      * Imports new students only. Student numbers already present in the database
      * (active or inactive), or repeated inside the same CSV, are skipped.
+     * Rows whose RFID is already assigned to any active student/employee
+     * (or repeated in the CSV) are also skipped.
      */
     @Transactional
     public StudentImportResponse importStudents(List<StudentRequest> requests) {
@@ -81,15 +94,28 @@ public class StudentService {
         Set<String> knownNumbers = studentRepository.findAllStudentNumbers().stream()
                 .map(number -> number.toLowerCase(java.util.Locale.ROOT))
                 .collect(java.util.stream.Collectors.toCollection(HashSet::new));
+        Set<String> knownRfids = rfidUniquenessService.findAllActiveRfids();
         List<Student> students = new ArrayList<>();
         int skippedDuplicates = 0;
         Instant now = Instant.now();
 
         for (StudentRequest request : requests) {
             String studentNo = normalizeRequired(request.studentNo(), "Student number");
-            if (!knownNumbers.add(studentNo.toLowerCase(java.util.Locale.ROOT))) {
+            String numberKey = studentNo.toLowerCase(java.util.Locale.ROOT);
+            if (knownNumbers.contains(numberKey)) {
                 skippedDuplicates++;
                 continue;
+            }
+
+            String rfid = normalizeOptional(request.rfid());
+            if (rfid != null && knownRfids.contains(rfid)) {
+                skippedDuplicates++;
+                continue;
+            }
+
+            knownNumbers.add(numberKey);
+            if (rfid != null) {
+                knownRfids.add(rfid);
             }
 
             Student student = new Student();
@@ -115,6 +141,11 @@ public class StudentService {
         if (studentRepository.existsByStudentNoExcludingId(studentNo, id)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Student number already exists");
         }
+        rfidUniquenessService.assertAvailable(
+                normalizeOptional(request.rfid()),
+                RfidUniquenessService.OwnerType.STUDENT,
+                id
+        );
 
         applyRequest(student, request, studentNo);
         student.setUpdatedAt(Instant.now());

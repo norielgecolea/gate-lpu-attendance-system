@@ -222,7 +222,7 @@ export class Students {
         next: (result) => {
           this.importing.set(false);
           this.importMessage.set(
-            `Imported ${result.imported} student(s). Skipped ${result.skippedDuplicates} duplicate student number(s).`,
+            `Imported ${result.imported} student(s). Skipped ${result.skippedDuplicates} duplicate student number(s) or RFID(s).`,
           );
           this.reload();
         },
