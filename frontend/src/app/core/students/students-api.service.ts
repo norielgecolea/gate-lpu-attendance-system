@@ -7,6 +7,7 @@ import type { Student } from '../../pages/students/students.store';
 export type StudentPayload = Omit<Student, 'id' | 'financeTagged'>;
 export interface StudentImportResult {
   imported: number;
+  updated: number;
   skippedDuplicates: number;
 }
 export interface PhotoBulkUploadResult {

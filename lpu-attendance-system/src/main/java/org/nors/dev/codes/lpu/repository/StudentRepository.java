@@ -142,6 +142,19 @@ public class StudentRepository {
                 .uniqueResultOptional();
     }
 
+    /** Lowercased student number → entity (active and inactive), for CSV upsert. */
+    @Transactional(readOnly = true)
+    public java.util.Map<String, Student> findAllByStudentNoKey() {
+        return currentSession()
+                .createQuery("FROM Student s", Student.class)
+                .getResultStream()
+                .collect(Collectors.toMap(
+                        s -> s.getStudentNo().toLowerCase(java.util.Locale.ROOT),
+                        s -> s,
+                        (a, b) -> a
+                ));
+    }
+
     @Transactional(readOnly = true)
     public List<Student> findActiveFinanceTagged() {
         return currentSession()

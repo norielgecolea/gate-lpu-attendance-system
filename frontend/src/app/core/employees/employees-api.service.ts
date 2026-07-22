@@ -8,6 +8,7 @@ export type EmployeePayload = Omit<Employee, 'id'>;
 
 export interface EmployeeImportResult {
   imported: number;
+  updated: number;
   skippedDuplicates: number;
 }
 

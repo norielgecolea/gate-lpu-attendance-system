@@ -71,6 +71,27 @@ public class EmployeeRepository {
     }
 
     @Transactional(readOnly = true)
+    public Optional<Employee> findByEmployeeNoAnyStatus(String employeeNo) {
+        return currentSession()
+                .createQuery("FROM Employee e WHERE e.employeeNo = :employeeNo", Employee.class)
+                .setParameter("employeeNo", employeeNo)
+                .uniqueResultOptional();
+    }
+
+    /** Lowercased employee number → entity (active and inactive), for CSV upsert. */
+    @Transactional(readOnly = true)
+    public java.util.Map<String, Employee> findAllByEmployeeNoKey() {
+        return currentSession()
+                .createQuery("FROM Employee e", Employee.class)
+                .getResultStream()
+                .collect(Collectors.toMap(
+                        e -> e.getEmployeeNo().toLowerCase(java.util.Locale.ROOT),
+                        e -> e,
+                        (a, b) -> a
+                ));
+    }
+
+    @Transactional(readOnly = true)
     public Set<String> findAllEmployeeNumbers() {
         return currentSession()
                 .createQuery("SELECT e.employeeNo FROM Employee e", String.class)

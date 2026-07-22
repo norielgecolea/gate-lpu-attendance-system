@@ -85,10 +85,10 @@ public class EmployeeService {
     }
 
     /**
-     * Imports new employees only. Employee numbers already present (active or inactive),
-     * or repeated inside the same CSV, are skipped. Rows whose RFID is already assigned
-     * to any active student/employee (or repeated in the CSV) are also skipped.
-     * RFID, department, position, and birthdate may be blank.
+     * Upserts employees from CSV. Matching employee numbers update the existing
+     * record; new numbers are inserted. Rows whose RFID is already assigned to a
+     * different person (or repeated for a different number in the CSV) are skipped.
+     * Blank RFID/photo/birthdate on update leave the existing values unchanged.
      */
     @Transactional
     public EmployeeImportResponse importEmployees(List<EmployeeRequest> requests) {
@@ -96,31 +96,39 @@ public class EmployeeService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Import is limited to 10,000 rows");
         }
 
-        Set<String> knownNumbers = employeeRepository.findAllEmployeeNumbers().stream()
-                .map(number -> number.toLowerCase(java.util.Locale.ROOT))
-                .collect(java.util.stream.Collectors.toCollection(HashSet::new));
+        java.util.Map<String, Employee> existingByNo = employeeRepository.findAllByEmployeeNoKey();
         Set<String> knownRfids = rfidUniquenessService.findAllActiveRfids();
-        List<Employee> employees = new ArrayList<>();
+        List<Employee> toInsert = new ArrayList<>();
+        int imported = 0;
+        int updated = 0;
         int skippedDuplicates = 0;
         Instant now = Instant.now();
 
         for (EmployeeRequest request : requests) {
             String employeeNo = normalizeRequired(request.employeeNo(), "Employee number");
             String numberKey = employeeNo.toLowerCase(java.util.Locale.ROOT);
-            if (knownNumbers.contains(numberKey)) {
-                skippedDuplicates++;
-                continue;
-            }
-
             String rfid = normalizeOptional(request.rfid());
-            if (rfid != null && knownRfids.contains(rfid)) {
-                skippedDuplicates++;
+            Employee existing = existingByNo.get(numberKey);
+
+            if (existing != null) {
+                if (rfidConflicts(rfid, existing.getRfid(), knownRfids)) {
+                    skippedDuplicates++;
+                    continue;
+                }
+                String previousRfid = existing.getRfid();
+                applyImportUpdate(existing, request, employeeNo);
+                existing.setUpdatedAt(now);
+                if (existing.getId() != null) {
+                    employeeRepository.save(existing);
+                    updated++;
+                }
+                releaseAndClaimRfid(knownRfids, previousRfid, existing.getRfid());
                 continue;
             }
 
-            knownNumbers.add(numberKey);
-            if (rfid != null) {
-                knownRfids.add(rfid);
+            if (rfidConflicts(rfid, null, knownRfids)) {
+                skippedDuplicates++;
+                continue;
             }
 
             Employee employee = new Employee();
@@ -128,14 +136,24 @@ public class EmployeeService {
             employee.setCreatedAt(now);
             employee.setUpdatedAt(now);
             employee.setDeleted(false);
-            employees.add(employee);
+            toInsert.add(employee);
+            existingByNo.put(numberKey, employee);
+            if (rfid != null) {
+                knownRfids.add(rfid);
+            }
+            imported++;
         }
 
-        if (!employees.isEmpty()) {
-            employeeRepository.persistBatch(employees);
+        if (!toInsert.isEmpty()) {
+            employeeRepository.persistBatch(toInsert);
         }
-        log.info("Imported employees imported={} skippedDuplicates={}", employees.size(), skippedDuplicates);
-        return new EmployeeImportResponse(employees.size(), skippedDuplicates);
+        log.info(
+                "Imported employees imported={} updated={} skippedDuplicates={}",
+                imported,
+                updated,
+                skippedDuplicates
+        );
+        return new EmployeeImportResponse(imported, updated, skippedDuplicates);
     }
 
     @Transactional
@@ -271,6 +289,36 @@ public class EmployeeService {
         employee.setBirthdate(request.birthdate());
         employee.setDepartment(normalizeOptional(request.department()));
         employee.setPosition(normalizeOptional(request.position()));
+    }
+
+    /** CSV upsert: blank optional fields keep the values already on the record. */
+    private void applyImportUpdate(Employee employee, EmployeeRequest request, String employeeNo) {
+        String previousPhoto = employee.getPhoto();
+        String previousRfid = employee.getRfid();
+        var previousBirthdate = employee.getBirthdate();
+        applyRequest(employee, request, employeeNo);
+        if (normalizeOptional(request.photo()) == null) {
+            employee.setPhoto(previousPhoto);
+        }
+        if (normalizeOptional(request.rfid()) == null) {
+            employee.setRfid(previousRfid);
+        }
+        if (request.birthdate() == null) {
+            employee.setBirthdate(previousBirthdate);
+        }
+    }
+
+    private static boolean rfidConflicts(String rfid, String currentRfid, Set<String> knownRfids) {
+        return rfid != null && !rfid.equals(currentRfid) && knownRfids.contains(rfid);
+    }
+
+    private static void releaseAndClaimRfid(Set<String> knownRfids, String previous, String next) {
+        if (previous != null && !previous.equals(next)) {
+            knownRfids.remove(previous);
+        }
+        if (next != null) {
+            knownRfids.add(next);
+        }
     }
 
     private static String normalizeRequired(String value, String field) {

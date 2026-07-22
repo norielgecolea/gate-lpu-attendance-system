@@ -35,7 +35,7 @@ export class StudentsStore {
   private searchTerm = '';
 
   /** Loads the first page for the given search term (server-side paging). */
-  load(search: string = this.searchTerm): Observable<Student[]> {
+  load(search: string = ''): Observable<Student[]> {
     this.searchTerm = search;
     this.loading.set(true);
     this.error.set(null);

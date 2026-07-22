@@ -157,7 +157,9 @@ export class Students {
 
   protected reload(): void {
     this.actionError.set(null);
-    this.store.load().subscribe({ error: () => undefined });
+    // Always use the visible search box value so leaving/returning the page
+    // (empty input) reloads the default list instead of a stale store term.
+    this.store.load(this.search().trim()).subscribe({ error: () => undefined });
   }
 
   protected openCreate(): void {
@@ -222,7 +224,7 @@ export class Students {
         next: (result) => {
           this.importing.set(false);
           this.importMessage.set(
-            `Imported ${result.imported} student(s). Skipped ${result.skippedDuplicates} duplicate student number(s) or RFID(s).`,
+            `Imported ${result.imported} new, updated ${result.updated} existing. Skipped ${result.skippedDuplicates} duplicate RFID(s).`,
           );
           this.reload();
         },

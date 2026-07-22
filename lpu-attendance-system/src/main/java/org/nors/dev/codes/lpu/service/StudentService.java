@@ -80,10 +80,10 @@ public class StudentService {
     }
 
     /**
-     * Imports new students only. Student numbers already present in the database
-     * (active or inactive), or repeated inside the same CSV, are skipped.
-     * Rows whose RFID is already assigned to any active student/employee
-     * (or repeated in the CSV) are also skipped.
+     * Upserts students from CSV. Matching student numbers update the existing
+     * record; new numbers are inserted. Rows whose RFID is already assigned to a
+     * different person (or repeated for a different number in the CSV) are skipped.
+     * Blank RFID/photo/birthdate on update leave the existing values unchanged.
      */
     @Transactional
     public StudentImportResponse importStudents(List<StudentRequest> requests) {
@@ -91,31 +91,39 @@ public class StudentService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Import is limited to 10,000 rows");
         }
 
-        Set<String> knownNumbers = studentRepository.findAllStudentNumbers().stream()
-                .map(number -> number.toLowerCase(java.util.Locale.ROOT))
-                .collect(java.util.stream.Collectors.toCollection(HashSet::new));
+        java.util.Map<String, Student> existingByNo = studentRepository.findAllByStudentNoKey();
         Set<String> knownRfids = rfidUniquenessService.findAllActiveRfids();
-        List<Student> students = new ArrayList<>();
+        List<Student> toInsert = new ArrayList<>();
+        int imported = 0;
+        int updated = 0;
         int skippedDuplicates = 0;
         Instant now = Instant.now();
 
         for (StudentRequest request : requests) {
             String studentNo = normalizeRequired(request.studentNo(), "Student number");
             String numberKey = studentNo.toLowerCase(java.util.Locale.ROOT);
-            if (knownNumbers.contains(numberKey)) {
-                skippedDuplicates++;
-                continue;
-            }
-
             String rfid = normalizeOptional(request.rfid());
-            if (rfid != null && knownRfids.contains(rfid)) {
-                skippedDuplicates++;
+            Student existing = existingByNo.get(numberKey);
+
+            if (existing != null) {
+                if (rfidConflicts(rfid, existing.getRfid(), knownRfids)) {
+                    skippedDuplicates++;
+                    continue;
+                }
+                String previousRfid = existing.getRfid();
+                applyImportUpdate(existing, request, studentNo);
+                existing.setUpdatedAt(now);
+                if (existing.getId() != null) {
+                    studentRepository.save(existing);
+                    updated++;
+                }
+                releaseAndClaimRfid(knownRfids, previousRfid, existing.getRfid());
                 continue;
             }
 
-            knownNumbers.add(numberKey);
-            if (rfid != null) {
-                knownRfids.add(rfid);
+            if (rfidConflicts(rfid, null, knownRfids)) {
+                skippedDuplicates++;
+                continue;
             }
 
             Student student = new Student();
@@ -123,14 +131,24 @@ public class StudentService {
             student.setCreatedAt(now);
             student.setUpdatedAt(now);
             student.setDeleted(false);
-            students.add(student);
+            toInsert.add(student);
+            existingByNo.put(numberKey, student);
+            if (rfid != null) {
+                knownRfids.add(rfid);
+            }
+            imported++;
         }
 
-        if (!students.isEmpty()) {
-            studentRepository.persistBatch(students);
+        if (!toInsert.isEmpty()) {
+            studentRepository.persistBatch(toInsert);
         }
-        log.info("Imported students imported={} skippedDuplicates={}", students.size(), skippedDuplicates);
-        return new StudentImportResponse(students.size(), skippedDuplicates);
+        log.info(
+                "Imported students imported={} updated={} skippedDuplicates={}",
+                imported,
+                updated,
+                skippedDuplicates
+        );
+        return new StudentImportResponse(imported, updated, skippedDuplicates);
     }
 
     @Transactional
@@ -346,6 +364,36 @@ public class StudentService {
         student.setDepartment(normalizeRequired(request.department(), "Department"));
         student.setCourse(normalizeRequired(request.course(), "Course"));
         student.setSchool(normalizeRequired(request.school(), "School"));
+    }
+
+    /** CSV upsert: blank optional fields keep the values already on the record. */
+    private void applyImportUpdate(Student student, StudentRequest request, String studentNo) {
+        String previousPhoto = student.getPhoto();
+        String previousRfid = student.getRfid();
+        var previousBirthdate = student.getBirthdate();
+        applyRequest(student, request, studentNo);
+        if (normalizeOptional(request.photo()) == null) {
+            student.setPhoto(previousPhoto);
+        }
+        if (normalizeOptional(request.rfid()) == null) {
+            student.setRfid(previousRfid);
+        }
+        if (request.birthdate() == null) {
+            student.setBirthdate(previousBirthdate);
+        }
+    }
+
+    private static boolean rfidConflicts(String rfid, String currentRfid, Set<String> knownRfids) {
+        return rfid != null && !rfid.equals(currentRfid) && knownRfids.contains(rfid);
+    }
+
+    private static void releaseAndClaimRfid(Set<String> knownRfids, String previous, String next) {
+        if (previous != null && !previous.equals(next)) {
+            knownRfids.remove(previous);
+        }
+        if (next != null) {
+            knownRfids.add(next);
+        }
     }
 
     private static String normalizeRequired(String value, String field) {

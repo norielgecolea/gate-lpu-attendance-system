@@ -203,7 +203,7 @@ export class Employees {
         next: (result) => {
           this.importing.set(false);
           this.importMessage.set(
-            `Imported ${result.imported} employee(s). Skipped ${result.skippedDuplicates} duplicate employee number(s) or RFID(s).`,
+            `Imported ${result.imported} new, updated ${result.updated} existing. Skipped ${result.skippedDuplicates} duplicate RFID(s).`,
           );
           this.reload();
         },
