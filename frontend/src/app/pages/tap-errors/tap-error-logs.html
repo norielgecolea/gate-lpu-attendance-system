@@ -1,6 +1,6 @@
 <div class="flex min-h-0 flex-1 flex-col gap-4">
   <div class="flex flex-wrap items-center gap-2">
-    <div class="relative min-w-0 flex-1">
+    <div class="relative min-w-0 flex-1 basis-48">
       <ng-icon
         name="lucideSearch"
         class="text-muted-foreground pointer-events-none absolute inset-y-0 left-3 my-auto text-base"
@@ -14,6 +14,14 @@
         (ngModelChange)="filter.set($event)"
       />
     </div>
+    <input
+      hlmInput
+      class="bg-card w-auto"
+      type="date"
+      [ngModel]="date()"
+      (ngModelChange)="onDateChange($event)"
+      aria-label="Filter by date"
+    />
     <button hlmBtn variant="outline" class="gap-1.5" type="button" (click)="reload()" [disabled]="loading()">
       <ng-icon name="lucideRefreshCw" class="text-base" />
       Refresh
@@ -27,13 +35,14 @@
       (click)="clearLogs()"
     >
       <ng-icon name="lucideEraser" class="text-base" />
-      {{ clearing() ? 'Clearing…' : 'Clear Logs' }}
+      {{ clearing() ? 'Clearing…' : 'Clear Day' }}
     </button>
   </div>
 
   <p class="text-muted-foreground text-sm">
-    Unrecognized RFID / ID taps from any gate. Showing {{ filtered().length }} of
-    {{ logs().length }} log(s).
+    Unrecognized RFID / ID taps for
+    <span class="text-foreground font-medium">{{ date() }}</span>.
+    Showing {{ filtered().length }} of {{ logs().length }} log(s).
   </p>
 
   @if (error()) {
@@ -81,7 +90,7 @@
           } @empty {
             <tr hlmTr>
               <td hlmTd colspan="4" class="text-muted-foreground py-10 text-center">
-                No RFID reading errors logged yet.
+                No RFID reading errors for this date.
               </td>
             </tr>
           }

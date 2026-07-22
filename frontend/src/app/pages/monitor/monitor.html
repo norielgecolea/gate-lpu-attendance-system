@@ -112,7 +112,7 @@
   >
     <div class="flex flex-col gap-3 p-3 sm:gap-4 sm:p-4 md:gap-5 md:p-6">
       <!-- Stat tiles -->
-      <div class="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
+      <div class="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-6">
         <div class="flex items-center gap-2.5 rounded-2xl bg-slate-900 p-3 ring-1 ring-slate-800 sm:gap-3 sm:p-4">
           <div class="grid size-9 shrink-0 place-items-center rounded-xl bg-sky-500/15 text-sky-400 sm:size-11">
             <ng-icon name="lucideGraduationCap" class="text-lg sm:text-xl" />
@@ -141,9 +141,31 @@
           </div>
           <div class="min-w-0 leading-tight">
             <p class="text-xl font-bold tabular-nums sm:text-2xl md:text-3xl">
-              {{ currentlyInside() | number }}
+              {{ studentsInside() | number }}
             </p>
-            <p class="text-[10px] font-medium text-slate-400 sm:text-xs">Currently inside</p>
+            <p class="text-[10px] font-medium text-slate-400 sm:text-xs">Students inside</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2.5 rounded-2xl bg-slate-900 p-3 ring-1 ring-slate-800 sm:gap-3 sm:p-4">
+          <div class="grid size-9 shrink-0 place-items-center rounded-xl bg-teal-500/15 text-teal-400 sm:size-11">
+            <ng-icon name="lucideDoorOpen" class="text-lg sm:text-xl" />
+          </div>
+          <div class="min-w-0 leading-tight">
+            <p class="text-xl font-bold tabular-nums sm:text-2xl md:text-3xl">
+              {{ employeesInside() | number }}
+            </p>
+            <p class="text-[10px] font-medium text-slate-400 sm:text-xs">Employees inside</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2.5 rounded-2xl bg-slate-900 p-3 ring-1 ring-slate-800 sm:gap-3 sm:p-4">
+          <div class="grid size-9 shrink-0 place-items-center rounded-xl bg-red-500/15 text-red-400 sm:size-11">
+            <ng-icon name="lucideTriangleAlert" class="text-lg sm:text-xl" />
+          </div>
+          <div class="min-w-0 leading-tight">
+            <p class="text-xl font-bold tabular-nums sm:text-2xl md:text-3xl">
+              {{ rfidErrorCount() | number }}
+            </p>
+            <p class="text-[10px] font-medium text-slate-400 sm:text-xs">RFID errors today</p>
           </div>
         </div>
         <div class="flex items-center gap-2.5 rounded-2xl bg-slate-900 p-3 ring-1 ring-slate-800 sm:gap-3 sm:p-4">

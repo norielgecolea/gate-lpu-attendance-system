@@ -67,6 +67,8 @@ public class SecurityConfig {
                         .hasAnyRole("SUPERADMIN", "OSAS", "HR")
                         .requestMatchers("/api/users/**")
                         .hasAnyRole("SUPERADMIN", "OSAS", "HR")
+                        .requestMatchers(HttpMethod.GET, "/api/tap-errors/count")
+                        .hasAnyRole("SUPERADMIN", "OSAS", "HR", "MONITORING")
                         .requestMatchers("/api/tap-errors/**")
                         .hasAnyRole("SUPERADMIN", "OSAS", "HR")
                         // Kiosk endpoints stay available to guards; reporting is admin/monitoring.

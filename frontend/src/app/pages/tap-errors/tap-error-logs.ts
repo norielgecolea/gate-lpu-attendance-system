@@ -13,6 +13,10 @@ import {
   type TapErrorLog,
 } from '../../core/tap-errors/tap-error-logs-api.service';
 
+function manilaToday(): string {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
+}
+
 @Component({
   selector: 'app-tap-error-logs',
   imports: [DatePipe, FormsModule, NgIcon, HlmButton, HlmInput, HlmTableImports],
@@ -32,6 +36,8 @@ export class TapErrorLogs implements OnDestroy {
   protected readonly clearing = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly filter = signal('');
+  /** Campus (Asia/Manila) date — defaults to today so lists stay small and relevant. */
+  protected readonly date = signal(manilaToday());
 
   protected readonly filtered = computed(() => {
     const term = this.filter().trim().toLowerCase();
@@ -45,20 +51,33 @@ export class TapErrorLogs implements OnDestroy {
 
   constructor() {
     this.reload();
-    // Keep the table current when new unrecognized taps arrive.
+    // Keep the table current when new unrecognized taps arrive for the selected day.
     this.liveSub = this.notifications.events$
       .pipe(filter((e) => e.type === 'ATTENDANCE_TAP_ERROR'))
-      .subscribe(() => this.reload());
+      .subscribe((event) => {
+        const payload = (event.payload ?? {}) as { tappedAt?: string | null };
+        const eventDay = payload.tappedAt
+          ? new Date(payload.tappedAt).toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' })
+          : manilaToday();
+        if (eventDay === this.date()) {
+          this.reload();
+        }
+      });
   }
 
   ngOnDestroy(): void {
     this.liveSub.unsubscribe();
   }
 
+  protected onDateChange(value: string): void {
+    this.date.set(value || manilaToday());
+    this.reload();
+  }
+
   protected reload(): void {
     this.loading.set(true);
     this.error.set(null);
-    this.api.list().subscribe({
+    this.api.list({ date: this.date(), limit: 2000 }).subscribe({
       next: (logs) => {
         this.logs.set(logs);
         this.loading.set(false);
@@ -74,12 +93,17 @@ export class TapErrorLogs implements OnDestroy {
     if (this.logs().length === 0) {
       return;
     }
-    if (!confirm(`Clear all ${this.logs().length} RFID error log(s)? This cannot be undone.`)) {
+    const day = this.date();
+    if (
+      !confirm(
+        `Clear ${this.logs().length} RFID error log(s) for ${day}? This cannot be undone.`,
+      )
+    ) {
       return;
     }
     this.clearing.set(true);
     this.error.set(null);
-    this.api.clearAll().subscribe({
+    this.api.clear(day).subscribe({
       next: () => {
         this.logs.set([]);
         this.clearing.set(false);

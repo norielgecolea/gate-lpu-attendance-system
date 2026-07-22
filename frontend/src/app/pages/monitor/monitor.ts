@@ -34,6 +34,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { FullscreenService } from '../../core/fullscreen.service';
 import { NotificationService } from '../../core/notifications/notification.service';
 import { studentPhotoUrl } from '../../core/students/student-photo.util';
+import { TapErrorLogsApiService } from '../../core/tap-errors/tap-error-logs-api.service';
 
 const EMPTY_SUMMARY: AttendanceSummary = {
   uniquePeople: 0,
@@ -171,6 +172,7 @@ export class Monitor implements OnDestroy {
   private static readonly POLL_MS = 60_000;
 
   private readonly attendanceApi = inject(AttendanceApiService);
+  private readonly tapErrorApi = inject(TapErrorLogsApiService);
   private readonly auth = inject(AuthService);
   private readonly alertSound = inject(AlertSoundService);
   private readonly fullscreen = inject(FullscreenService);
@@ -197,9 +199,9 @@ export class Monitor implements OnDestroy {
   protected readonly totalTaps = computed(
     () => this.studentSummary().totalTaps + this.employeeSummary().totalTaps,
   );
-  protected readonly currentlyInside = computed(
-    () => this.studentSummary().currentlyIn + this.employeeSummary().currentlyIn,
-  );
+  protected readonly studentsInside = computed(() => this.studentSummary().currentlyIn);
+  protected readonly employeesInside = computed(() => this.employeeSummary().currentlyIn);
+  protected readonly rfidErrorCount = signal(0);
 
   /** Continuous hour range from first to last activity, minimum 06:00–18:00. */
   protected readonly hourBars = computed<HourBar[]>(() => {
@@ -261,6 +263,7 @@ export class Monitor implements OnDestroy {
         .subscribe((event) => {
           const payload = (event.payload ?? {}) as TapErrorPayload;
           this.pushTapError(payload);
+          this.rfidErrorCount.update((n) => n + 1);
         }),
     );
 
@@ -390,12 +393,14 @@ export class Monitor implements OnDestroy {
       studentDepts: deptsFor('STUDENT'),
       employeeDepts: deptsFor('EMPLOYEE'),
       hours: this.attendanceApi.byHour().pipe(catchError(() => of([] as AttendanceHourCount[]))),
-    }).subscribe(({ students, employees, studentDepts, employeeDepts, hours }) => {
+      rfidErrors: this.tapErrorApi.count(today).pipe(catchError(() => of(0))),
+    }).subscribe(({ students, employees, studentDepts, employeeDepts, hours, rfidErrors }) => {
       this.studentSummary.set(students);
       this.employeeSummary.set(employees);
       this.studentDepts.set(studentDepts);
       this.employeeDepts.set(employeeDepts);
       this.hours.set(hours);
+      this.rfidErrorCount.set(rfidErrors);
     });
   }
 }
