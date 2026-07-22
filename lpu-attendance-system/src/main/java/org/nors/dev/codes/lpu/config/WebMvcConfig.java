@@ -34,5 +34,13 @@ public class WebMvcConfig implements WebMvcConfigurer {
         }
         registry.addResourceHandler("/videos/**")
                 .addResourceLocations(videosLocation);
+
+        Path tonesPath = Paths.get(uploadProperties.getTonesDir()).toAbsolutePath().normalize();
+        String tonesLocation = tonesPath.toUri().toString();
+        if (!tonesLocation.endsWith("/")) {
+            tonesLocation = tonesLocation + "/";
+        }
+        registry.addResourceHandler("/tones/**")
+                .addResourceLocations(tonesLocation);
     }
 }

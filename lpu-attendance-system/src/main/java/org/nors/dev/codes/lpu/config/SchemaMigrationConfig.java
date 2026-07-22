@@ -58,6 +58,22 @@ public class SchemaMigrationConfig {
                     ON tap_error_logs (tapped_at DESC, id DESC)
                 """);
 
+        jdbc.execute("""
+                CREATE TABLE IF NOT EXISTS gate_tones (
+                    id            BIGSERIAL PRIMARY KEY,
+                    file_path     VARCHAR(300) NOT NULL,
+                    original_name VARCHAR(300) NOT NULL,
+                    content_type  VARCHAR(100) NOT NULL,
+                    size_bytes    BIGINT       NOT NULL,
+                    uploaded_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+                )
+                """);
+
+        jdbc.execute("""
+                CREATE INDEX IF NOT EXISTS idx_gate_tones_uploaded
+                    ON gate_tones (uploaded_at ASC, id ASC)
+                """);
+
         Boolean employeesExists = jdbc.queryForObject(
                 """
                 SELECT EXISTS (
@@ -90,7 +106,7 @@ public class SchemaMigrationConfig {
             jdbc.execute("CREATE INDEX IF NOT EXISTS idx_students_finance_tagged ON students (finance_tagged)");
         }
 
-        log.info("Schema migration applied (app_settings, guard_videos, tap_error_logs)");
+        log.info("Schema migration applied (app_settings, guard_videos, tap_error_logs, gate_tones)");
         return new SchemaMigrator();
     }
 

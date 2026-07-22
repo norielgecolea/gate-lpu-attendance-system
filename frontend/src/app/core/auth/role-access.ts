@@ -41,6 +41,9 @@ export function canAccessAdminRoute(role: string | null | undefined, route: stri
   if (route === '/settings/guard-display') {
     return role === 'SUPERADMIN' || role === 'OSAS';
   }
+  if (route === '/settings/gate-tones') {
+    return role === 'SUPERADMIN' || role === 'OSAS';
+  }
   if (route === '/tap-errors') {
     return role === 'SUPERADMIN' || role === 'OSAS' || role === 'HR';
   }

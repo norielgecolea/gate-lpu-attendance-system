@@ -18,6 +18,7 @@ import {
   lucideLogOut,
   lucideMenu,
   lucideMonitorPlay,
+  lucideMusic2,
   lucidePanelLeft,
   lucideScanBarcode,
   lucideShieldCheck,
@@ -81,6 +82,7 @@ interface TapErrorAlert {
     provideIcons({
       lucideLayoutDashboard,
       lucideMonitorPlay,
+      lucideMusic2,
       lucideUsers,
       lucideClock,
       lucideUserX,
@@ -177,6 +179,11 @@ export class AdminLayout implements OnDestroy {
           label: 'Guard Display',
           icon: 'lucideMonitorPlay',
           route: '/settings/guard-display',
+        },
+        {
+          label: 'Gate Tones',
+          icon: 'lucideMusic2',
+          route: '/settings/gate-tones',
         },
         {
           label: 'RFID Error Logs',

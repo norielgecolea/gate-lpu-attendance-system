@@ -17,6 +17,12 @@ public class UploadProperties {
      */
     private String videosDir = "videos";
 
+    /**
+     * Directory on disk where gate event tones are stored.
+     * Override with APP_TONES_DIR (e.g. /usr/local/tomcat/tones).
+     */
+    private String tonesDir = "tones";
+
     /** Resize and re-encode uploaded profile photos to JPEG. */
     private boolean photoOptimizationEnabled = true;
 
@@ -52,6 +58,14 @@ public class UploadProperties {
 
     public void setVideosDir(String videosDir) {
         this.videosDir = videosDir;
+    }
+
+    public String getTonesDir() {
+        return tonesDir;
+    }
+
+    public void setTonesDir(String tonesDir) {
+        this.tonesDir = tonesDir;
     }
 
     public boolean isPhotoOptimizationEnabled() {

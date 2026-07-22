@@ -13,6 +13,7 @@ import { InactiveEmployees } from './pages/employees/inactive-employees';
 import { EmployeeRfidRegistration } from './pages/employees/employee-rfid-registration';
 import { Users } from './pages/users/users';
 import { GuardDisplaySettings } from './pages/settings/guard-display-settings';
+import { GateTonesSettings } from './pages/settings/gate-tones-settings';
 import { TapErrorLogs } from './pages/tap-errors/tap-error-logs';
 import { GateKiosk } from './pages/guard/gate-kiosk';
 import { Monitor } from './pages/monitor/monitor';
@@ -125,6 +126,11 @@ export const routes: Routes = [
       {
         path: 'settings/guard-display',
         component: GuardDisplaySettings,
+        canActivate: [allowRoles(...OSAS_ADMIN_ROLES)],
+      },
+      {
+        path: 'settings/gate-tones',
+        component: GateTonesSettings,
         canActivate: [allowRoles(...OSAS_ADMIN_ROLES)],
       },
       {

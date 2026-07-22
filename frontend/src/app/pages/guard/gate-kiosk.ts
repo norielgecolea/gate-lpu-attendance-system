@@ -35,6 +35,7 @@ import {
   type GuardVideo,
   guardVideoUrl,
 } from '../../core/settings/guard-display-api.service';
+import { GateTonesApiService } from '../../core/settings/gate-tones-api.service';
 import { studentPhotoUrl } from '../../core/students/student-photo.util';
 import { GateSounds } from './gate-sounds';
 
@@ -81,10 +82,12 @@ export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
   private readonly notifications = inject(NotificationService);
   private readonly fullscreen = inject(FullscreenService);
   private readonly displayApi = inject(GuardDisplayApiService);
+  private readonly tonesApi = inject(GateTonesApiService);
   private readonly sounds = new GateSounds();
   private wsSub?: Subscription;
   private wsErrorSub?: Subscription;
   private wsDisplaySub?: Subscription;
+  private wsTonesSub?: Subscription;
 
   private static readonly PAGE_SIZE = 20;
 
@@ -127,6 +130,8 @@ export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
   private autoScrollLastTs = 0;
   private autoScrollCarry = 0;
   private autoScrollPausedUntil = 0;
+  /** Local tap errors also broadcast on WS — ignore the echo so we don't double-play tones. */
+  private ignoreTapErrorEchoUntil = 0;
 
   ngOnInit(): void {
     const token = this.auth.token();
@@ -153,6 +158,9 @@ export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
     this.wsErrorSub = this.notifications.events$
       .pipe(filter((e) => e.type === 'ATTENDANCE_TAP_ERROR'))
       .subscribe((event) => {
+        if (Date.now() < this.ignoreTapErrorEchoUntil) {
+          return;
+        }
         const payload = (event.payload ?? {}) as { location?: string | null };
         const myGate = this.auth.user()?.location ?? null;
         // Only react to errors from this kiosk's gate (or when gates are unknown).
@@ -161,9 +169,13 @@ export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
         }
       });
     this.loadDisplaySettings();
+    this.loadToneSettings();
     this.wsDisplaySub = this.notifications.events$
       .pipe(filter((e) => e.type === 'GUARD_DISPLAY_CHANGED'))
       .subscribe(() => this.loadDisplaySettings());
+    this.wsTonesSub = this.notifications.events$
+      .pipe(filter((e) => e.type === 'GATE_TONES_CHANGED'))
+      .subscribe(() => this.loadToneSettings());
   }
 
   ngAfterViewInit(): void {
@@ -188,6 +200,7 @@ export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
     this.wsSub?.unsubscribe();
     this.wsErrorSub?.unsubscribe();
     this.wsDisplaySub?.unsubscribe();
+    this.wsTonesSub?.unsubscribe();
   }
 
   @HostListener('document:click')
@@ -225,6 +238,8 @@ export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
             : (body?.message ?? '');
         const notFound =
           err?.status === 404 || /record\s*not\s*found/i.test(apiMessage);
+        // Backend also emits ATTENDANCE_TAP_ERROR — suppress that echo for this tap.
+        this.ignoreTapErrorEchoUntil = Date.now() + 2000;
         this.showError(
           notFound ? 'Record Not Found' : (apiMessage || 'Tap failed. Please try again.'),
           notFound,
@@ -519,6 +534,13 @@ export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
         }
       },
       error: () => undefined, // Keep the current panel if the setting can't load.
+    });
+  }
+
+  private loadToneSettings(): void {
+    this.tonesApi.getSettings().subscribe({
+      next: (settings) => this.sounds.applySettings(settings),
+      error: () => undefined, // Keep built-in sounds if tones can't load.
     });
   }
 

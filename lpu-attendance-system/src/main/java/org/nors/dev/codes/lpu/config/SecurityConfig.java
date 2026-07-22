@@ -46,6 +46,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/pictures/**").permitAll()
                         // <video> tags cannot attach auth headers
                         .requestMatchers(HttpMethod.GET, "/videos/**").permitAll()
+                        // <audio> tags cannot attach auth headers
+                        .requestMatchers(HttpMethod.GET, "/tones/**").permitAll()
                         .requestMatchers("/ws/**").permitAll()
                         // Any signed-in role (Superadmin, OSAS, HR, Monitoring, Guard) can manage its own session.
                         .requestMatchers("/api/auth/**").authenticated()
@@ -53,6 +55,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/guard-display")
                         .hasAnyRole("SUPERADMIN", "GUARD", "OSAS")
                         .requestMatchers("/api/guard-display/**")
+                        .hasAnyRole("SUPERADMIN", "OSAS")
+                        // Guard kiosks load assigned tones; OSAS/superadmin manage the library.
+                        .requestMatchers(HttpMethod.GET, "/api/gate-tones")
+                        .hasAnyRole("SUPERADMIN", "GUARD", "OSAS")
+                        .requestMatchers("/api/gate-tones/**")
                         .hasAnyRole("SUPERADMIN", "OSAS")
                         // Dashboard read access for cross-role summaries.
                         .requestMatchers(HttpMethod.GET, "/api/students/**")

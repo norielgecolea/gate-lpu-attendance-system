@@ -205,6 +205,21 @@ CREATE INDEX IF NOT EXISTS idx_guard_videos_uploaded
     ON guard_videos (uploaded_at ASC, id ASC);
 
 -- ---------------------------------------------------------------------------
+-- gate_tones
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS gate_tones (
+    id            BIGSERIAL PRIMARY KEY,
+    file_path     VARCHAR(300) NOT NULL,
+    original_name VARCHAR(300) NOT NULL,
+    content_type  VARCHAR(100) NOT NULL,
+    size_bytes    BIGINT       NOT NULL,
+    uploaded_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_gate_tones_uploaded
+    ON gate_tones (uploaded_at ASC, id ASC);
+
+-- ---------------------------------------------------------------------------
 -- tap_error_logs
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS tap_error_logs (

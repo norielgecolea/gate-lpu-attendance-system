@@ -38,6 +38,7 @@ app:
   upload:
     pictures-dir: ${APP_PICTURES_DIR:pictures}
     videos-dir: ${APP_VIDEOS_DIR:videos}
+    tones-dir: ${APP_TONES_DIR:tones}
     photo-optimization-enabled: ${APP_PHOTO_OPTIMIZATION_ENABLED:true}
     photo-max-dimension: ${APP_PHOTO_MAX_DIMENSION:800}
     photo-jpeg-quality: ${APP_PHOTO_JPEG_QUALITY:0.85}
