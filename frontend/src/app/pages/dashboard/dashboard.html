@@ -18,25 +18,45 @@
             Realtime gate activity across LPU-Laguna
           </p>
         </div>
-        <span
-          class="flex w-fit items-center gap-1.5 self-start rounded-full px-3 py-1.5 text-xs font-semibold"
-          [class]="
-            notifications.connected()
-              ? 'bg-emerald-400/20 text-emerald-100'
-              : 'bg-primary-foreground/10 text-primary-foreground/60'
-          "
-        >
-          <span class="relative flex size-2">
-            @if (notifications.connected()) {
-              <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-300 opacity-60"></span>
-            }
-            <span
-              class="relative inline-flex size-2 rounded-full"
-              [class]="notifications.connected() ? 'bg-emerald-300' : 'bg-primary-foreground/40'"
-            ></span>
+      <div class="flex flex-col gap-2 sm:items-end">
+        <div class="flex flex-wrap items-center gap-2">
+          <span
+            class="flex w-fit items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold"
+            [class]="
+              notifications.connected()
+                ? 'bg-emerald-400/20 text-emerald-100'
+                : 'bg-primary-foreground/10 text-primary-foreground/60'
+            "
+          >
+            <span class="relative flex size-2">
+              @if (notifications.connected()) {
+                <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-300 opacity-60"></span>
+              }
+              <span
+                class="relative inline-flex size-2 rounded-full"
+                [class]="notifications.connected() ? 'bg-emerald-300' : 'bg-primary-foreground/40'"
+              ></span>
+            </span>
+            {{ notifications.connected() ? 'Live' : 'Offline' }}
           </span>
-          {{ notifications.connected() ? 'Live' : 'Offline' }}
-        </span>
+
+          @if (notifications.onlineGuardLocations().length > 0) {
+            @for (gate of notifications.onlineGuardLocations(); track gate) {
+              <span
+                class="bg-primary-foreground/15 text-primary-foreground flex w-fit items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold"
+                [title]="'Guard online at ' + gate"
+              >
+                <span class="size-1.5 shrink-0 rounded-full bg-emerald-300"></span>
+                {{ gate }}
+              </span>
+            }
+          } @else if (notifications.connected()) {
+            <span class="text-primary-foreground/55 text-xs font-medium">
+              No guards online
+            </span>
+          }
+        </div>
+      </div>
       </div>
 
       <div class="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">

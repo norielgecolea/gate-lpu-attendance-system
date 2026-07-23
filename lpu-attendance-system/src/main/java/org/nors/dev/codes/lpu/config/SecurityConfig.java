@@ -82,6 +82,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/attendance/tap").hasAnyRole("SUPERADMIN", "GUARD")
                         .requestMatchers("/api/attendance/recent")
                         .hasAnyRole("SUPERADMIN", "GUARD", "MONITORING", "OSAS", "HR")
+                        // Live guard kiosk presence for dashboard / monitoring wall.
+                        .requestMatchers(HttpMethod.GET, "/api/guards/online")
+                        .hasAnyRole("SUPERADMIN", "MONITORING", "OSAS", "HR")
                         // Read-only aggregates power the monitoring wall and admin dashboards.
                         .requestMatchers(
                                 "/api/attendance/summary",

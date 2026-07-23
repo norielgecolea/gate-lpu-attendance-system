@@ -123,7 +123,9 @@
               @if (personPhoto(tap); as src) {
                 <img class="gate-photo" [src]="src" [alt]="personName(tap)" />
               } @else {
-                <div class="gate-photo-fallback">{{ initials(personName(tap)) }}</div>
+                <div class="gate-photo-fallback" aria-hidden="true">
+                  <ng-icon name="lucideUserRound" class="gate-photo-fallback-icon" />
+                </div>
               }
               <div
                 class="gate-status"
@@ -261,7 +263,9 @@
             @if (personPhoto(row); as src) {
               <img class="gate-recent-avatar" [src]="src" [alt]="personName(row)" />
             } @else {
-              <div class="gate-recent-avatar-fallback">{{ initials(personName(row)) }}</div>
+              <div class="gate-recent-avatar-fallback" aria-hidden="true">
+                <ng-icon name="lucideUserRound" class="gate-recent-fallback-icon" />
+              </div>
             }
             <span
               class="gate-pill"

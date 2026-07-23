@@ -1,5 +1,7 @@
 package org.nors.dev.codes.lpu.websocket;
 
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import org.nors.dev.codes.lpu.service.JwtService;
 import org.springframework.http.server.ServerHttpRequest;
@@ -31,10 +33,12 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
         for (String part : query.split("&")) {
             String[] kv = part.split("=", 2);
             if (kv.length == 2 && "token".equals(kv[0])) {
-                String token = kv[1];
+                String token = URLDecoder.decode(kv[1], StandardCharsets.UTF_8);
                 if (jwtService.isTokenValid(token)) {
                     attributes.put("token", token);
                     attributes.put("username", jwtService.extractUsername(token));
+                    attributes.put("role", jwtService.extractRole(token));
+                    attributes.put("location", jwtService.extractLocation(token));
                     return true;
                 }
             }

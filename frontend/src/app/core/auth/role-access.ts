@@ -26,7 +26,7 @@ export function canAccessAdminRoute(role: string | null | undefined, route: stri
   if (!role) {
     return false;
   }
-  if (route === '/dashboard') {
+  if (route === '/dashboard' || route === '/rfid-checker') {
     return role === 'SUPERADMIN' || role === 'OSAS' || role === 'HR';
   }
   if (route.startsWith('/students')) {

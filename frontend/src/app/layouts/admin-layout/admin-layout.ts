@@ -14,6 +14,7 @@ import {
   lucideBanknote,
   lucideClock,
   lucideGraduationCap,
+  lucideIdCard,
   lucideLayoutDashboard,
   lucideLogOut,
   lucideMenu,
@@ -81,6 +82,7 @@ interface TapErrorAlert {
   viewProviders: [
     provideIcons({
       lucideLayoutDashboard,
+      lucideIdCard,
       lucideMonitorPlay,
       lucideMusic2,
       lucideUsers,
@@ -150,7 +152,10 @@ export class AdminLayout implements OnDestroy {
   protected readonly navSections: NavSection[] = [
     {
       label: null,
-      items: [{ label: 'Dashboard', icon: 'lucideLayoutDashboard', route: '/dashboard' }],
+      items: [
+        { label: 'Dashboard', icon: 'lucideLayoutDashboard', route: '/dashboard' },
+        { label: 'RFID Checker', icon: 'lucideIdCard', route: '/rfid-checker' },
+      ],
     },
     {
       label: 'Students',

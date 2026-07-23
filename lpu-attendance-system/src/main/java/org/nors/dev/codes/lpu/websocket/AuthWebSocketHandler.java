@@ -1,5 +1,7 @@
 package org.nors.dev.codes.lpu.websocket;
 
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import org.nors.dev.codes.lpu.model.Role;
 import org.nors.dev.codes.lpu.service.JwtService;
 import org.nors.dev.codes.lpu.service.NotificationService;
@@ -36,11 +38,18 @@ public class AuthWebSocketHandler extends TextWebSocketHandler {
             session.close(CloseStatus.NOT_ACCEPTABLE.withReason("Unauthorized"));
             return;
         }
-        session.getAttributes().put("username", jwtService.extractUsername(token));
-        notificationService.register(session);
+        String username = jwtService.extractUsername(token);
+        String location = jwtService.extractLocation(token);
+        Object locAttr = session.getAttributes().get("location");
+        if (location == null && locAttr instanceof String text && !text.isBlank()) {
+            location = text;
+        }
+        notificationService.register(session, role, username, location);
         session.sendMessage(new TextMessage(
                 "{\"type\":\"AUTH_WS_CONNECTED\",\"message\":\"Connected to live notifications\"}"
         ));
+        // Snapshot so dashboard/monitor show online gates immediately on connect.
+        notificationService.sendGuardPresence(session);
     }
 
     @Override
@@ -59,7 +68,7 @@ public class AuthWebSocketHandler extends TextWebSocketHandler {
         for (String part : session.getUri().getQuery().split("&")) {
             String[] kv = part.split("=", 2);
             if (kv.length == 2 && "token".equals(kv[0])) {
-                return kv[1];
+                return URLDecoder.decode(kv[1], StandardCharsets.UTF_8);
             }
         }
         return null;

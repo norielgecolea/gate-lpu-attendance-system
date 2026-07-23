@@ -3,20 +3,26 @@ import { Injectable, PLATFORM_ID, inject, signal } from '@angular/core';
 import { Subject } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AuthEventMessage } from '../auth/auth.models';
+import { GuardPresenceApiService } from '../guards/guard-presence-api.service';
 
 @Injectable({ providedIn: 'root' })
 export class NotificationService {
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly presenceApi = inject(GuardPresenceApiService);
   private socket: WebSocket | null = null;
   private token: string | null = null;
   private reconnectTimer?: ReturnType<typeof setTimeout>;
   private reconnectAttempt = 0;
   private intentionalClose = false;
   private readonly eventsSubject = new Subject<AuthEventMessage>();
+  /** Prefer live WS presence over a slower/stale HTTP snapshot. */
+  private presenceFromSocket = false;
 
   readonly events$ = this.eventsSubject.asObservable();
   readonly latestEvent = signal<AuthEventMessage | null>(null);
   readonly connected = signal(false);
+  /** Gate locations with at least one connected guard kiosk. */
+  readonly onlineGuardLocations = signal<string[]>([]);
 
   connect(token: string): void {
     if (!isPlatformBrowser(this.platformId) || !token) {
@@ -38,6 +44,8 @@ export class NotificationService {
       this.socket = null;
     }
     this.connected.set(false);
+    this.presenceFromSocket = false;
+    this.onlineGuardLocations.set([]);
   }
 
   dismissLatest(): void {
@@ -58,12 +66,23 @@ export class NotificationService {
       this.socket = null;
     }
 
+    this.presenceFromSocket = false;
     const url = `${environment.wsUrl}?token=${encodeURIComponent(this.token)}`;
     this.socket = new WebSocket(url);
 
     this.socket.onopen = () => {
       this.reconnectAttempt = 0;
       this.connected.set(true);
+      // HTTP snapshot for admin/monitor (guards get 403 — ignored).
+      // Skip applying if a WS GUARD_PRESENCE already arrived.
+      this.presenceApi.onlineLocations().subscribe({
+        next: (locations) => {
+          if (!this.presenceFromSocket) {
+            this.onlineGuardLocations.set(locations);
+          }
+        },
+        error: () => undefined,
+      });
     };
 
     this.socket.onmessage = (event) => {
@@ -71,6 +90,14 @@ export class NotificationService {
         const payload = JSON.parse(event.data as string) as AuthEventMessage;
         this.latestEvent.set(payload);
         this.eventsSubject.next(payload);
+        if (payload.type === 'GUARD_PRESENCE' && Array.isArray(payload.locations)) {
+          this.presenceFromSocket = true;
+          this.onlineGuardLocations.set(
+            payload.locations
+              .map((loc) => String(loc).trim())
+              .filter((loc) => loc.length > 0),
+          );
+        }
       } catch {
         // ignore malformed payloads
       }

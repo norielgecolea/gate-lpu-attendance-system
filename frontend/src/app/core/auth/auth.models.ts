@@ -26,4 +26,6 @@ export interface AuthEventMessage {
   timestamp?: string;
   action?: string;
   payload?: unknown;
+  /** Present on GUARD_PRESENCE (and optionally other) events. */
+  locations?: string[];
 }

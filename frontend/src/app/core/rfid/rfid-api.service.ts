@@ -2,12 +2,22 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, map, of } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import type { Employee } from '../../pages/employees/employees.store';
+import type { Student } from '../../pages/students/students.store';
 
 export type RfidOwnerType = 'STUDENT' | 'EMPLOYEE';
 
 export interface RfidCheckResult {
   available: boolean;
   message?: string;
+}
+
+export interface RfidLookupResult {
+  found: boolean;
+  personType: RfidOwnerType | null;
+  student: Student | null;
+  employee: Employee | null;
+  message?: string | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -39,5 +49,11 @@ export class RfidApiService {
     return this.http.get<RfidCheckResult>(`${this.baseUrl}/check`, { params }).pipe(
       map((result) => (result.available ? null : (result.message ?? 'RFID already assigned'))),
     );
+  }
+
+  /** Role-scoped lookup by RFID or student/employee number for the RFID Checker page. */
+  lookup(identifier: string): Observable<RfidLookupResult> {
+    const params = new HttpParams().set('identifier', identifier.trim());
+    return this.http.get<RfidLookupResult>(`${this.baseUrl}/lookup`, { params });
   }
 }

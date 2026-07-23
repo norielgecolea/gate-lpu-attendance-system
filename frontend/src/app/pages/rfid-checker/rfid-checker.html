@@ -1,0 +1,222 @@
+<div class="mx-auto flex max-w-3xl flex-col gap-4" (click)="focusInput()">
+  <!-- Hidden capture field for RFID wedge scanners (types + Enter). -->
+  <input
+    #scanInput
+    type="text"
+    class="sr-only"
+    name="identifier"
+    autocomplete="off"
+    aria-label="RFID scan capture"
+    (keydown.enter)="$event.preventDefault(); submit()"
+  />
+
+  <section
+    class="bg-card overflow-hidden rounded-2xl border shadow-sm"
+    [class.ring-2]="loading()"
+    [class.ring-primary/40]="loading()"
+  >
+    <div
+      class="relative flex min-h-[220px] flex-col items-center justify-center gap-3 px-6 py-12 text-center"
+      [class]="
+        error()
+          ? 'bg-destructive/5'
+          : result()?.found
+            ? 'bg-emerald-500/5'
+            : 'bg-primary/5'
+      "
+    >
+      <div
+        class="relative flex size-16 items-center justify-center rounded-2xl"
+        [class]="
+          error()
+            ? 'bg-destructive/10 text-destructive'
+            : result()?.found
+              ? 'bg-emerald-500/15 text-emerald-700'
+              : 'bg-primary/10 text-primary'
+        "
+      >
+        @if (loading()) {
+          <span
+            class="border-primary absolute inset-0 animate-ping rounded-2xl border-2 opacity-40"
+          ></span>
+        }
+        <ng-icon
+          [name]="error() ? 'lucideCircleAlert' : result()?.found ? 'lucideIdCard' : 'lucideScanBarcode'"
+          class="relative text-3xl"
+        />
+      </div>
+
+      <div class="max-w-md">
+        @if (loading()) {
+          <p class="text-foreground text-xl font-bold">Looking up…</p>
+          <p class="text-muted-foreground mt-1 text-sm">Reading card</p>
+        } @else if (error()) {
+          <p class="text-destructive text-xl font-bold">No match</p>
+          <p class="text-muted-foreground mt-1 text-sm">{{ error() }}</p>
+          <p class="text-muted-foreground mt-3 text-xs">Tap another card to try again</p>
+        } @else if (result()?.found) {
+          <p class="text-foreground text-xl font-bold">Record found</p>
+          <p class="text-muted-foreground mt-1 text-sm">Tap another card to check again</p>
+        } @else {
+          <p class="text-foreground text-xl font-bold">Ready to scan</p>
+          <p class="text-muted-foreground mt-1 text-sm">{{ hint() }}</p>
+        }
+      </div>
+
+      @if (lastScanned() && !loading()) {
+        <p class="text-muted-foreground text-xs">
+          Scanned
+          <span class="text-foreground font-medium tabular-nums">{{ lastScanned() }}</span>
+        </p>
+      }
+    </div>
+  </section>
+
+  @if (result(); as res) {
+    @if (res.found && res.student; as student) {
+      <section class="bg-card rounded-2xl border p-5 shadow-sm">
+        <div class="mb-4 flex items-center gap-2">
+          <span
+            class="bg-primary/10 text-primary inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
+          >
+            <ng-icon name="lucideGraduationCap" class="text-sm" />
+            Student
+          </span>
+          @if (student.financeTagged) {
+            <span class="rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-semibold text-amber-700">
+              Finance tagged
+            </span>
+          }
+        </div>
+
+        <div class="flex flex-wrap items-center gap-4">
+          @if (photoSrc(student.photo); as src) {
+            <img
+              [src]="src"
+              [alt]="student.name"
+              class="border-border size-28 shrink-0 rounded-lg border object-cover"
+            />
+          } @else {
+            <div
+              class="bg-muted text-muted-foreground grid size-28 shrink-0 place-items-center rounded-lg text-2xl font-bold"
+            >
+              {{ initials(student.name) }}
+            </div>
+          }
+          <div class="min-w-0 flex-1">
+            <h4 class="text-foreground text-xl font-bold">{{ student.name }}</h4>
+            <p class="text-muted-foreground mt-0.5 text-sm tabular-nums">{{ student.studentNo }}</p>
+            <div class="mt-3 flex flex-wrap gap-1.5">
+              @if (student.department) {
+                <span class="bg-muted text-foreground rounded-full px-2.5 py-0.5 text-xs font-medium">
+                  {{ student.department }}
+                </span>
+              }
+              @if (student.course) {
+                <span class="bg-muted text-foreground rounded-full px-2.5 py-0.5 text-xs font-medium">
+                  {{ student.course }}
+                </span>
+              }
+              @if (student.school) {
+                <span class="bg-muted text-foreground rounded-full px-2.5 py-0.5 text-xs font-medium">
+                  {{ student.school }}
+                </span>
+              }
+              @if (student.birthdate) {
+                <span class="bg-muted text-foreground rounded-full px-2.5 py-0.5 text-xs font-medium">
+                  Birthday {{ student.birthdate }}
+                </span>
+              }
+            </div>
+          </div>
+          <div class="text-end">
+            <p class="text-muted-foreground text-xs font-medium uppercase tracking-wide">RFID</p>
+            @if (student.rfid) {
+              <p class="text-foreground text-sm font-semibold tabular-nums">{{ student.rfid }}</p>
+            } @else {
+              <p class="text-destructive text-sm font-semibold">None</p>
+            }
+            <a
+              hlmBtn
+              variant="outline"
+              size="sm"
+              class="mt-3"
+              [routerLink]="['/students', student.id, 'attendance']"
+              (click)="$event.stopPropagation()"
+            >
+              View attendance
+            </a>
+          </div>
+        </div>
+      </section>
+    }
+
+    @if (res.found && res.employee; as employee) {
+      <section class="bg-card rounded-2xl border p-5 shadow-sm">
+        <div class="mb-4 flex items-center gap-2">
+          <span
+            class="inline-flex items-center gap-1.5 rounded-full bg-sky-500/10 px-2.5 py-1 text-xs font-semibold text-sky-700"
+          >
+            <ng-icon name="lucideBriefcase" class="text-sm" />
+            Employee
+          </span>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-4">
+          @if (photoSrc(employee.photo); as src) {
+            <img
+              [src]="src"
+              [alt]="employee.name"
+              class="border-border size-28 shrink-0 rounded-lg border object-cover"
+            />
+          } @else {
+            <div
+              class="bg-muted text-muted-foreground grid size-28 shrink-0 place-items-center rounded-lg text-2xl font-bold"
+            >
+              {{ initials(employee.name) }}
+            </div>
+          }
+          <div class="min-w-0 flex-1">
+            <h4 class="text-foreground text-xl font-bold">{{ employee.name }}</h4>
+            <p class="text-muted-foreground mt-0.5 text-sm tabular-nums">{{ employee.employeeNo }}</p>
+            <div class="mt-3 flex flex-wrap gap-1.5">
+              @if (employee.department) {
+                <span class="bg-muted text-foreground rounded-full px-2.5 py-0.5 text-xs font-medium">
+                  {{ employee.department }}
+                </span>
+              }
+              @if (employee.position) {
+                <span class="bg-muted text-foreground rounded-full px-2.5 py-0.5 text-xs font-medium">
+                  {{ employee.position }}
+                </span>
+              }
+              @if (employee.birthdate) {
+                <span class="bg-muted text-foreground rounded-full px-2.5 py-0.5 text-xs font-medium">
+                  Birthday {{ employee.birthdate }}
+                </span>
+              }
+            </div>
+          </div>
+          <div class="text-end">
+            <p class="text-muted-foreground text-xs font-medium uppercase tracking-wide">RFID</p>
+            @if (employee.rfid) {
+              <p class="text-foreground text-sm font-semibold tabular-nums">{{ employee.rfid }}</p>
+            } @else {
+              <p class="text-destructive text-sm font-semibold">None</p>
+            }
+            <a
+              hlmBtn
+              variant="outline"
+              size="sm"
+              class="mt-3"
+              [routerLink]="['/employees', employee.id, 'attendance']"
+              (click)="$event.stopPropagation()"
+            >
+              View attendance
+            </a>
+          </div>
+        </div>
+      </section>
+    }
+  }
+</div>

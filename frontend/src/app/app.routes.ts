@@ -15,6 +15,7 @@ import { Users } from './pages/users/users';
 import { GuardDisplaySettings } from './pages/settings/guard-display-settings';
 import { GateTonesSettings } from './pages/settings/gate-tones-settings';
 import { TapErrorLogs } from './pages/tap-errors/tap-error-logs';
+import { RfidChecker } from './pages/rfid-checker/rfid-checker';
 import { GateKiosk } from './pages/guard/gate-kiosk';
 import { Monitor } from './pages/monitor/monitor';
 import {
@@ -52,6 +53,11 @@ export const routes: Routes = [
       {
         path: 'dashboard',
         component: Dashboard,
+        canActivate: [allowRoles(...ADMIN_ROLES)],
+      },
+      {
+        path: 'rfid-checker',
+        component: RfidChecker,
         canActivate: [allowRoles(...ADMIN_ROLES)],
       },
       {

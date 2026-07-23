@@ -258,11 +258,6 @@ export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
     return studentPhotoUrl(photo);
   }
 
-  protected initials(name: string): string {
-    const parts = name.replace(',', '').trim().split(/\s+/);
-    return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase();
-  }
-
   protected personName(tap: TapResponse): string {
     return tap.student?.name ?? tap.employee?.name ?? '';
   }
