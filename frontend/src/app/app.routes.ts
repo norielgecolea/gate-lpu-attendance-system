@@ -16,6 +16,7 @@ import { GuardDisplaySettings } from './pages/settings/guard-display-settings';
 import { GateTonesSettings } from './pages/settings/gate-tones-settings';
 import { TapErrorLogs } from './pages/tap-errors/tap-error-logs';
 import { RfidChecker } from './pages/rfid-checker/rfid-checker';
+import { DailyRecap } from './pages/daily-recap/daily-recap';
 import { GateKiosk } from './pages/guard/gate-kiosk';
 import { Monitor } from './pages/monitor/monitor';
 import {
@@ -27,6 +28,7 @@ import {
 } from './core/auth/auth.guards';
 
 const ADMIN_ROLES = ['SUPERADMIN', 'OSAS', 'HR'] as const;
+const SUPERADMIN_ROLES = ['SUPERADMIN'] as const;
 const OSAS_ROLES = ['SUPERADMIN', 'OSAS'] as const;
 const HR_ROLES = ['SUPERADMIN', 'HR'] as const;
 const OSAS_ADMIN_ROLES = ['SUPERADMIN', 'OSAS'] as const;
@@ -59,6 +61,11 @@ export const routes: Routes = [
         path: 'rfid-checker',
         component: RfidChecker,
         canActivate: [allowRoles(...ADMIN_ROLES)],
+      },
+      {
+        path: 'daily-recap',
+        component: DailyRecap,
+        canActivate: [allowRoles(...SUPERADMIN_ROLES)],
       },
       {
         path: 'students/inactive',

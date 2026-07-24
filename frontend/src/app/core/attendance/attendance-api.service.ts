@@ -142,8 +142,12 @@ export class AttendanceApiService {
     });
   }
 
-  byHour(): Observable<AttendanceHourCount[]> {
-    return this.http.get<AttendanceHourCount[]>(`${this.baseUrl}/by-hour`);
+  byHour(date?: string): Observable<AttendanceHourCount[]> {
+    let params = new HttpParams();
+    if (date) {
+      params = params.set('date', date);
+    }
+    return this.http.get<AttendanceHourCount[]>(`${this.baseUrl}/by-hour`, { params });
   }
 
   byDepartment(

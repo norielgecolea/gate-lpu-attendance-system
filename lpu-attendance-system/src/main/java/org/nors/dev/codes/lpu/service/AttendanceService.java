@@ -283,12 +283,12 @@ public class AttendanceService {
                 personId, events, logs);
     }
 
-    /** Tap volume per hour (campus timezone) for today — for the monitoring wall display. */
+    /** Tap volume per hour (campus timezone) for a given day — defaults to today. */
     @Transactional(readOnly = true)
-    public List<AttendanceHourCountResponse> byHourToday() {
-        LocalDate today = LocalDate.now(CAMPUS_ZONE);
+    public List<AttendanceHourCountResponse> byHour(LocalDate date) {
+        LocalDate day = date != null ? date : LocalDate.now(CAMPUS_ZONE);
         Map<Integer, long[]> byHour = new HashMap<>();
-        for (Object[] row : attendanceEventRepository.countByHour(today)) {
+        for (Object[] row : attendanceEventRepository.countByHour(day)) {
             int hour = ((Number) row[0]).intValue();
             long count = ((Number) row[2]).longValue();
             long[] slot = byHour.computeIfAbsent(hour, h -> new long[2]);

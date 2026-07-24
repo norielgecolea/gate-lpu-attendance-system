@@ -12,6 +12,7 @@ import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
   lucideBriefcase,
   lucideBanknote,
+  lucideChartColumn,
   lucideClock,
   lucideGraduationCap,
   lucideIdCard,
@@ -82,6 +83,7 @@ interface TapErrorAlert {
   viewProviders: [
     provideIcons({
       lucideLayoutDashboard,
+      lucideChartColumn,
       lucideIdCard,
       lucideMonitorPlay,
       lucideMusic2,
@@ -155,6 +157,7 @@ export class AdminLayout implements OnDestroy {
       items: [
         { label: 'Dashboard', icon: 'lucideLayoutDashboard', route: '/dashboard' },
         { label: 'RFID Checker', icon: 'lucideIdCard', route: '/rfid-checker' },
+        { label: 'Daily Recap', icon: 'lucideChartColumn', route: '/daily-recap' },
       ],
     },
     {

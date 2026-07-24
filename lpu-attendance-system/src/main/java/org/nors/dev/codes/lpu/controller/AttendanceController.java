@@ -90,8 +90,10 @@ public class AttendanceController {
     }
 
     @GetMapping("/by-hour")
-    public ResponseEntity<List<AttendanceHourCountResponse>> byHour() {
-        return ResponseEntity.ok(attendanceService.byHourToday());
+    public ResponseEntity<List<AttendanceHourCountResponse>> byHour(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+    ) {
+        return ResponseEntity.ok(attendanceService.byHour(date));
     }
 
     @GetMapping("/by-department")

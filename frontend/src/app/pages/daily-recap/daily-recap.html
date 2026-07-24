@@ -1,0 +1,218 @@
+<div class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pb-6 sm:gap-5">
+  <!-- Header + date picker -->
+  <section class="bg-card rounded-2xl border p-4 shadow-sm sm:p-5">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div class="min-w-0">
+        <p class="text-muted-foreground flex items-center gap-2 text-xs font-medium sm:text-sm">
+          <ng-icon name="lucideCalendarDays" class="text-base" />
+          Daily recap
+        </p>
+        <h2 class="text-foreground mt-1 text-xl font-bold tracking-tight sm:text-2xl">
+          {{ dateLabel() }}
+        </h2>
+        <p class="text-muted-foreground mt-1 text-xs sm:text-sm">
+          Same campus stats as the monitoring wall, for any selected day.
+        </p>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <button
+          hlmBtn
+          type="button"
+          variant="outline"
+          size="icon"
+          aria-label="Previous day"
+          (click)="shiftDay(-1)"
+        >
+          <ng-icon name="lucideChevronLeft" />
+        </button>
+        <input
+          type="date"
+          class="border-input bg-background text-foreground focus-visible:ring-ring h-9 rounded-md border px-3 text-sm tabular-nums outline-none focus-visible:ring-2"
+          [ngModel]="selectedDate()"
+          (ngModelChange)="onDateInput($event)"
+          [attr.max]="manilaToday"
+        />
+        <button
+          hlmBtn
+          type="button"
+          variant="outline"
+          size="icon"
+          aria-label="Next day"
+          [disabled]="isToday()"
+          (click)="shiftDay(1)"
+        >
+          <ng-icon name="lucideChevronRight" />
+        </button>
+        @if (!isToday()) {
+          <button hlmBtn type="button" variant="outline" (click)="goToday()">Today</button>
+        }
+      </div>
+    </div>
+  </section>
+
+  @if (loading()) {
+    <p class="text-muted-foreground text-sm">Loading recap…</p>
+  }
+
+  <!-- Stat tiles (mirror monitoring) -->
+  <div class="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-6">
+    <div class="bg-card flex items-center gap-2.5 rounded-2xl border p-3 shadow-sm sm:gap-3 sm:p-4">
+      <div class="grid size-9 shrink-0 place-items-center rounded-xl bg-sky-500/15 text-sky-600 sm:size-11">
+        <ng-icon name="lucideGraduationCap" class="text-lg sm:text-xl" />
+      </div>
+      <div class="min-w-0 leading-tight">
+        <p class="text-foreground text-xl font-bold tabular-nums sm:text-2xl">
+          {{ studentSummary().uniquePeople | number }}
+        </p>
+        <p class="text-muted-foreground text-[10px] font-medium sm:text-xs">Students</p>
+      </div>
+    </div>
+    <div class="bg-card flex items-center gap-2.5 rounded-2xl border p-3 shadow-sm sm:gap-3 sm:p-4">
+      <div class="grid size-9 shrink-0 place-items-center rounded-xl bg-violet-500/15 text-violet-600 sm:size-11">
+        <ng-icon name="lucideBriefcase" class="text-lg sm:text-xl" />
+      </div>
+      <div class="min-w-0 leading-tight">
+        <p class="text-foreground text-xl font-bold tabular-nums sm:text-2xl">
+          {{ employeeSummary().uniquePeople | number }}
+        </p>
+        <p class="text-muted-foreground text-[10px] font-medium sm:text-xs">Employees</p>
+      </div>
+    </div>
+    <div class="bg-card flex items-center gap-2.5 rounded-2xl border p-3 shadow-sm sm:gap-3 sm:p-4">
+      <div class="grid size-9 shrink-0 place-items-center rounded-xl bg-emerald-500/15 text-emerald-600 sm:size-11">
+        <ng-icon name="lucideDoorOpen" class="text-lg sm:text-xl" />
+      </div>
+      <div class="min-w-0 leading-tight">
+        <p class="text-foreground text-xl font-bold tabular-nums sm:text-2xl">
+          {{ studentsInside() | number }}
+        </p>
+        <p class="text-muted-foreground text-[10px] font-medium sm:text-xs">
+          {{ isToday() ? 'Students inside' : 'Students still in' }}
+        </p>
+      </div>
+    </div>
+    <div class="bg-card flex items-center gap-2.5 rounded-2xl border p-3 shadow-sm sm:gap-3 sm:p-4">
+      <div class="grid size-9 shrink-0 place-items-center rounded-xl bg-teal-500/15 text-teal-600 sm:size-11">
+        <ng-icon name="lucideDoorOpen" class="text-lg sm:text-xl" />
+      </div>
+      <div class="min-w-0 leading-tight">
+        <p class="text-foreground text-xl font-bold tabular-nums sm:text-2xl">
+          {{ employeesInside() | number }}
+        </p>
+        <p class="text-muted-foreground text-[10px] font-medium sm:text-xs">
+          {{ isToday() ? 'Employees inside' : 'Employees still in' }}
+        </p>
+      </div>
+    </div>
+    <div class="bg-card flex items-center gap-2.5 rounded-2xl border p-3 shadow-sm sm:gap-3 sm:p-4">
+      <div class="grid size-9 shrink-0 place-items-center rounded-xl bg-red-500/15 text-red-600 sm:size-11">
+        <ng-icon name="lucideTriangleAlert" class="text-lg sm:text-xl" />
+      </div>
+      <div class="min-w-0 leading-tight">
+        <p class="text-foreground text-xl font-bold tabular-nums sm:text-2xl">
+          {{ rfidErrorCount() | number }}
+        </p>
+        <p class="text-muted-foreground text-[10px] font-medium sm:text-xs">RFID errors</p>
+      </div>
+    </div>
+    <div class="bg-card flex items-center gap-2.5 rounded-2xl border p-3 shadow-sm sm:gap-3 sm:p-4">
+      <div class="grid size-9 shrink-0 place-items-center rounded-xl bg-amber-500/15 text-amber-600 sm:size-11">
+        <ng-icon name="lucideActivity" class="text-lg sm:text-xl" />
+      </div>
+      <div class="min-w-0 leading-tight">
+        <p class="text-foreground text-xl font-bold tabular-nums sm:text-2xl">
+          {{ totalTaps() | number }}
+        </p>
+        <p class="text-muted-foreground text-[10px] font-medium sm:text-xs">Total taps</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div class="grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-2 xl:grid-cols-3">
+    <section class="bg-card flex flex-col gap-2.5 rounded-2xl border p-3 shadow-sm sm:gap-3 sm:p-4 md:p-5">
+      <h2 class="text-muted-foreground text-xs font-semibold tracking-wider uppercase sm:text-sm">
+        Tap Traffic by Hour
+      </h2>
+      <div class="flex h-28 items-end gap-0.5 sm:h-32 sm:gap-1">
+        @for (bar of hourBars(); track bar.hour) {
+          <div
+            class="group flex h-full min-w-0 flex-1 flex-col justify-end gap-1"
+            [title]="bar.label + ': ' + bar.total + ' taps'"
+          >
+            <div
+              class="w-full rounded-t-sm bg-sky-500/80 transition-colors group-hover:bg-sky-500"
+              [style.height.%]="bar.total === 0 ? 2 : barPct(bar.total, hourMax())"
+              [class.bg-muted]="bar.total === 0"
+            ></div>
+          </div>
+        }
+      </div>
+      @if (hourBars().length > 0) {
+        <div class="text-muted-foreground flex justify-between text-[10px] font-medium">
+          <span>{{ hourBars()[0].label }}</span>
+          <span>{{ hourBars()[hourBars().length - 1].label }}</span>
+        </div>
+      }
+    </section>
+
+    <section
+      class="bg-card flex flex-col gap-3 rounded-2xl border p-3 shadow-sm sm:p-4 md:p-5 lg:col-span-1 xl:col-span-2"
+    >
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
+        <div class="flex flex-col gap-2 sm:gap-2.5">
+          <h2 class="text-muted-foreground text-xs font-semibold tracking-wider uppercase sm:text-sm">
+            Top Student Departments
+          </h2>
+          @for (dept of topStudentDepts(); track dept.department) {
+            <div class="flex flex-col gap-1">
+              <div class="flex items-baseline justify-between gap-2 text-sm">
+                <span class="text-foreground min-w-0 truncate" [title]="dept.department">
+                  {{ dept.department }}
+                </span>
+                <span class="text-muted-foreground shrink-0 font-semibold tabular-nums">
+                  {{ dept.count | number }}
+                </span>
+              </div>
+              <div class="bg-muted h-1.5 overflow-hidden rounded-full">
+                <div
+                  class="h-full rounded-full bg-sky-500"
+                  [style.width.%]="barPct(dept.count, studentDeptMax())"
+                ></div>
+              </div>
+            </div>
+          } @empty {
+            <p class="text-muted-foreground py-2 text-sm">No student taps this day.</p>
+          }
+        </div>
+
+        <div class="flex flex-col gap-2 sm:gap-2.5">
+          <h2 class="text-muted-foreground text-xs font-semibold tracking-wider uppercase sm:text-sm">
+            Top Employee Departments
+          </h2>
+          @for (dept of topEmployeeDepts(); track dept.department) {
+            <div class="flex flex-col gap-1">
+              <div class="flex items-baseline justify-between gap-2 text-sm">
+                <span class="text-foreground min-w-0 truncate" [title]="dept.department">
+                  {{ dept.department }}
+                </span>
+                <span class="text-muted-foreground shrink-0 font-semibold tabular-nums">
+                  {{ dept.count | number }}
+                </span>
+              </div>
+              <div class="bg-muted h-1.5 overflow-hidden rounded-full">
+                <div
+                  class="h-full rounded-full bg-violet-500"
+                  [style.width.%]="barPct(dept.count, employeeDeptMax())"
+                ></div>
+              </div>
+            </div>
+          } @empty {
+            <p class="text-muted-foreground py-2 text-sm">No employee taps this day.</p>
+          }
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
