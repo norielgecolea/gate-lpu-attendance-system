@@ -122,17 +122,31 @@
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         @for (tap of recentTaps(); track tap.attendanceId + tap.action) {
           <article
-            class="tap-card border-border/60 bg-background flex min-w-0 flex-col gap-3 rounded-xl border p-3 shadow-sm transition-shadow hover:shadow-md sm:p-4"
+            class="tap-card flex min-w-0 flex-col gap-3 rounded-xl border p-3 shadow-sm transition-shadow hover:shadow-md sm:p-4"
+            [ngClass]="
+              isStudent(tap)
+                ? 'border-sky-500/30 bg-sky-500/5'
+                : 'border-violet-500/30 bg-violet-500/5'
+            "
           >
             <div class="flex items-center gap-3">
               <hlm-avatar
                 class="ring-offset-background size-10 ring-2 ring-offset-2 sm:size-11"
-                [class]="tap.action === 'TIME_IN' ? 'ring-emerald-500/50' : 'ring-amber-500/50'"
+                [ngClass]="isStudent(tap) ? 'ring-sky-500/55' : 'ring-violet-500/55'"
               >
                 @if (personPhoto(tap); as src) {
                   <img [src]="src" [alt]="personName(tap)" hlmAvatarImage />
                 }
-                <span hlmAvatarFallback>{{ initials(personName(tap)) }}</span>
+                <span
+                  hlmAvatarFallback
+                  [ngClass]="
+                    isStudent(tap)
+                      ? 'bg-sky-500/15 text-sky-700'
+                      : 'bg-violet-500/15 text-violet-700'
+                  "
+                >
+                  {{ initials(personName(tap)) }}
+                </span>
               </hlm-avatar>
               <div class="min-w-0 leading-tight">
                 <p class="text-foreground truncate text-sm font-semibold">{{ personName(tap) }}</p>
@@ -140,16 +154,28 @@
               </div>
             </div>
             <div class="flex items-center justify-between gap-2">
-              <span
-                class="tap-badge rounded-full px-2 py-0.5 text-[11px] font-bold tracking-wide"
-                [class]="
-                  tap.action === 'TIME_IN'
-                    ? 'bg-emerald-500/10 text-emerald-600'
-                    : 'bg-amber-500/10 text-amber-600'
-                "
-              >
-                {{ tap.action === 'TIME_IN' ? 'IN' : 'OUT' }}
-              </span>
+              <div class="flex min-w-0 flex-wrap items-center gap-1.5">
+                <span
+                  class="rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide"
+                  [ngClass]="
+                    isStudent(tap)
+                      ? 'bg-sky-500/15 text-sky-700'
+                      : 'bg-violet-500/15 text-violet-700'
+                  "
+                >
+                  {{ isStudent(tap) ? 'Student' : 'Employee' }}
+                </span>
+                <span
+                  class="tap-badge rounded-full px-2 py-0.5 text-[11px] font-bold tracking-wide"
+                  [ngClass]="
+                    tap.action === 'TIME_IN'
+                      ? 'bg-emerald-500/10 text-emerald-600'
+                      : 'bg-amber-500/10 text-amber-600'
+                  "
+                >
+                  {{ tap.action === 'TIME_IN' ? 'IN' : 'OUT' }}
+                </span>
+              </div>
               <div class="min-w-0 text-end leading-tight">
                 <p class="text-foreground text-xs font-semibold tabular-nums">
                   {{ tapTime(tap) | date: 'h:mm:ss a' }}
@@ -219,7 +245,7 @@
     <!-- Student presence by department -->
     <section hlmCard class="flex flex-col gap-4 rounded-2xl border-0 p-4 shadow-sm ring-1 ring-black/5 sm:gap-5 sm:p-6">
       <div class="flex items-start gap-3">
-        <div class="bg-primary/10 text-primary flex size-8 shrink-0 items-center justify-center rounded-lg sm:size-9">
+        <div class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-sky-600 sm:size-9">
           <ng-icon name="lucideGraduationCap" class="text-base sm:text-lg" />
         </div>
         <div hlmCardHeader class="flex min-w-0 flex-col gap-1 p-0">
@@ -255,7 +281,7 @@
               </div>
               <div class="bg-muted h-2 w-full overflow-hidden rounded-full">
                 <div
-                  class="dept-bar bg-primary h-full rounded-full"
+                  class="dept-bar h-full rounded-full bg-sky-500"
                   [style.width.%]="barPct(dept.count, studentDeptMax())"
                   [style.animation-delay.ms]="i * 40"
                 ></div>
@@ -269,7 +295,7 @@
     <!-- Employee presence by department -->
     <section hlmCard class="flex flex-col gap-4 rounded-2xl border-0 p-4 shadow-sm ring-1 ring-black/5 sm:gap-5 sm:p-6">
       <div class="flex items-start gap-3">
-        <div class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 sm:size-9">
+        <div class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 text-violet-600 sm:size-9">
           <ng-icon name="lucideBriefcase" class="text-base sm:text-lg" />
         </div>
         <div hlmCardHeader class="flex min-w-0 flex-col gap-1 p-0">
@@ -305,7 +331,7 @@
               </div>
               <div class="bg-muted h-2 w-full overflow-hidden rounded-full">
                 <div
-                  class="dept-bar h-full rounded-full bg-amber-500"
+                  class="dept-bar h-full rounded-full bg-violet-500"
                   [style.width.%]="barPct(dept.count, employeeDeptMax())"
                   [style.animation-delay.ms]="i * 40"
                 ></div>

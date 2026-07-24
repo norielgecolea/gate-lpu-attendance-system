@@ -1,4 +1,4 @@
-import { DatePipe, DecimalPipe } from '@angular/common';
+import { DatePipe, DecimalPipe, NgClass } from '@angular/common';
 import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
@@ -48,7 +48,7 @@ const DONUT_CIRCUMFERENCE = 2 * Math.PI * 42;
 
 @Component({
   selector: 'app-dashboard',
-  imports: [DecimalPipe, DatePipe, NgIcon, HlmCardImports, HlmAvatarImports],
+  imports: [DecimalPipe, DatePipe, NgClass, NgIcon, HlmCardImports, HlmAvatarImports],
   viewProviders: [
     provideIcons({
       lucideActivity,
@@ -305,6 +305,10 @@ export class Dashboard implements OnDestroy {
       return tap.student.studentNo;
     }
     return [tap.employee?.department, tap.employee?.position].filter(Boolean).join(' · ');
+  }
+
+  protected isStudent(tap: TapResponse): boolean {
+    return tap.personType === 'STUDENT' || !!tap.student;
   }
 
   /** Loads today's summaries and per-department presence for students and employees. */
