@@ -27,10 +27,10 @@ public class UploadProperties {
     private boolean photoOptimizationEnabled = true;
 
     /** Longest edge in pixels for stored profile photos. */
-    private int photoMaxDimension = 800;
+    private int photoMaxDimension = 960;
 
     /** JPEG quality from 0.1 (smallest) to 1.0 (largest). */
-    private float photoJpegQuality = 0.85f;
+    private float photoJpegQuality = 0.84f;
 
     /** Transcode guard videos to H.264 MP4 when FFmpeg is installed. */
     private boolean videoOptimizationEnabled = true;

@@ -1,7 +1,8 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, from, switchMap } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { compressImageFile, compressImageFiles } from '../media/compress-image';
 import type { Employee } from '../../pages/employees/employees.store';
 
 export type EmployeePayload = Omit<Employee, 'id'>;
@@ -52,11 +53,15 @@ export class EmployeesApiService {
   }
 
   bulkUploadPhotos(files: File[]): Observable<PhotoBulkUploadResult> {
-    const formData = new FormData();
-    for (const file of files) {
-      formData.append('files', file, file.name);
-    }
-    return this.http.post<PhotoBulkUploadResult>(`${this.baseUrl}/photos/bulk`, formData);
+    return from(compressImageFiles(files)).pipe(
+      switchMap((compressed) => {
+        const formData = new FormData();
+        for (const file of compressed) {
+          formData.append('files', file, file.name);
+        }
+        return this.http.post<PhotoBulkUploadResult>(`${this.baseUrl}/photos/bulk`, formData);
+      }),
+    );
   }
 
   update(id: string, payload: EmployeePayload): Observable<Employee> {
@@ -72,8 +77,12 @@ export class EmployeesApiService {
   }
 
   uploadPhoto(file: File): Observable<{ photo: string }> {
-    const formData = new FormData();
-    formData.append('file', file, file.name);
-    return this.http.post<{ photo: string }>(`${this.baseUrl}/photo`, formData);
+    return from(compressImageFile(file)).pipe(
+      switchMap((compressed) => {
+        const formData = new FormData();
+        formData.append('file', compressed, compressed.name);
+        return this.http.post<{ photo: string }>(`${this.baseUrl}/photo`, formData);
+      }),
+    );
   }
 }

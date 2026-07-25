@@ -101,7 +101,7 @@ public class ImageOptimizationService {
                 : BufferedImage.TYPE_INT_RGB;
         BufferedImage scaled = new BufferedImage(targetWidth, targetHeight, imageType);
         Graphics2D graphics = scaled.createGraphics();
-        graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+        graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
         graphics.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
         graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         graphics.drawImage(source, 0, 0, targetWidth, targetHeight, null);
@@ -136,6 +136,10 @@ public class ImageOptimizationService {
             if (params.canWriteCompressed()) {
                 params.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
                 params.setCompressionQuality(quality);
+            }
+            // Progressive JPEG paints sooner at the gate while the rest of the image loads.
+            if (params.canWriteProgressive()) {
+                params.setProgressiveMode(ImageWriteParam.MODE_DEFAULT);
             }
             writer.write(null, new IIOImage(image, null, null), params);
         } finally {
