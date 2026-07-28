@@ -135,6 +135,7 @@ public class StudentService {
                 if (existing.getId() != null) {
                     studentRepository.save(existing);
                     updated++;
+                    persistAuditEvent(existing, "UPDATED", actorUserId, actorUsername);
                 }
                 releaseAndClaimRfid(knownRfids, previousRfid, existing.getRfid());
                 continue;
@@ -174,7 +175,7 @@ public class StudentService {
     }
 
     @Transactional
-    public StudentResponse update(Long id, StudentRequest request) {
+    public StudentResponse update(Long id, StudentRequest request, Long actorUserId, String actorUsername) {
         Student student = requireActive(id);
         String studentNo = normalizeRequired(request.studentNo(), "Student number");
 
@@ -190,6 +191,7 @@ public class StudentService {
         applyRequest(student, request, studentNo);
         student.setUpdatedAt(Instant.now());
         studentRepository.save(student);
+        persistAuditEvent(student, "UPDATED", actorUserId, actorUsername);
 
         log.info("Updated student id={} studentNo={}", id, student.getStudentNo());
         return StudentResponse.from(student);
@@ -221,11 +223,12 @@ public class StudentService {
 
     /** "Delete" only deactivates — the record stays and can be restored. */
     @Transactional
-    public void delete(Long id) {
+    public void delete(Long id, Long actorUserId, String actorUsername) {
         Student student = requireActive(id);
         student.setDeleted(true);
         student.setUpdatedAt(Instant.now());
         studentRepository.save(student);
+        persistAuditEvent(student, "DELETED", actorUserId, actorUsername);
         log.info("Deactivated student id={} studentNo={}", id, student.getStudentNo());
     }
 
@@ -307,7 +310,11 @@ public class StudentService {
      * Applies photos whose filenames (without extension) match active student numbers.
      */
     @Transactional
-    public PhotoBulkUploadResponse bulkUploadPhotos(List<MultipartFile> files) {
+    public PhotoBulkUploadResponse bulkUploadPhotos(
+            List<MultipartFile> files,
+            Long actorUserId,
+            String actorUsername
+    ) {
         if (files == null || files.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one photo file is required");
         }
@@ -343,6 +350,7 @@ public class StudentService {
             student.setPhoto(photoPath);
             student.setUpdatedAt(now);
             studentRepository.save(student);
+            persistAuditEvent(student, "PHOTO_UPDATED", actorUserId, actorUsername);
             updated++;
         }
 

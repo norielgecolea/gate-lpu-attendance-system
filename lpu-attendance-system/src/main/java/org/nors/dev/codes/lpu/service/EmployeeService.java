@@ -139,6 +139,7 @@ public class EmployeeService {
                 if (existing.getId() != null) {
                     employeeRepository.save(existing);
                     updated++;
+                    persistAuditEvent(existing, "UPDATED", actorUserId, actorUsername);
                 }
                 releaseAndClaimRfid(knownRfids, previousRfid, existing.getRfid());
                 continue;
@@ -178,7 +179,7 @@ public class EmployeeService {
     }
 
     @Transactional
-    public EmployeeResponse update(Long id, EmployeeRequest request) {
+    public EmployeeResponse update(Long id, EmployeeRequest request, Long actorUserId, String actorUsername) {
         Employee employee = requireActive(id);
         String employeeNo = normalizeRequired(request.employeeNo(), "Employee number");
 
@@ -194,6 +195,7 @@ public class EmployeeService {
         applyRequest(employee, request, employeeNo);
         employee.setUpdatedAt(Instant.now());
         employeeRepository.save(employee);
+        persistAuditEvent(employee, "UPDATED", actorUserId, actorUsername);
 
         log.info("Updated employee id={} employeeNo={}", id, employee.getEmployeeNo());
         return EmployeeResponse.from(employee);
@@ -201,11 +203,12 @@ public class EmployeeService {
 
     /** "Delete" only deactivates — the record stays and can be restored. */
     @Transactional
-    public void delete(Long id) {
+    public void delete(Long id, Long actorUserId, String actorUsername) {
         Employee employee = requireActive(id);
         employee.setDeleted(true);
         employee.setUpdatedAt(Instant.now());
         employeeRepository.save(employee);
+        persistAuditEvent(employee, "DELETED", actorUserId, actorUsername);
         log.info("Deactivated employee id={} employeeNo={}", id, employee.getEmployeeNo());
     }
 
@@ -233,7 +236,11 @@ public class EmployeeService {
      * Applies photos whose filenames (without extension) match active employee numbers.
      */
     @Transactional
-    public PhotoBulkUploadResponse bulkUploadPhotos(List<MultipartFile> files) {
+    public PhotoBulkUploadResponse bulkUploadPhotos(
+            List<MultipartFile> files,
+            Long actorUserId,
+            String actorUsername
+    ) {
         if (files == null || files.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one photo file is required");
         }
@@ -269,6 +276,7 @@ public class EmployeeService {
             employee.setPhoto(photoPath);
             employee.setUpdatedAt(now);
             employeeRepository.save(employee);
+            persistAuditEvent(employee, "PHOTO_UPDATED", actorUserId, actorUsername);
             updated++;
         }
 

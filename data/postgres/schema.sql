@@ -241,12 +241,19 @@ CREATE TABLE IF NOT EXISTS student_audit_events (
     action         VARCHAR(20) NOT NULL,
     actor_user_id  BIGINT REFERENCES users(id),
     actor_username VARCHAR(100),
-    created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CONSTRAINT chk_student_audit_action CHECK (action IN ('CREATED'))
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE student_audit_events DROP CONSTRAINT IF EXISTS chk_student_audit_action;
+ALTER TABLE student_audit_events
+    ADD CONSTRAINT chk_student_audit_action
+    CHECK (action IN ('CREATED', 'UPDATED', 'PHOTO_UPDATED', 'DELETED'));
 
 CREATE INDEX IF NOT EXISTS idx_student_audit_events_student_created
     ON student_audit_events (student_id, created_at DESC, id DESC);
+
+CREATE INDEX IF NOT EXISTS idx_student_audit_events_created
+    ON student_audit_events (created_at DESC, id DESC);
 
 -- ---------------------------------------------------------------------------
 -- employee_audit_events (employee lifecycle audit)
@@ -257,9 +264,16 @@ CREATE TABLE IF NOT EXISTS employee_audit_events (
     action         VARCHAR(20) NOT NULL,
     actor_user_id  BIGINT REFERENCES users(id),
     actor_username VARCHAR(100),
-    created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CONSTRAINT chk_employee_audit_action CHECK (action IN ('CREATED'))
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE employee_audit_events DROP CONSTRAINT IF EXISTS chk_employee_audit_action;
+ALTER TABLE employee_audit_events
+    ADD CONSTRAINT chk_employee_audit_action
+    CHECK (action IN ('CREATED', 'UPDATED', 'PHOTO_UPDATED', 'DELETED'));
 
 CREATE INDEX IF NOT EXISTS idx_employee_audit_events_employee_created
     ON employee_audit_events (employee_id, created_at DESC, id DESC);
+
+CREATE INDEX IF NOT EXISTS idx_employee_audit_events_created
+    ON employee_audit_events (created_at DESC, id DESC);

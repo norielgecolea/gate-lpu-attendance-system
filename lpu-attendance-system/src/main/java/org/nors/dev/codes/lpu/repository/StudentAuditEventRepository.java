@@ -50,4 +50,38 @@ public class StudentAuditEventRepository {
                 .setMaxResults(1)
                 .uniqueResultOptional();
     }
+
+    @Transactional(readOnly = true)
+    public List<StudentAuditEvent> findByManilaDate(java.time.LocalDate date, int offset, int limit) {
+        return currentSession()
+                .createNativeQuery(
+                        """
+                        SELECT e.*
+                        FROM student_audit_events e
+                        WHERE CAST(e.created_at AT TIME ZONE 'Asia/Manila' AS date) = :date
+                        ORDER BY e.created_at DESC, e.id DESC
+                        OFFSET :offset LIMIT :limit
+                        """,
+                        StudentAuditEvent.class
+                )
+                .setParameter("date", date)
+                .setParameter("offset", Math.max(offset, 0))
+                .setParameter("limit", Math.max(limit, 1))
+                .getResultList();
+    }
+
+    @Transactional(readOnly = true)
+    public long countByManilaDate(java.time.LocalDate date) {
+        Object count = currentSession()
+                .createNativeQuery(
+                        """
+                        SELECT COUNT(*)
+                        FROM student_audit_events e
+                        WHERE CAST(e.created_at AT TIME ZONE 'Asia/Manila' AS date) = :date
+                        """
+                )
+                .setParameter("date", date)
+                .getSingleResult();
+        return count instanceof Number number ? number.longValue() : 0L;
+    }
 }

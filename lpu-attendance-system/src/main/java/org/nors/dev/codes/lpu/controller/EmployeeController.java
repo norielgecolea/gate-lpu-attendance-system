@@ -141,9 +141,12 @@ public class EmployeeController {
 
     @PostMapping(value = "/photos/bulk", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<PhotoBulkUploadResponse> bulkUploadPhotos(
-            @RequestParam("files") List<MultipartFile> files
+            @RequestParam("files") List<MultipartFile> files,
+            @AuthenticationPrincipal AuthenticatedUser user
     ) {
-        return ResponseEntity.ok(employeeService.bulkUploadPhotos(files));
+        Long actorUserId = user != null ? user.getId() : null;
+        String actorUsername = user != null ? user.getUsername() : null;
+        return ResponseEntity.ok(employeeService.bulkUploadPhotos(files, actorUserId, actorUsername));
     }
 
     @PostMapping
@@ -174,14 +177,22 @@ public class EmployeeController {
     @PutMapping("/{id}")
     public ResponseEntity<EmployeeResponse> update(
             @PathVariable Long id,
-            @Valid @RequestBody EmployeeRequest request
+            @Valid @RequestBody EmployeeRequest request,
+            @AuthenticationPrincipal AuthenticatedUser user
     ) {
-        return ResponseEntity.ok(employeeService.update(id, request));
+        Long actorUserId = user != null ? user.getId() : null;
+        String actorUsername = user != null ? user.getUsername() : null;
+        return ResponseEntity.ok(employeeService.update(id, request, actorUserId, actorUsername));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Map<String, String>> delete(@PathVariable Long id) {
-        employeeService.delete(id);
+    public ResponseEntity<Map<String, String>> delete(
+            @PathVariable Long id,
+            @AuthenticationPrincipal AuthenticatedUser user
+    ) {
+        Long actorUserId = user != null ? user.getId() : null;
+        String actorUsername = user != null ? user.getUsername() : null;
+        employeeService.delete(id, actorUserId, actorUsername);
         return ResponseEntity.ok(Map.of("message", "Employee deactivated"));
     }
 

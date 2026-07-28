@@ -164,6 +164,36 @@ interface TapErrorAlert {
     .monitor-action-btn--danger:hover {
       color: rgb(248 113 113);
     }
+
+    .recent-tappers-scroll {
+      scrollbar-width: thin;
+      scrollbar-color: transparent transparent;
+    }
+
+    .recent-tappers-scroll:hover,
+    .recent-tappers-scroll:focus-within,
+    .recent-tappers-scroll:active {
+      scrollbar-color: rgb(71 85 105 / 0.9) transparent;
+    }
+
+    .recent-tappers-scroll::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .recent-tappers-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .recent-tappers-scroll::-webkit-scrollbar-thumb {
+      border-radius: 9999px;
+      background-color: transparent;
+    }
+
+    .recent-tappers-scroll:hover::-webkit-scrollbar-thumb,
+    .recent-tappers-scroll:focus-within::-webkit-scrollbar-thumb,
+    .recent-tappers-scroll:active::-webkit-scrollbar-thumb {
+      background-color: rgb(71 85 105 / 0.9);
+    }
   `,
   host: { class: 'block h-dvh w-full overflow-hidden' },
 })

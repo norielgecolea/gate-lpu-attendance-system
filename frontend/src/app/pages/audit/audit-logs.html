@@ -1,0 +1,126 @@
+<div class="flex min-h-0 flex-1 flex-col gap-4">
+  <div class="flex flex-wrap items-center gap-2">
+    <div class="relative min-w-0 flex-1 basis-48">
+      <ng-icon
+        name="lucideSearch"
+        class="text-muted-foreground pointer-events-none absolute inset-y-0 left-3 my-auto text-base"
+      />
+      <input
+        hlmInput
+        class="bg-card w-full pl-9"
+        type="search"
+        placeholder="Search name, ID, action, or account"
+        [ngModel]="search()"
+        (ngModelChange)="search.set($event)"
+      />
+    </div>
+
+    <select
+      hlmInput
+      class="bg-card w-auto"
+      [ngModel]="personType()"
+      (ngModelChange)="onPersonTypeChange($event)"
+      aria-label="Filter by person type"
+    >
+      <option value="">All (Students & Employees)</option>
+      <option value="STUDENT">Students</option>
+      <option value="EMPLOYEE">Employees</option>
+    </select>
+
+    <input
+      hlmInput
+      class="bg-card w-auto"
+      type="date"
+      [ngModel]="date()"
+      (ngModelChange)="onDateChange($event)"
+      aria-label="Filter by date"
+    />
+
+    <button hlmBtn variant="outline" class="gap-1.5" type="button" (click)="reload()" [disabled]="loading()">
+      <ng-icon name="lucideRefreshCw" class="text-base" />
+      Refresh
+    </button>
+  </div>
+
+  <p class="text-muted-foreground text-sm">
+    Administration audit for
+    <span class="text-foreground font-medium">{{ date() }}</span>
+    (Asia/Manila).
+    Showing {{ filtered().length }} of {{ total() }} log(s).
+  </p>
+
+  @if (error()) {
+    <p class="text-destructive text-sm" role="alert">{{ error() }}</p>
+  }
+
+  <div hlmTableContainer class="bg-card min-h-0 flex-1 overflow-y-auto rounded-lg border shadow-sm">
+    <table hlmTable class="text-sm">
+      <thead hlmTHead class="sticky top-0 z-10">
+        <tr hlmTr class="bg-primary hover:bg-primary [&>th]:text-primary-foreground">
+          <th hlmTh>Type</th>
+          <th hlmTh>Person</th>
+          <th hlmTh>Action</th>
+          <th hlmTh>Account</th>
+          <th hlmTh>Date</th>
+          <th hlmTh>Time</th>
+        </tr>
+      </thead>
+      <tbody hlmTBody>
+        @if (loading() && logs().length === 0) {
+          <tr hlmTr>
+            <td hlmTd colspan="6" class="text-muted-foreground py-10 text-center">
+              Loading audit logs…
+            </td>
+          </tr>
+        } @else {
+          @for (row of filtered(); track row.id + '-' + row.personType) {
+            <tr hlmTr>
+              <td hlmTd>
+                <span
+                  class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
+                  [class]="
+                    row.personType === 'STUDENT'
+                      ? 'bg-primary/10 text-primary'
+                      : 'bg-sky-500/10 text-sky-700'
+                  "
+                >
+                  <ng-icon
+                    [name]="row.personType === 'STUDENT' ? 'lucideGraduationCap' : 'lucideBriefcase'"
+                    class="text-sm"
+                  />
+                  {{ row.personType === 'STUDENT' ? 'Student' : 'Employee' }}
+                </span>
+              </td>
+              <td hlmTd>
+                <div class="leading-tight">
+                  <p class="text-foreground font-medium">{{ row.personName }}</p>
+                  <p class="text-muted-foreground text-xs tabular-nums">{{ row.personNo }}</p>
+                </div>
+              </td>
+              <td hlmTd>
+                <span class="font-medium">{{ actionLabel(row.action) }}</span>
+              </td>
+              <td hlmTd>
+                @if (row.actorUsername) {
+                  <span class="font-medium">{{ row.actorUsername }}</span>
+                } @else {
+                  <span class="text-muted-foreground">Unknown</span>
+                }
+              </td>
+              <td hlmTd>{{ row.createdAt | date: 'MMM d, y' : 'Asia/Manila' }}</td>
+              <td hlmTd class="tabular-nums">
+                {{ row.createdAt | date: 'h:mm:ss a' : 'Asia/Manila' }}
+              </td>
+            </tr>
+          } @empty {
+            <tr hlmTr>
+              <td hlmTd colspan="6" class="text-muted-foreground py-10 text-center">
+                No audit logs for this date{{ personType() ? ' and filter' : '' }}.
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

@@ -259,7 +259,7 @@
           </div>
         }
 
-        <div class="flex max-h-56 flex-col gap-2 overflow-y-auto sm:max-h-64 md:max-h-72">
+        <div class="recent-tappers-scroll flex max-h-56 flex-col gap-2 overflow-y-auto sm:max-h-64 md:max-h-72">
           @for (tap of feed(); track tap.attendanceId + tap.action) {
             <article class="feed-row flex items-center gap-2 rounded-xl bg-slate-800/50 px-3 py-2.5 sm:gap-3 sm:px-4">
               <hlm-avatar class="size-9 shrink-0 sm:size-10">

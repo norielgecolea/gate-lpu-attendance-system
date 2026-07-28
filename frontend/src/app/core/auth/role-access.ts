@@ -50,5 +50,8 @@ export function canAccessAdminRoute(role: string | null | undefined, route: stri
   if (route === '/tap-errors') {
     return role === 'SUPERADMIN' || role === 'OSAS' || role === 'HR';
   }
+  if (route === '/audit-logs') {
+    return role === 'SUPERADMIN';
+  }
   return false;
 }

@@ -15,6 +15,7 @@ import { Users } from './pages/users/users';
 import { GuardDisplaySettings } from './pages/settings/guard-display-settings';
 import { GateTonesSettings } from './pages/settings/gate-tones-settings';
 import { TapErrorLogs } from './pages/tap-errors/tap-error-logs';
+import { AuditLogs } from './pages/audit/audit-logs';
 import { RfidChecker } from './pages/rfid-checker/rfid-checker';
 import { DailyRecap } from './pages/daily-recap/daily-recap';
 import { GateKiosk } from './pages/guard/gate-kiosk';
@@ -150,6 +151,11 @@ export const routes: Routes = [
         path: 'tap-errors',
         component: TapErrorLogs,
         canActivate: [allowRoles(...HR_ADMIN_ROLES)],
+      },
+      {
+        path: 'audit-logs',
+        component: AuditLogs,
+        canActivate: [allowRoles(...SUPERADMIN_ROLES)],
       },
       { path: 'attendance', redirectTo: 'students/attendance' },
       { path: 'deleted-students', redirectTo: 'students/inactive' },
