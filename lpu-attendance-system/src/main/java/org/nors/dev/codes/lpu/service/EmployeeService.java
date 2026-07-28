@@ -6,16 +6,18 @@ import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.nors.dev.codes.lpu.dto.EmployeeAuditEventResponse;
 import org.nors.dev.codes.lpu.dto.EmployeeImportResponse;
 import org.nors.dev.codes.lpu.dto.EmployeeRequest;
 import org.nors.dev.codes.lpu.dto.EmployeeResponse;
 import org.nors.dev.codes.lpu.dto.PhotoBulkUploadResponse;
 import org.nors.dev.codes.lpu.model.Employee;
+import org.nors.dev.codes.lpu.model.EmployeeAuditEvent;
+import org.nors.dev.codes.lpu.repository.EmployeeAuditEventRepository;
 import org.nors.dev.codes.lpu.repository.EmployeeRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -29,15 +31,18 @@ public class EmployeeService {
     private static final Logger log = LogManager.getLogger(EmployeeService.class);
 
     private final EmployeeRepository employeeRepository;
+    private final EmployeeAuditEventRepository employeeAuditEventRepository;
     private final PhotoStorageService photoStorageService;
     private final RfidUniquenessService rfidUniquenessService;
 
     public EmployeeService(
             EmployeeRepository employeeRepository,
+            EmployeeAuditEventRepository employeeAuditEventRepository,
             PhotoStorageService photoStorageService,
             RfidUniquenessService rfidUniquenessService
     ) {
         this.employeeRepository = employeeRepository;
+        this.employeeAuditEventRepository = employeeAuditEventRepository;
         this.photoStorageService = photoStorageService;
         this.rfidUniquenessService = rfidUniquenessService;
     }
@@ -62,7 +67,7 @@ public class EmployeeService {
     }
 
     @Transactional
-    public EmployeeResponse create(EmployeeRequest request) {
+    public EmployeeResponse create(EmployeeRequest request, Long actorUserId, String actorUsername) {
         String employeeNo = normalizeRequired(request.employeeNo(), "Employee number");
         if (employeeRepository.findByEmployeeNo(employeeNo).isPresent()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Employee number already exists");
@@ -79,9 +84,18 @@ public class EmployeeService {
         employee.setUpdatedAt(Instant.now());
         employee.setDeleted(false);
         employeeRepository.persist(employee);
+        persistAuditEvent(employee, "CREATED", actorUserId, actorUsername);
 
         log.info("Created employee employeeNo={}", employee.getEmployeeNo());
         return EmployeeResponse.from(employee);
+    }
+
+    @Transactional(readOnly = true)
+    public List<EmployeeAuditEventResponse> listAuditEvents(Long employeeId) {
+        requireActive(employeeId);
+        return employeeAuditEventRepository.findByEmployeeId(employeeId).stream()
+                .map(EmployeeAuditEventResponse::from)
+                .toList();
     }
 
     /**
@@ -91,7 +105,11 @@ public class EmployeeService {
      * Blank RFID/photo/birthdate on update leave the existing values unchanged.
      */
     @Transactional
-    public EmployeeImportResponse importEmployees(List<EmployeeRequest> requests) {
+    public EmployeeImportResponse importEmployees(
+            List<EmployeeRequest> requests,
+            Long actorUserId,
+            String actorUsername
+    ) {
         if (requests.size() > 10_000) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Import is limited to 10,000 rows");
         }
@@ -146,6 +164,9 @@ public class EmployeeService {
 
         if (!toInsert.isEmpty()) {
             employeeRepository.persistBatch(toInsert);
+            for (Employee employee : toInsert) {
+                persistAuditEvent(employee, "CREATED", actorUserId, actorUsername);
+            }
         }
         log.info(
                 "Imported employees imported={} updated={} skippedDuplicates={}",
@@ -344,5 +365,15 @@ public class EmployeeService {
             return "\"" + escaped + "\"";
         }
         return escaped;
+    }
+
+    private void persistAuditEvent(Employee employee, String action, Long actorUserId, String actorUsername) {
+        EmployeeAuditEvent event = new EmployeeAuditEvent();
+        event.setEmployee(employee);
+        event.setAction(action);
+        event.setActorUserId(actorUserId);
+        event.setActorUsername(normalizeOptional(actorUsername));
+        event.setCreatedAt(Instant.now());
+        employeeAuditEventRepository.persist(event);
     }
 }

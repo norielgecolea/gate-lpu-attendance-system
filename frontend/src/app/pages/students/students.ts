@@ -32,9 +32,10 @@ import {
   getCoreRowModel,
   getSortedRowModel,
 } from '@tanstack/angular-table';
-import { Subject, debounceTime, distinctUntilChanged, filter, take } from 'rxjs';
+import { Subject, catchError, debounceTime, distinctUntilChanged, filter, of, take } from 'rxjs';
 import {
   StudentsApiService,
+  type StudentAuditEvent,
   type StudentPayload,
 } from '../../core/students/students-api.service';
 import { studentPhotoUrl } from '../../core/students/student-photo.util';
@@ -167,7 +168,15 @@ export class Students {
   }
 
   protected openEdit(student: Student): void {
-    this.openForm('edit', student);
+    this.api
+      .getAuditEvents(student.id)
+      .pipe(
+        take(1),
+        catchError(() => of([] as StudentAuditEvent[])),
+      )
+      .subscribe((events) => {
+        this.openForm('edit', student, this.formatCreatedAuditLabel(events));
+      });
   }
 
   protected deleteOne(student: Student): void {
@@ -301,9 +310,9 @@ export class Students {
     return studentPhotoUrl(photo);
   }
 
-  private openForm(mode: 'create' | 'edit', student?: Student): void {
+  private openForm(mode: 'create' | 'edit', student?: Student, createdAuditLabel?: string | null): void {
     const ref = this.dialog.open(StudentFormDialog, {
-      context: { mode, student },
+      context: { mode, student, createdAuditLabel },
       contentClass: 'person-form-dialog',
     });
 
@@ -319,6 +328,18 @@ export class Students {
             this.actionError.set(err?.error?.message ?? 'Failed to save student'),
         });
       });
+  }
+
+  private formatCreatedAuditLabel(events: StudentAuditEvent[]): string | null {
+    const createdEvent = events.find((event) => event.action === 'CREATED');
+    if (!createdEvent) {
+      return null;
+    }
+
+    const actor = createdEvent.actorUsername?.trim() || 'Unknown creator';
+    const createdAt = new Date(createdEvent.createdAt);
+    const when = Number.isNaN(createdAt.getTime()) ? createdEvent.createdAt : createdAt.toLocaleString();
+    return `Added by ${actor} on ${when}`;
   }
 }
 

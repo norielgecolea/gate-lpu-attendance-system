@@ -32,9 +32,10 @@ import {
   getFilteredRowModel,
   getSortedRowModel,
 } from '@tanstack/angular-table';
-import { filter, take } from 'rxjs';
+import { catchError, filter, of, take } from 'rxjs';
 import {
   EmployeesApiService,
+  type EmployeeAuditEvent,
   type EmployeePayload,
 } from '../../core/employees/employees-api.service';
 import { studentPhotoUrl } from '../../core/students/student-photo.util';
@@ -146,7 +147,15 @@ export class Employees {
   }
 
   protected openEdit(employee: Employee): void {
-    this.openForm('edit', employee);
+    this.api
+      .getAuditEvents(employee.id)
+      .pipe(
+        take(1),
+        catchError(() => of([] as EmployeeAuditEvent[])),
+      )
+      .subscribe((events) => {
+        this.openForm('edit', employee, this.formatCreatedAuditLabel(events));
+      });
   }
 
   protected deleteOne(employee: Employee): void {
@@ -280,9 +289,9 @@ export class Employees {
     return studentPhotoUrl(photo);
   }
 
-  private openForm(mode: 'create' | 'edit', employee?: Employee): void {
+  private openForm(mode: 'create' | 'edit', employee?: Employee, createdAuditLabel?: string | null): void {
     const ref = this.dialog.open(EmployeeFormDialog, {
-      context: { mode, employee },
+      context: { mode, employee, createdAuditLabel },
       contentClass: 'person-form-dialog',
     });
 
@@ -298,6 +307,18 @@ export class Employees {
             this.actionError.set(err?.error?.message ?? 'Failed to save employee'),
         });
       });
+  }
+
+  private formatCreatedAuditLabel(events: EmployeeAuditEvent[]): string | null {
+    const createdEvent = events.find((event) => event.action === 'CREATED');
+    if (!createdEvent) {
+      return null;
+    }
+
+    const actor = createdEvent.actorUsername?.trim() || 'Unknown creator';
+    const createdAt = new Date(createdEvent.createdAt);
+    const when = Number.isNaN(createdAt.getTime()) ? createdEvent.createdAt : createdAt.toLocaleString();
+    return `Added by ${actor} on ${when}`;
   }
 }
 

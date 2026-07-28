@@ -17,6 +17,7 @@ import type { Employee } from './employees.store';
 export interface EmployeeFormContext {
   mode: 'create' | 'edit';
   employee?: Employee;
+  createdAuditLabel?: string | null;
 }
 
 export interface EmployeeFormResult {
@@ -51,6 +52,7 @@ export class EmployeeFormDialog {
   private readonly rfidApi = inject(RfidApiService);
 
   protected readonly mode = this.context.mode;
+  protected readonly createdAuditLabel = this.context.createdAuditLabel ?? null;
   protected readonly error = signal<string | null>(null);
   protected readonly saving = signal(false);
   protected readonly previewUrl = signal<string | null>(

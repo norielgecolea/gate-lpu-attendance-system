@@ -10,6 +10,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.nors.dev.codes.lpu.dto.PhotoBulkUploadResponse;
+import org.nors.dev.codes.lpu.dto.StudentAuditEventResponse;
 import org.nors.dev.codes.lpu.dto.StudentFinanceTagImportResponse;
 import org.nors.dev.codes.lpu.dto.StudentImportResponse;
 import org.nors.dev.codes.lpu.dto.StudentPageResponse;
@@ -17,7 +18,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.nors.dev.codes.lpu.dto.StudentRequest;
 import org.nors.dev.codes.lpu.dto.StudentResponse;
+import org.nors.dev.codes.lpu.model.StudentAuditEvent;
 import org.nors.dev.codes.lpu.model.Student;
+import org.nors.dev.codes.lpu.repository.StudentAuditEventRepository;
 import org.nors.dev.codes.lpu.repository.StudentRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -31,15 +34,18 @@ public class StudentService {
     private static final Logger log = LogManager.getLogger(StudentService.class);
 
     private final StudentRepository studentRepository;
+    private final StudentAuditEventRepository studentAuditEventRepository;
     private final PhotoStorageService photoStorageService;
     private final RfidUniquenessService rfidUniquenessService;
 
     public StudentService(
             StudentRepository studentRepository,
+            StudentAuditEventRepository studentAuditEventRepository,
             PhotoStorageService photoStorageService,
             RfidUniquenessService rfidUniquenessService
     ) {
         this.studentRepository = studentRepository;
+        this.studentAuditEventRepository = studentAuditEventRepository;
         this.photoStorageService = photoStorageService;
         this.rfidUniquenessService = rfidUniquenessService;
     }
@@ -57,7 +63,7 @@ public class StudentService {
     }
 
     @Transactional
-    public StudentResponse create(StudentRequest request) {
+    public StudentResponse create(StudentRequest request, Long actorUserId, String actorUsername) {
         String studentNo = normalizeRequired(request.studentNo(), "Student number");
         if (studentRepository.findByStudentNo(studentNo).isPresent()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Student number already exists");
@@ -74,9 +80,18 @@ public class StudentService {
         student.setUpdatedAt(Instant.now());
         student.setDeleted(false);
         studentRepository.persist(student);
+        persistAuditEvent(student, "CREATED", actorUserId, actorUsername);
 
         log.info("Created student studentNo={}", student.getStudentNo());
         return StudentResponse.from(student);
+    }
+
+    @Transactional(readOnly = true)
+    public List<StudentAuditEventResponse> listAuditEvents(Long studentId) {
+        requireActive(studentId);
+        return studentAuditEventRepository.findByStudentId(studentId).stream()
+                .map(StudentAuditEventResponse::from)
+                .toList();
     }
 
     /**
@@ -86,7 +101,11 @@ public class StudentService {
      * Blank RFID/photo/birthdate on update leave the existing values unchanged.
      */
     @Transactional
-    public StudentImportResponse importStudents(List<StudentRequest> requests) {
+    public StudentImportResponse importStudents(
+            List<StudentRequest> requests,
+            Long actorUserId,
+            String actorUsername
+    ) {
         if (requests.size() > 10_000) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Import is limited to 10,000 rows");
         }
@@ -141,6 +160,9 @@ public class StudentService {
 
         if (!toInsert.isEmpty()) {
             studentRepository.persistBatch(toInsert);
+            for (Student student : toInsert) {
+                persistAuditEvent(student, "CREATED", actorUserId, actorUsername);
+            }
         }
         log.info(
                 "Imported students imported={} updated={} skippedDuplicates={}",
@@ -420,5 +442,15 @@ public class StudentService {
             return "\"" + escaped + "\"";
         }
         return escaped;
+    }
+
+    private void persistAuditEvent(Student student, String action, Long actorUserId, String actorUsername) {
+        StudentAuditEvent event = new StudentAuditEvent();
+        event.setStudent(student);
+        event.setAction(action);
+        event.setActorUserId(actorUserId);
+        event.setActorUsername(normalizeOptional(actorUsername));
+        event.setCreatedAt(Instant.now());
+        studentAuditEventRepository.persist(event);
     }
 }

@@ -25,6 +25,13 @@ export interface StudentPage {
   items: Student[];
   total: number;
 }
+export interface StudentAuditEvent {
+  id: string;
+  action: string;
+  actorUserId: number | null;
+  actorUsername: string | null;
+  createdAt: string;
+}
 
 @Injectable({ providedIn: 'root' })
 export class StudentsApiService {
@@ -58,6 +65,10 @@ export class StudentsApiService {
 
   getById(id: string): Observable<Student> {
     return this.http.get<Student>(`${this.baseUrl}/${id}`);
+  }
+
+  getAuditEvents(id: string): Observable<StudentAuditEvent[]> {
+    return this.http.get<StudentAuditEvent[]>(`${this.baseUrl}/${id}/audit`);
   }
 
   create(payload: StudentPayload): Observable<Student> {

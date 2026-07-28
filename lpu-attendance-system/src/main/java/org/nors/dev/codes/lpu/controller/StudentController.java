@@ -9,11 +9,13 @@ import org.nors.dev.codes.lpu.dto.AttendancePageResponse;
 import org.nors.dev.codes.lpu.dto.PersonAttendanceSummaryResponse;
 import org.nors.dev.codes.lpu.dto.PhotoBulkUploadResponse;
 import org.nors.dev.codes.lpu.dto.PhotoUploadResponse;
+import org.nors.dev.codes.lpu.dto.StudentAuditEventResponse;
 import org.nors.dev.codes.lpu.dto.StudentFinanceTagImportResponse;
 import org.nors.dev.codes.lpu.dto.StudentImportResponse;
 import org.nors.dev.codes.lpu.dto.StudentPageResponse;
 import org.nors.dev.codes.lpu.dto.StudentRequest;
 import org.nors.dev.codes.lpu.dto.StudentResponse;
+import org.nors.dev.codes.lpu.security.AuthenticatedUser;
 import org.nors.dev.codes.lpu.service.AttendanceService;
 import org.nors.dev.codes.lpu.service.PhotoStorageService;
 import org.nors.dev.codes.lpu.service.StudentService;
@@ -22,6 +24,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -160,15 +163,28 @@ public class StudentController {
     }
 
     @PostMapping
-    public ResponseEntity<StudentResponse> create(@Valid @RequestBody StudentRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(studentService.create(request));
+    public ResponseEntity<StudentResponse> create(
+            @Valid @RequestBody StudentRequest request,
+            @AuthenticationPrincipal AuthenticatedUser user
+    ) {
+        Long actorUserId = user != null ? user.getId() : null;
+        String actorUsername = user != null ? user.getUsername() : null;
+        return ResponseEntity.status(HttpStatus.CREATED).body(studentService.create(request, actorUserId, actorUsername));
+    }
+
+    @GetMapping("/{id}/audit")
+    public ResponseEntity<List<StudentAuditEventResponse>> audit(@PathVariable Long id) {
+        return ResponseEntity.ok(studentService.listAuditEvents(id));
     }
 
     @PostMapping("/import")
     public ResponseEntity<StudentImportResponse> importStudents(
-            @RequestBody List<@Valid StudentRequest> requests
+            @RequestBody List<@Valid StudentRequest> requests,
+            @AuthenticationPrincipal AuthenticatedUser user
     ) {
-        return ResponseEntity.ok(studentService.importStudents(requests));
+        Long actorUserId = user != null ? user.getId() : null;
+        String actorUsername = user != null ? user.getUsername() : null;
+        return ResponseEntity.ok(studentService.importStudents(requests, actorUserId, actorUsername));
     }
 
     @PostMapping("/finance-tagged/import")

@@ -88,6 +88,21 @@ public class SchemaMigrationConfig {
         if (Boolean.TRUE.equals(employeesExists)) {
             jdbc.execute("ALTER TABLE employees ALTER COLUMN department DROP NOT NULL");
             jdbc.execute("ALTER TABLE employees ALTER COLUMN position DROP NOT NULL");
+            jdbc.execute("""
+                    CREATE TABLE IF NOT EXISTS employee_audit_events (
+                        id             BIGSERIAL PRIMARY KEY,
+                        employee_id    BIGINT      NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+                        action         VARCHAR(20) NOT NULL,
+                        actor_user_id  BIGINT REFERENCES users(id),
+                        actor_username VARCHAR(100),
+                        created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                        CONSTRAINT chk_employee_audit_action CHECK (action IN ('CREATED'))
+                    )
+                    """);
+            jdbc.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_employee_audit_events_employee_created
+                        ON employee_audit_events (employee_id, created_at DESC, id DESC)
+                    """);
         }
 
         Boolean studentsExists = jdbc.queryForObject(
@@ -104,9 +119,27 @@ public class SchemaMigrationConfig {
         if (Boolean.TRUE.equals(studentsExists)) {
             jdbc.execute("ALTER TABLE students ADD COLUMN IF NOT EXISTS finance_tagged BOOLEAN NOT NULL DEFAULT FALSE");
             jdbc.execute("CREATE INDEX IF NOT EXISTS idx_students_finance_tagged ON students (finance_tagged)");
+            jdbc.execute("""
+                    CREATE TABLE IF NOT EXISTS student_audit_events (
+                        id             BIGSERIAL PRIMARY KEY,
+                        student_id     BIGINT      NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+                        action         VARCHAR(20) NOT NULL,
+                        actor_user_id  BIGINT REFERENCES users(id),
+                        actor_username VARCHAR(100),
+                        created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                        CONSTRAINT chk_student_audit_action CHECK (action IN ('CREATED'))
+                    )
+                    """);
+            jdbc.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_student_audit_events_student_created
+                        ON student_audit_events (student_id, created_at DESC, id DESC)
+                    """);
         }
 
-        log.info("Schema migration applied (app_settings, guard_videos, tap_error_logs, gate_tones)");
+        log.info(
+                "Schema migration applied (app_settings, guard_videos, tap_error_logs, gate_tones,"
+                        + " student_audit_events, employee_audit_events)"
+        );
         return new SchemaMigrator();
     }
 

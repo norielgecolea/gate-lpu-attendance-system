@@ -106,6 +106,9 @@
           <div class="min-w-0 flex-1">
             <h4 class="text-foreground text-xl font-bold">{{ student.name }}</h4>
             <p class="text-muted-foreground mt-0.5 text-sm tabular-nums">{{ student.studentNo }}</p>
+            <p class="text-muted-foreground mt-1 text-xs">
+              {{ studentCreatedLabel(res.studentCreatedAudit) }}
+            </p>
             <div class="mt-3 flex flex-wrap gap-1.5">
               @if (student.department) {
                 <span class="bg-muted text-foreground rounded-full px-2.5 py-0.5 text-xs font-medium">
@@ -179,6 +182,9 @@
           <div class="min-w-0 flex-1">
             <h4 class="text-foreground text-xl font-bold">{{ employee.name }}</h4>
             <p class="text-muted-foreground mt-0.5 text-sm tabular-nums">{{ employee.employeeNo }}</p>
+            <p class="text-muted-foreground mt-1 text-xs">
+              {{ createdLabel(res.employeeCreatedAudit) }}
+            </p>
             <div class="mt-3 flex flex-wrap gap-1.5">
               @if (employee.department) {
                 <span class="bg-muted text-foreground rounded-full px-2.5 py-0.5 text-xs font-medium">

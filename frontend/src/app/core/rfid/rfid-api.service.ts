@@ -12,11 +12,23 @@ export interface RfidCheckResult {
   message?: string;
 }
 
+export interface StudentCreatedAudit {
+  id: string;
+  action: string;
+  actorUserId: number | null;
+  actorUsername: string | null;
+  createdAt: string;
+}
+
+export type EmployeeCreatedAudit = StudentCreatedAudit;
+
 export interface RfidLookupResult {
   found: boolean;
   personType: RfidOwnerType | null;
   student: Student | null;
   employee: Employee | null;
+  studentCreatedAudit?: StudentCreatedAudit | null;
+  employeeCreatedAudit?: EmployeeCreatedAudit | null;
   message?: string | null;
 }
 

@@ -7,9 +7,11 @@ import org.nors.dev.codes.lpu.model.AppSetting;
 import org.nors.dev.codes.lpu.model.AttendanceEvent;
 import org.nors.dev.codes.lpu.model.AttendanceLog;
 import org.nors.dev.codes.lpu.model.Employee;
+import org.nors.dev.codes.lpu.model.EmployeeAuditEvent;
 import org.nors.dev.codes.lpu.model.GateTone;
 import org.nors.dev.codes.lpu.model.GuardVideo;
 import org.nors.dev.codes.lpu.model.Student;
+import org.nors.dev.codes.lpu.model.StudentAuditEvent;
 import org.nors.dev.codes.lpu.model.TapErrorLog;
 import org.nors.dev.codes.lpu.model.User;
 import org.springframework.beans.factory.annotation.Value;
@@ -41,7 +43,8 @@ public class HibernateConfig {
         factoryBean.setDataSource(dataSource);
         factoryBean.setAnnotatedClasses(
                 User.class, Student.class, Employee.class, AttendanceLog.class, AttendanceEvent.class,
-                AppSetting.class, GuardVideo.class, GateTone.class, TapErrorLog.class
+                AppSetting.class, GuardVideo.class, GateTone.class, TapErrorLog.class,
+                StudentAuditEvent.class, EmployeeAuditEvent.class
         );
         factoryBean.setHibernateProperties(hibernateProperties());
         return factoryBean;

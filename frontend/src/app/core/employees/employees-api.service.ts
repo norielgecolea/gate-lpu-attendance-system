@@ -13,6 +13,14 @@ export interface EmployeeImportResult {
   skippedDuplicates: number;
 }
 
+export interface EmployeeAuditEvent {
+  id: string;
+  action: string;
+  actorUserId: number | null;
+  actorUsername: string | null;
+  createdAt: string;
+}
+
 export interface PhotoBulkUploadResult {
   updated: number;
   notFound: number;
@@ -38,6 +46,10 @@ export class EmployeesApiService {
 
   getById(id: string): Observable<Employee> {
     return this.http.get<Employee>(`${this.baseUrl}/${id}`);
+  }
+
+  getAuditEvents(id: string): Observable<EmployeeAuditEvent[]> {
+    return this.http.get<EmployeeAuditEvent[]>(`${this.baseUrl}/${id}/audit`);
   }
 
   create(payload: EmployeePayload): Observable<Employee> {

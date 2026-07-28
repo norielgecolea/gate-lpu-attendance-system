@@ -6,12 +6,14 @@ import java.util.List;
 import java.util.Map;
 import org.nors.dev.codes.lpu.dto.AttendanceEventPageResponse;
 import org.nors.dev.codes.lpu.dto.AttendancePageResponse;
+import org.nors.dev.codes.lpu.dto.EmployeeAuditEventResponse;
 import org.nors.dev.codes.lpu.dto.EmployeeImportResponse;
 import org.nors.dev.codes.lpu.dto.EmployeeRequest;
 import org.nors.dev.codes.lpu.dto.EmployeeResponse;
 import org.nors.dev.codes.lpu.dto.PersonAttendanceSummaryResponse;
 import org.nors.dev.codes.lpu.dto.PhotoBulkUploadResponse;
 import org.nors.dev.codes.lpu.dto.PhotoUploadResponse;
+import org.nors.dev.codes.lpu.security.AuthenticatedUser;
 import org.nors.dev.codes.lpu.service.AttendanceService;
 import org.nors.dev.codes.lpu.service.EmployeeService;
 import org.nors.dev.codes.lpu.service.PhotoStorageService;
@@ -20,6 +22,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -144,15 +147,28 @@ public class EmployeeController {
     }
 
     @PostMapping
-    public ResponseEntity<EmployeeResponse> create(@Valid @RequestBody EmployeeRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(employeeService.create(request));
+    public ResponseEntity<EmployeeResponse> create(
+            @Valid @RequestBody EmployeeRequest request,
+            @AuthenticationPrincipal AuthenticatedUser user
+    ) {
+        Long actorUserId = user != null ? user.getId() : null;
+        String actorUsername = user != null ? user.getUsername() : null;
+        return ResponseEntity.status(HttpStatus.CREATED).body(employeeService.create(request, actorUserId, actorUsername));
+    }
+
+    @GetMapping("/{id}/audit")
+    public ResponseEntity<List<EmployeeAuditEventResponse>> audit(@PathVariable Long id) {
+        return ResponseEntity.ok(employeeService.listAuditEvents(id));
     }
 
     @PostMapping("/import")
     public ResponseEntity<EmployeeImportResponse> importEmployees(
-            @RequestBody List<@Valid EmployeeRequest> requests
+            @RequestBody List<@Valid EmployeeRequest> requests,
+            @AuthenticationPrincipal AuthenticatedUser user
     ) {
-        return ResponseEntity.ok(employeeService.importEmployees(requests));
+        Long actorUserId = user != null ? user.getId() : null;
+        String actorUsername = user != null ? user.getUsername() : null;
+        return ResponseEntity.ok(employeeService.importEmployees(requests, actorUserId, actorUsername));
     }
 
     @PutMapping("/{id}")

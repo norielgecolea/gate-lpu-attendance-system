@@ -8,6 +8,11 @@
           : 'Update employee details. Fields marked with * are required.'
       }}
     </p>
+    @if (mode === 'edit') {
+      <p class="text-muted-foreground text-xs">
+        {{ createdAuditLabel ?? 'Added by Unknown creator / legacy record' }}
+      </p>
+    }
   </div>
 
   <form hlmFieldGroup class="gap-4" (ngSubmit)="submit()">

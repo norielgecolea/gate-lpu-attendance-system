@@ -20,7 +20,11 @@ import {
 } from '@ng-icons/lucide';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { AuthService } from '../../core/auth/auth.service';
-import { RfidApiService, type RfidLookupResult } from '../../core/rfid/rfid-api.service';
+import {
+  RfidApiService,
+  type RfidLookupResult,
+  type StudentCreatedAudit,
+} from '../../core/rfid/rfid-api.service';
 import { studentPhotoUrl } from '../../core/students/student-photo.util';
 
 @Component({
@@ -128,5 +132,19 @@ export class RfidChecker implements AfterViewInit, OnDestroy {
   protected initials(name: string): string {
     const parts = name.replace(',', '').trim().split(/\s+/);
     return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase();
+  }
+
+  protected studentCreatedLabel(audit: StudentCreatedAudit | null | undefined): string {
+    return this.createdLabel(audit);
+  }
+
+  protected createdLabel(audit: StudentCreatedAudit | null | undefined): string {
+    if (!audit) {
+      return 'Added by Unknown creator / legacy record';
+    }
+    const actor = audit.actorUsername?.trim() || 'Unknown creator';
+    const createdAt = new Date(audit.createdAt);
+    const when = Number.isNaN(createdAt.getTime()) ? audit.createdAt : createdAt.toLocaleString();
+    return `Added by ${actor} on ${when}`;
   }
 }

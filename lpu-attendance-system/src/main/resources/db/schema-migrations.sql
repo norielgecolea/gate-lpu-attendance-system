@@ -45,3 +45,29 @@ ALTER TABLE students
     ADD COLUMN IF NOT EXISTS finance_tagged BOOLEAN NOT NULL DEFAULT FALSE;
 
 CREATE INDEX IF NOT EXISTS idx_students_finance_tagged ON students (finance_tagged);
+
+CREATE TABLE IF NOT EXISTS student_audit_events (
+    id             BIGSERIAL PRIMARY KEY,
+    student_id     BIGINT      NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    action         VARCHAR(20) NOT NULL,
+    actor_user_id  BIGINT REFERENCES users(id),
+    actor_username VARCHAR(100),
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT chk_student_audit_action CHECK (action IN ('CREATED'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_student_audit_events_student_created
+    ON student_audit_events (student_id, created_at DESC, id DESC);
+
+CREATE TABLE IF NOT EXISTS employee_audit_events (
+    id             BIGSERIAL PRIMARY KEY,
+    employee_id    BIGINT      NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+    action         VARCHAR(20) NOT NULL,
+    actor_user_id  BIGINT REFERENCES users(id),
+    actor_username VARCHAR(100),
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT chk_employee_audit_action CHECK (action IN ('CREATED'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_employee_audit_events_employee_created
+    ON employee_audit_events (employee_id, created_at DESC, id DESC);
