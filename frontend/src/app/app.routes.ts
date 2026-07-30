@@ -66,7 +66,7 @@ export const routes: Routes = [
       {
         path: 'daily-recap',
         component: DailyRecap,
-        canActivate: [allowRoles(...SUPERADMIN_ROLES)],
+        canActivate: [allowRoles(...ADMIN_ROLES)],
       },
       {
         path: 'students/inactive',

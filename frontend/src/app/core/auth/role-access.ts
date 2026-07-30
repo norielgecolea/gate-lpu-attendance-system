@@ -30,7 +30,7 @@ export function canAccessAdminRoute(role: string | null | undefined, route: stri
     return role === 'SUPERADMIN' || role === 'OSAS' || role === 'HR';
   }
   if (route === '/daily-recap') {
-    return role === 'SUPERADMIN';
+    return role === 'SUPERADMIN' || role === 'OSAS' || role === 'HR';
   }
   if (route.startsWith('/students')) {
     return role === 'SUPERADMIN' || role === 'OSAS';
