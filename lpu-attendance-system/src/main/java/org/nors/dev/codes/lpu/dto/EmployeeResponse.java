@@ -10,6 +10,7 @@ public record EmployeeResponse(
         String photo,
         String rfid,
         LocalDate birthdate,
+        String lpuEmail,
         String department,
         String position
 ) {
@@ -21,6 +22,7 @@ public record EmployeeResponse(
                 employee.getPhoto(),
                 employee.getRfid(),
                 employee.getBirthdate(),
+                employee.getLpuEmail(),
                 employee.getDepartment(),
                 employee.getPosition()
         );

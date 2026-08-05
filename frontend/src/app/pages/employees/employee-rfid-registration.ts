@@ -97,6 +97,7 @@ export class EmployeeRfidRegistration {
             photo: employee.photo ?? null,
             rfid,
             birthdate: employee.birthdate ?? null,
+            lpuEmail: employee.lpuEmail ?? null,
             department: employee.department,
             position: employee.position,
           })

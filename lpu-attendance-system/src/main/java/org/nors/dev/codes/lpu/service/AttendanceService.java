@@ -29,11 +29,13 @@ import org.nors.dev.codes.lpu.model.AttendanceEvent;
 import org.nors.dev.codes.lpu.model.AttendanceLog;
 import org.nors.dev.codes.lpu.model.Employee;
 import org.nors.dev.codes.lpu.model.Student;
+import org.nors.dev.codes.lpu.model.SyncDeletionTombstone;
 import org.nors.dev.codes.lpu.model.User;
 import org.nors.dev.codes.lpu.repository.AttendanceEventRepository;
 import org.nors.dev.codes.lpu.repository.AttendanceLogRepository;
 import org.nors.dev.codes.lpu.repository.EmployeeRepository;
 import org.nors.dev.codes.lpu.repository.StudentRepository;
+import org.nors.dev.codes.lpu.repository.SyncDeletionTombstoneRepository;
 import org.nors.dev.codes.lpu.repository.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -56,6 +58,7 @@ public class AttendanceService {
 
     private final StudentRepository studentRepository;
     private final EmployeeRepository employeeRepository;
+    private final SyncDeletionTombstoneRepository syncDeletionTombstoneRepository;
     private final AttendanceLogRepository attendanceLogRepository;
     private final AttendanceEventRepository attendanceEventRepository;
     private final UserRepository userRepository;
@@ -66,6 +69,7 @@ public class AttendanceService {
     public AttendanceService(
             StudentRepository studentRepository,
             EmployeeRepository employeeRepository,
+            SyncDeletionTombstoneRepository syncDeletionTombstoneRepository,
             AttendanceLogRepository attendanceLogRepository,
             AttendanceEventRepository attendanceEventRepository,
             UserRepository userRepository,
@@ -75,6 +79,7 @@ public class AttendanceService {
     ) {
         this.studentRepository = studentRepository;
         this.employeeRepository = employeeRepository;
+        this.syncDeletionTombstoneRepository = syncDeletionTombstoneRepository;
         this.attendanceLogRepository = attendanceLogRepository;
         this.attendanceEventRepository = attendanceEventRepository;
         this.userRepository = userRepository;
@@ -262,6 +267,7 @@ public class AttendanceService {
             }
             int events = attendanceEventRepository.deleteByPerson("STUDENT", personId);
             int logs = attendanceLogRepository.deleteByPerson("STUDENT", personId);
+            persistDeletionTombstone("STUDENT", student.getId(), student.getStudentNo());
             studentRepository.delete(student);
             log.info("Permanently deleted student id={} attendanceEvents={} attendanceLogs={}",
                     personId, events, logs);
@@ -278,9 +284,19 @@ public class AttendanceService {
         }
         int events = attendanceEventRepository.deleteByPerson("EMPLOYEE", personId);
         int logs = attendanceLogRepository.deleteByPerson("EMPLOYEE", personId);
+        persistDeletionTombstone("EMPLOYEE", employee.getId(), employee.getEmployeeNo());
         employeeRepository.delete(employee);
         log.info("Permanently deleted employee id={} attendanceEvents={} attendanceLogs={}",
                 personId, events, logs);
+    }
+
+    private void persistDeletionTombstone(String personType, Long personId, String personNo) {
+        SyncDeletionTombstone tombstone = new SyncDeletionTombstone();
+        tombstone.setPersonType(personType);
+        tombstone.setPersonId(personId);
+        tombstone.setPersonNo(personNo);
+        tombstone.setDeletedAt(Instant.now());
+        syncDeletionTombstoneRepository.persist(tombstone);
     }
 
     /** Tap volume per hour (campus timezone) for a given day — defaults to today. */

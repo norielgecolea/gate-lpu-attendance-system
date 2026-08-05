@@ -9,6 +9,7 @@ public record EmployeeRequest(
         String photo,
         String rfid,
         LocalDate birthdate,
+        String lpuEmail,
         String department,
         String position
 ) {

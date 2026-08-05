@@ -3,6 +3,7 @@ package org.nors.dev.codes.lpu.repository;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.time.Instant;
 import java.util.stream.Collectors;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
@@ -46,6 +47,21 @@ public class EmployeeRepository {
     @Transactional(readOnly = true)
     public Optional<Employee> findById(Long id) {
         return Optional.ofNullable(currentSession().find(Employee.class, id));
+    }
+
+    @Transactional(readOnly = true)
+    public List<Employee> findUpdatedAfter(Instant updatedAt, Long id, int limit) {
+        return currentSession()
+                .createQuery(
+                        "FROM Employee e WHERE e.updatedAt > :updatedAt "
+                                + "OR (e.updatedAt = :updatedAt AND e.id > :id) "
+                                + "ORDER BY e.updatedAt ASC, e.id ASC",
+                        Employee.class
+                )
+                .setParameter("updatedAt", updatedAt)
+                .setParameter("id", id)
+                .setMaxResults(limit)
+                .getResultList();
     }
 
     @Transactional(readOnly = true)

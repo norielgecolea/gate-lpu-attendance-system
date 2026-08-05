@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS students (
     photo           TEXT,
     rfid            VARCHAR(100),
     birthdate       DATE,
+    lpu_email       VARCHAR(255),
     department      VARCHAR(100) NOT NULL,
     course          VARCHAR(100) NOT NULL,
     school          VARCHAR(100) NOT NULL,
@@ -73,6 +74,7 @@ CREATE TABLE IF NOT EXISTS students (
 CREATE INDEX IF NOT EXISTS idx_students_deleted ON students (deleted);
 CREATE INDEX IF NOT EXISTS idx_students_name ON students (name);
 CREATE INDEX IF NOT EXISTS idx_students_finance_tagged ON students (finance_tagged);
+CREATE INDEX IF NOT EXISTS idx_students_updated_id ON students (updated_at ASC, id ASC);
 CREATE INDEX IF NOT EXISTS idx_students_rfid
     ON students (rfid)
     WHERE rfid IS NOT NULL AND deleted = FALSE;
@@ -87,6 +89,7 @@ CREATE TABLE IF NOT EXISTS employees (
     photo           TEXT,
     rfid            VARCHAR(100),
     birthdate       DATE,
+    lpu_email       VARCHAR(255),
     department      VARCHAR(100),
     position        VARCHAR(100),
     deleted         BOOLEAN      NOT NULL DEFAULT FALSE,
@@ -96,9 +99,26 @@ CREATE TABLE IF NOT EXISTS employees (
 
 CREATE INDEX IF NOT EXISTS idx_employees_deleted ON employees (deleted);
 CREATE INDEX IF NOT EXISTS idx_employees_name ON employees (name);
+CREATE INDEX IF NOT EXISTS idx_employees_updated_id ON employees (updated_at ASC, id ASC);
 CREATE INDEX IF NOT EXISTS idx_employees_rfid
     ON employees (rfid)
     WHERE rfid IS NOT NULL AND deleted = FALSE;
+
+-- ---------------------------------------------------------------------------
+-- sync_deletion_tombstones (permanent deletion feed)
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS sync_deletion_tombstones (
+    id          BIGSERIAL PRIMARY KEY,
+    person_type VARCHAR(10) NOT NULL,
+    person_id   BIGINT NOT NULL,
+    person_no   VARCHAR(50) NOT NULL,
+    deleted_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT chk_sync_tombstone_person_type
+        CHECK (person_type IN ('STUDENT', 'EMPLOYEE'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_sync_tombstones_deleted
+    ON sync_deletion_tombstones (deleted_at ASC, id ASC);
 
 -- ---------------------------------------------------------------------------
 -- attendance_logs (daily summary: exactly one of student_id / employee_id)

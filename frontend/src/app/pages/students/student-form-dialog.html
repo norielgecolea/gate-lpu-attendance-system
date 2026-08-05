@@ -133,6 +133,19 @@
       </div>
     </div>
 
+    <div hlmField>
+      <label hlmFieldLabel for="student-lpu-email">LPU email</label>
+      <input
+        hlmInput
+        id="student-lpu-email"
+        name="lpuEmail"
+        type="email"
+        [(ngModel)]="lpuEmail"
+        autocomplete="email"
+        placeholder="name@lpu.edu.ph"
+      />
+    </div>
+
     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <div hlmField>
         <label hlmFieldLabel for="student-department">Department *</label>

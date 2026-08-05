@@ -41,6 +41,7 @@ class StudentControllerTest {
                 null,
                 null,
                 LocalDate.of(2004, 3, 8),
+                null,
                 "CCS",
                 "BSCS",
                 "LPL"
@@ -52,6 +53,7 @@ class StudentControllerTest {
                 null,
                 null,
                 LocalDate.of(2004, 3, 8),
+                null,
                 "CCS",
                 "BSCS",
                 "LPL",

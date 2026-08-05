@@ -32,6 +32,9 @@ public class Student {
     @Column
     private LocalDate birthdate;
 
+    @Column(name = "lpu_email", length = 255)
+    private String lpuEmail;
+
     @Column(nullable = false, length = 100)
     private String department;
 
@@ -99,6 +102,14 @@ public class Student {
 
     public void setBirthdate(LocalDate birthdate) {
         this.birthdate = birthdate;
+    }
+
+    public String getLpuEmail() {
+        return lpuEmail;
+    }
+
+    public void setLpuEmail(String lpuEmail) {
+        this.lpuEmail = lpuEmail;
     }
 
     public String getDepartment() {

@@ -401,9 +401,10 @@ function mapStudentRows(rows: string[][]): StudentPayload[] {
     course: indexOf('course', 'program'),
     school: indexOf('schoolgroup', 'school'),
     birthdate: indexOf('birthday', 'birthdate', 'dateofbirth', 'dob'),
+    lpuEmail: indexOf('lpuemail', 'lpuemailaddress', 'email', 'emailaddress'),
   };
   const missing = Object.entries(indexes)
-    .filter(([key, index]) => key !== 'rfid' && key !== 'birthdate' && index < 0)
+    .filter(([key, index]) => key !== 'rfid' && key !== 'birthdate' && key !== 'lpuEmail' && index < 0)
     .map(([key]) => key);
   if (missing.length) {
     throw new Error(`CSV is missing required column(s): ${missing.join(', ')}.`);
@@ -431,6 +432,7 @@ function mapStudentRows(rows: string[][]): StudentPayload[] {
       photo: null,
       rfid: value(row, indexes.rfid) || null,
       birthdate: birthday ? normalizeBirthdate(birthday, rowIndex + 2) : null,
+      lpuEmail: value(row, indexes.lpuEmail) || null,
     }];
   });
 }

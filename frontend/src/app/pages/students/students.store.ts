@@ -13,6 +13,7 @@ export interface Student {
   photo?: string | null;
   rfid: string | null;
   birthdate?: string | null;
+  lpuEmail?: string | null;
   department: string;
   course: string;
   school: string;
@@ -109,6 +110,7 @@ export class StudentsStore {
           photo,
           rfid: form.rfid,
           birthdate: form.birthdate,
+          lpuEmail: form.lpuEmail,
           department: form.department,
           course: form.course,
           school: form.school,
@@ -143,6 +145,7 @@ export class StudentsStore {
       photo: payload.photo?.trim() ? payload.photo.trim() : null,
       rfid: payload.rfid?.trim() ? payload.rfid.trim() : null,
       birthdate: payload.birthdate?.trim() ? payload.birthdate.trim() : null,
+      lpuEmail: payload.lpuEmail?.trim() ? payload.lpuEmail.trim() : null,
       name: payload.name.trim(),
       studentNo: payload.studentNo.trim(),
       department: payload.department.trim(),

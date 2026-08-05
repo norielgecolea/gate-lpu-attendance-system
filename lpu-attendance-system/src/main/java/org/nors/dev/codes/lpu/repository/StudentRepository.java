@@ -3,6 +3,7 @@ package org.nors.dev.codes.lpu.repository;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.time.Instant;
 import java.util.stream.Collectors;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
@@ -57,6 +58,21 @@ public class StudentRepository {
                 .setParameter("term", likeTerm(term))
                 .uniqueResult();
         return count != null ? count : 0;
+    }
+
+    @Transactional(readOnly = true)
+    public List<Student> findUpdatedAfter(Instant updatedAt, Long id, int limit) {
+        return currentSession()
+                .createQuery(
+                        "FROM Student s WHERE s.updatedAt > :updatedAt "
+                                + "OR (s.updatedAt = :updatedAt AND s.id > :id) "
+                                + "ORDER BY s.updatedAt ASC, s.id ASC",
+                        Student.class
+                )
+                .setParameter("updatedAt", updatedAt)
+                .setParameter("id", id)
+                .setMaxResults(limit)
+                .getResultList();
     }
 
     private static String likeTerm(String term) {

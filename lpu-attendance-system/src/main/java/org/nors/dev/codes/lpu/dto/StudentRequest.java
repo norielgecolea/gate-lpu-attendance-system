@@ -9,6 +9,7 @@ public record StudentRequest(
         String photo,
         String rfid,
         LocalDate birthdate,
+        String lpuEmail,
         @NotBlank(message = "Department is required") String department,
         @NotBlank(message = "Course is required") String course,
         @NotBlank(message = "School is required") String school

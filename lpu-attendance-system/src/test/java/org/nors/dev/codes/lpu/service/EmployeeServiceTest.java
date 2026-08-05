@@ -46,6 +46,7 @@ class EmployeeServiceTest {
                 null,
                 "RFID-456",
                 LocalDate.of(1990, 5, 20),
+                "ana.reyes@lpu.edu.ph",
                 "HR",
                 "Specialist"
         );
@@ -62,6 +63,7 @@ class EmployeeServiceTest {
         verify(employeeRepository).persist(employeeCaptor.capture());
         Employee persisted = employeeCaptor.getValue();
         assertEquals("EMP-0001", persisted.getEmployeeNo());
+        assertEquals("ana.reyes@lpu.edu.ph", persisted.getLpuEmail());
 
         ArgumentCaptor<EmployeeAuditEvent> auditCaptor = ArgumentCaptor.forClass(EmployeeAuditEvent.class);
         verify(employeeAuditEventRepository).persist(auditCaptor.capture());

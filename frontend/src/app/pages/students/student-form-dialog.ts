@@ -28,6 +28,7 @@ export interface StudentFormResult {
   clearPhoto: boolean;
   rfid: string | null;
   birthdate: string | null;
+  lpuEmail: string | null;
   department: string;
   course: string;
   school: string;
@@ -69,6 +70,7 @@ export class StudentFormDialog {
   protected existingPhoto = this.context.student?.photo ?? null;
   protected rfid = this.context.student?.rfid ?? '';
   protected birthdate = this.context.student?.birthdate ?? '';
+  protected lpuEmail = this.context.student?.lpuEmail ?? '';
   protected department = this.context.student?.department ?? '';
   protected course = this.context.student?.course ?? '';
   protected school = this.context.student?.school ?? 'LPL';
@@ -134,6 +136,7 @@ export class StudentFormDialog {
       clearPhoto: this.clearPhoto(),
       rfid,
       birthdate: this.birthdate.trim() || null,
+      lpuEmail: this.lpuEmail.trim() || null,
       department: this.department.trim(),
       course: this.course.trim(),
       school: this.school.trim(),

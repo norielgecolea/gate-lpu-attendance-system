@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS employees (
     photo           TEXT,
     rfid            VARCHAR(100),
     birthdate       DATE,
+    lpu_email       VARCHAR(255),
     department      VARCHAR(100),
     position        VARCHAR(100),
     deleted         BOOLEAN      NOT NULL DEFAULT FALSE,

@@ -98,7 +98,7 @@ public class StudentService {
      * Upserts students from CSV. Matching student numbers update the existing
      * record; new numbers are inserted. Rows whose RFID is already assigned to a
      * different person (or repeated for a different number in the CSV) are skipped.
-     * Blank RFID/photo/birthdate on update leave the existing values unchanged.
+     * Blank RFID/photo/birthdate/LPU email on update leave the existing values unchanged.
      */
     @Transactional
     public StudentImportResponse importStudents(
@@ -363,17 +363,18 @@ public class StudentService {
         List<Student> students = studentRepository.findAllActive();
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try (PrintWriter writer = new PrintWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8))) {
-            writer.println("Name,ID Number,RFID,Department,Course,School,Birthday");
+            writer.println("Name,ID Number,RFID,Department,Course,School,Birthday,LPU Email");
             for (Student student : students) {
                 writer.printf(
-                        "%s,%s,%s,%s,%s,%s,%s%n",
+                        "%s,%s,%s,%s,%s,%s,%s,%s%n",
                         csv(student.getName()),
                         csv(student.getStudentNo()),
                         csv(student.getRfid()),
                         csv(student.getDepartment()),
                         csv(student.getCourse()),
                         csv(student.getSchool()),
-                        student.getBirthdate() == null ? "" : student.getBirthdate().toString()
+                        student.getBirthdate() == null ? "" : student.getBirthdate().toString(),
+                        csv(student.getLpuEmail())
                 );
             }
         }
@@ -391,6 +392,7 @@ public class StudentService {
         student.setPhoto(normalizeOptional(request.photo()));
         student.setRfid(normalizeOptional(request.rfid()));
         student.setBirthdate(request.birthdate());
+        student.setLpuEmail(normalizeOptional(request.lpuEmail()));
         student.setDepartment(normalizeRequired(request.department(), "Department"));
         student.setCourse(normalizeRequired(request.course(), "Course"));
         student.setSchool(normalizeRequired(request.school(), "School"));
@@ -401,6 +403,7 @@ public class StudentService {
         String previousPhoto = student.getPhoto();
         String previousRfid = student.getRfid();
         var previousBirthdate = student.getBirthdate();
+        String previousLpuEmail = student.getLpuEmail();
         applyRequest(student, request, studentNo);
         if (normalizeOptional(request.photo()) == null) {
             student.setPhoto(previousPhoto);
@@ -410,6 +413,9 @@ public class StudentService {
         }
         if (request.birthdate() == null) {
             student.setBirthdate(previousBirthdate);
+        }
+        if (normalizeOptional(request.lpuEmail()) == null) {
+            student.setLpuEmail(previousLpuEmail);
         }
     }
 

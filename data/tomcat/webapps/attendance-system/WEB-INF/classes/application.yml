@@ -35,6 +35,9 @@ app:
     expiration-ms: ${APP_JWT_EXPIRATION_MS:28800000}
     # ~10 years — "Remember me" sessions last until explicit logout
     remember-expiration-ms: ${APP_JWT_REMEMBER_EXPIRATION_MS:315360000000}
+  sync:
+    # Required for /api/sync/**. Leave unset to disable machine sync access.
+    api-key: ${APP_SYNC_API_KEY:}
   upload:
     pictures-dir: ${APP_PICTURES_DIR:pictures}
     videos-dir: ${APP_VIDEOS_DIR:videos}

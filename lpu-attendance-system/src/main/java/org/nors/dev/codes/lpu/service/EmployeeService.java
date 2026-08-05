@@ -102,7 +102,7 @@ public class EmployeeService {
      * Upserts employees from CSV. Matching employee numbers update the existing
      * record; new numbers are inserted. Rows whose RFID is already assigned to a
      * different person (or repeated for a different number in the CSV) are skipped.
-     * Blank RFID/photo/birthdate on update leave the existing values unchanged.
+     * Blank RFID/photo/birthdate/LPU email on update leave the existing values unchanged.
      */
     @Transactional
     public EmployeeImportResponse importEmployees(
@@ -289,16 +289,17 @@ public class EmployeeService {
         List<Employee> employees = employeeRepository.findAllActive();
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try (PrintWriter writer = new PrintWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8))) {
-            writer.println("Name,ID Number,RFID,Department,Position,Birthday");
+            writer.println("Name,ID Number,RFID,Department,Position,Birthday,LPU Email");
             for (Employee employee : employees) {
                 writer.printf(
-                        "%s,%s,%s,%s,%s,%s%n",
+                        "%s,%s,%s,%s,%s,%s,%s%n",
                         csv(employee.getName()),
                         csv(employee.getEmployeeNo()),
                         csv(employee.getRfid()),
                         csv(employee.getDepartment()),
                         csv(employee.getPosition()),
-                        employee.getBirthdate() == null ? "" : employee.getBirthdate().toString()
+                        employee.getBirthdate() == null ? "" : employee.getBirthdate().toString(),
+                        csv(employee.getLpuEmail())
                 );
             }
         }
@@ -316,6 +317,7 @@ public class EmployeeService {
         employee.setPhoto(normalizeOptional(request.photo()));
         employee.setRfid(normalizeOptional(request.rfid()));
         employee.setBirthdate(request.birthdate());
+        employee.setLpuEmail(normalizeOptional(request.lpuEmail()));
         employee.setDepartment(normalizeOptional(request.department()));
         employee.setPosition(normalizeOptional(request.position()));
     }
@@ -325,6 +327,7 @@ public class EmployeeService {
         String previousPhoto = employee.getPhoto();
         String previousRfid = employee.getRfid();
         var previousBirthdate = employee.getBirthdate();
+        String previousLpuEmail = employee.getLpuEmail();
         applyRequest(employee, request, employeeNo);
         if (normalizeOptional(request.photo()) == null) {
             employee.setPhoto(previousPhoto);
@@ -334,6 +337,9 @@ public class EmployeeService {
         }
         if (request.birthdate() == null) {
             employee.setBirthdate(previousBirthdate);
+        }
+        if (normalizeOptional(request.lpuEmail()) == null) {
+            employee.setLpuEmail(previousLpuEmail);
         }
     }
 

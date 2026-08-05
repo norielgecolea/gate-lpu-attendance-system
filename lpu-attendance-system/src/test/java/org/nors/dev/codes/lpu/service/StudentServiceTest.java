@@ -46,6 +46,7 @@ class StudentServiceTest {
                 null,
                 "RFID-123",
                 LocalDate.of(2004, 1, 12),
+                "juan.delacruz@lpu.edu.ph",
                 "CCS",
                 "BSIT",
                 "LPL"
@@ -63,6 +64,7 @@ class StudentServiceTest {
         verify(studentRepository).persist(studentCaptor.capture());
         Student persistedStudent = studentCaptor.getValue();
         assertEquals("2026-0001", persistedStudent.getStudentNo());
+        assertEquals("juan.delacruz@lpu.edu.ph", persistedStudent.getLpuEmail());
 
         ArgumentCaptor<StudentAuditEvent> auditCaptor = ArgumentCaptor.forClass(StudentAuditEvent.class);
         verify(studentAuditEventRepository).persist(auditCaptor.capture());

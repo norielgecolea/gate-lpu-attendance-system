@@ -1,8 +1,10 @@
 package org.nors.dev.codes.lpu.config;
 
 import java.util.List;
+import org.nors.dev.codes.lpu.security.SyncApiKeyFilter;
 import org.nors.dev.codes.lpu.security.JwtAuthEntryPoint;
 import org.nors.dev.codes.lpu.security.JwtAuthFilter;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -23,13 +25,20 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
+@EnableConfigurationProperties(SyncApiProperties.class)
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+    private final SyncApiKeyFilter syncApiKeyFilter;
     private final JwtAuthEntryPoint jwtAuthEntryPoint;
 
-    public SecurityConfig(JwtAuthFilter jwtAuthFilter, JwtAuthEntryPoint jwtAuthEntryPoint) {
+    public SecurityConfig(
+            JwtAuthFilter jwtAuthFilter,
+            SyncApiKeyFilter syncApiKeyFilter,
+            JwtAuthEntryPoint jwtAuthEntryPoint
+    ) {
         this.jwtAuthFilter = jwtAuthFilter;
+        this.syncApiKeyFilter = syncApiKeyFilter;
         this.jwtAuthEntryPoint = jwtAuthEntryPoint;
     }
 
@@ -49,6 +58,8 @@ public class SecurityConfig {
                         // <audio> tags cannot attach auth headers
                         .requestMatchers(HttpMethod.GET, "/tones/**").permitAll()
                         .requestMatchers("/ws/**").permitAll()
+                        // Machine-only pull endpoints use a deployment-managed API key.
+                        .requestMatchers("/api/sync/**").hasRole("SYNC")
                         // Any signed-in role (Superadmin, OSAS, HR, Monitoring, Guard) can manage its own session.
                         .requestMatchers("/api/auth/**").authenticated()
                         // Guard kiosks read the display setting; OSAS admins manage it.
@@ -96,7 +107,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/**").hasRole("SUPERADMIN")
                         .anyRequest().permitAll()
                 )
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(syncApiKeyFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(jwtAuthFilter, SyncApiKeyFilter.class);
 
         return http.build();
     }

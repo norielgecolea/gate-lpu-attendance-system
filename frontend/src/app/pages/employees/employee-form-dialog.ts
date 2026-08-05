@@ -28,6 +28,7 @@ export interface EmployeeFormResult {
   clearPhoto: boolean;
   rfid: string | null;
   birthdate: string | null;
+  lpuEmail: string | null;
   department: string;
   position: string | null;
 }
@@ -68,6 +69,7 @@ export class EmployeeFormDialog {
   protected existingPhoto = this.context.employee?.photo ?? null;
   protected rfid = this.context.employee?.rfid ?? '';
   protected birthdate = this.context.employee?.birthdate ?? '';
+  protected lpuEmail = this.context.employee?.lpuEmail ?? '';
   protected department = this.context.employee?.department ?? '';
   protected position = this.context.employee?.position ?? '';
 
@@ -126,6 +128,7 @@ export class EmployeeFormDialog {
       clearPhoto: this.clearPhoto(),
       rfid,
       birthdate: this.birthdate.trim() || null,
+      lpuEmail: this.lpuEmail.trim() || null,
       department: this.department.trim(),
       position: this.position.trim() || null,
     };

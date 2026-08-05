@@ -380,6 +380,7 @@ function mapEmployeeRows(rows: string[][]): EmployeePayload[] {
     department: indexOf('department', 'dept'),
     position: indexOf('position', 'title', 'jobtitle', 'designation'),
     birthdate: indexOf('birthday', 'birthdate', 'dateofbirth', 'dob'),
+    lpuEmail: indexOf('lpuemail', 'lpuemailaddress', 'email', 'emailaddress'),
   };
   if (indexes.name < 0 || indexes.employeeNo < 0) {
     throw new Error('CSV is missing required column(s): name, ID Number.');
@@ -403,6 +404,7 @@ function mapEmployeeRows(rows: string[][]): EmployeePayload[] {
         photo: null,
         rfid: value(row, indexes.rfid) || null,
         birthdate: birthday ? normalizeBirthdate(birthday, rowIndex + 2) : null,
+        lpuEmail: value(row, indexes.lpuEmail) || null,
         department: value(row, indexes.department) || null,
         position: value(row, indexes.position) || null,
       },

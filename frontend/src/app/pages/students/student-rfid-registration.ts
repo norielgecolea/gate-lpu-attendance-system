@@ -97,6 +97,7 @@ export class StudentRfidRegistration {
             photo: student.photo ?? null,
             rfid,
             birthdate: student.birthdate ?? null,
+            lpuEmail: student.lpuEmail ?? null,
             department: student.department,
             course: student.course,
             school: student.school,

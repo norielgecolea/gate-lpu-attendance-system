@@ -13,6 +13,7 @@ export interface Employee {
   photo?: string | null;
   rfid: string | null;
   birthdate?: string | null;
+  lpuEmail?: string | null;
   department: string | null;
   position: string | null;
 }
@@ -75,6 +76,7 @@ export class EmployeesStore {
           photo,
           rfid: form.rfid,
           birthdate: form.birthdate,
+          lpuEmail: form.lpuEmail,
           department: form.department,
           position: form.position,
         };
@@ -105,6 +107,7 @@ export class EmployeesStore {
       photo: payload.photo?.trim() ? payload.photo.trim() : null,
       rfid: payload.rfid?.trim() ? payload.rfid.trim() : null,
       birthdate: payload.birthdate?.trim() ? payload.birthdate.trim() : null,
+      lpuEmail: payload.lpuEmail?.trim() ? payload.lpuEmail.trim() : null,
       name: payload.name.trim(),
       employeeNo: payload.employeeNo.trim(),
       department: payload.department?.trim() ? payload.department.trim() : null,
