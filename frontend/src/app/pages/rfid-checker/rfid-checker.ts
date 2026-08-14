@@ -17,8 +17,11 @@ import {
   lucideGraduationCap,
   lucideIdCard,
   lucideScanBarcode,
+  lucideSquarePen,
 } from '@ng-icons/lucide';
 import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmDialogService } from '@spartan-ng/helm/dialog';
+import { filter, take } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
 import {
   RfidApiService,
@@ -26,6 +29,16 @@ import {
   type StudentCreatedAudit,
 } from '../../core/rfid/rfid-api.service';
 import { studentPhotoUrl } from '../../core/students/student-photo.util';
+import {
+  StudentFormDialog,
+  type StudentFormResult,
+} from '../students/student-form-dialog';
+import { type Student, StudentsStore } from '../students/students.store';
+import {
+  EmployeeFormDialog,
+  type EmployeeFormResult,
+} from '../employees/employee-form-dialog';
+import { type Employee, EmployeesStore } from '../employees/employees.store';
 
 @Component({
   selector: 'app-rfid-checker',
@@ -37,6 +50,7 @@ import { studentPhotoUrl } from '../../core/students/student-photo.util';
       lucideGraduationCap,
       lucideBriefcase,
       lucideCircleAlert,
+      lucideSquarePen,
     }),
   ],
   templateUrl: './rfid-checker.html',
@@ -47,6 +61,9 @@ export class RfidChecker implements AfterViewInit, OnDestroy {
 
   private readonly api = inject(RfidApiService);
   private readonly auth = inject(AuthService);
+  private readonly dialog = inject(HlmDialogService);
+  private readonly studentsStore = inject(StudentsStore);
+  private readonly employeesStore = inject(EmployeesStore);
   private focusTimer?: ReturnType<typeof setInterval>;
 
   protected readonly loading = signal(false);
@@ -129,6 +146,56 @@ export class RfidChecker implements AfterViewInit, OnDestroy {
     return studentPhotoUrl(photo);
   }
 
+  protected canEditStudent(): boolean {
+    const role = this.auth.user()?.role;
+    return role === 'SUPERADMIN' || role === 'OSAS';
+  }
+
+  protected canEditEmployee(): boolean {
+    const role = this.auth.user()?.role;
+    return role === 'SUPERADMIN' || role === 'HR';
+  }
+
+  protected openStudentEdit(student: Student, audit: StudentCreatedAudit | null | undefined): void {
+    const ref = this.dialog.open(StudentFormDialog, {
+      context: { mode: 'edit', student, createdAuditLabel: this.createdLabel(audit) },
+      contentClass: 'person-form-dialog',
+    });
+    ref.closed$
+      .pipe(
+        take(1),
+        filter((form): form is StudentFormResult => !!form),
+      )
+      .subscribe((form) => {
+        this.error.set(null);
+        this.studentsStore.saveFromForm('edit', form, student.id).subscribe({
+          next: (updated) => this.replaceStudentResult(updated),
+          error: (err: { error?: { message?: string } }) =>
+            this.error.set(err?.error?.message ?? 'Failed to save student record.'),
+        });
+      });
+  }
+
+  protected openEmployeeEdit(employee: Employee, audit: StudentCreatedAudit | null | undefined): void {
+    const ref = this.dialog.open(EmployeeFormDialog, {
+      context: { mode: 'edit', employee, createdAuditLabel: this.createdLabel(audit) },
+      contentClass: 'person-form-dialog',
+    });
+    ref.closed$
+      .pipe(
+        take(1),
+        filter((form): form is EmployeeFormResult => !!form),
+      )
+      .subscribe((form) => {
+        this.error.set(null);
+        this.employeesStore.saveFromForm('edit', form, employee.id).subscribe({
+          next: (updated) => this.replaceEmployeeResult(updated),
+          error: (err: { error?: { message?: string } }) =>
+            this.error.set(err?.error?.message ?? 'Failed to save employee record.'),
+        });
+      });
+  }
+
   protected initials(name: string): string {
     const parts = name.replace(',', '').trim().split(/\s+/);
     return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase();
@@ -146,5 +213,13 @@ export class RfidChecker implements AfterViewInit, OnDestroy {
     const createdAt = new Date(audit.createdAt);
     const when = Number.isNaN(createdAt.getTime()) ? audit.createdAt : createdAt.toLocaleString();
     return `Added by ${actor} on ${when}`;
+  }
+
+  private replaceStudentResult(student: Student): void {
+    this.result.update((current) => (current ? { ...current, student } : current));
+  }
+
+  private replaceEmployeeResult(employee: Employee): void {
+    this.result.update((current) => (current ? { ...current, employee } : current));
   }
 }

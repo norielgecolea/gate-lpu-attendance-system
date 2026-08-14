@@ -149,6 +149,19 @@
             >
               View attendance
             </a>
+            @if (canEditStudent()) {
+              <button
+                hlmBtn
+                variant="outline"
+                size="sm"
+                class="mt-2"
+                type="button"
+                (click)="$event.stopPropagation(); openStudentEdit(student, res.studentCreatedAudit)"
+              >
+                <ng-icon name="lucideSquarePen" class="mr-1 text-sm" />
+                Edit record
+              </button>
+            }
           </div>
         </div>
       </section>
@@ -220,6 +233,19 @@
             >
               View attendance
             </a>
+            @if (canEditEmployee()) {
+              <button
+                hlmBtn
+                variant="outline"
+                size="sm"
+                class="mt-2"
+                type="button"
+                (click)="$event.stopPropagation(); openEmployeeEdit(employee, res.employeeCreatedAudit)"
+              >
+                <ng-icon name="lucideSquarePen" class="mr-1 text-sm" />
+                Edit record
+              </button>
+            }
           </div>
         </div>
       </section>
