@@ -108,4 +108,22 @@ class StudentServiceTest {
         assertEquals("CCS", existing.getDepartment());
         verify(studentRepository).save(existing);
     }
+
+    @Test
+    void import_skipsUnknownStudentWhenRequiredCreateFieldsAreMissing() {
+        when(studentRepository.findAllByStudentNoKey()).thenReturn(Map.of());
+        when(rfidUniquenessService.findAllActiveRfids()).thenReturn(Set.of());
+
+        var result = studentService.importStudents(
+                java.util.List.of(new StudentImportRequest(
+                        null, "2026-0999", null, null, null, "unknown@lpu.edu.ph", null, null, null
+                )),
+                42L,
+                "admin.user"
+        );
+
+        assertEquals(0, result.imported());
+        assertEquals(0, result.updated());
+        assertEquals(1, result.skippedIncomplete());
+    }
 }

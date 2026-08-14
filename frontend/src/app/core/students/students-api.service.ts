@@ -21,6 +21,7 @@ export interface StudentImportResult {
   imported: number;
   updated: number;
   skippedDuplicates: number;
+  skippedIncomplete: number;
 }
 export interface PhotoBulkUploadResult {
   updated: number;

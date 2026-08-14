@@ -233,7 +233,7 @@ export class Students {
         next: (result) => {
           this.importing.set(false);
           this.importMessage.set(
-            `Imported ${result.imported} new, updated ${result.updated} existing. Skipped ${result.skippedDuplicates} duplicate RFID(s).`,
+            `Imported ${result.imported} new, updated ${result.updated} existing. Skipped ${result.skippedDuplicates} duplicate RFID(s) and ${result.skippedIncomplete} incomplete new record(s).`,
           );
           this.reload();
         },

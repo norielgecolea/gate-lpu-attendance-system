@@ -98,9 +98,9 @@ public class StudentService {
     /**
      * Upserts students from CSV. Matching student numbers update the existing
      * record; new numbers are inserted. Matching records can contain only a student
-     * number plus the fields to change. New rows must still provide all required
-     * student details. Rows whose RFID is already assigned to a different person
-     * (or repeated for a different number in the CSV) are skipped.
+     * number plus the fields to change. Incomplete new rows are skipped. Rows whose
+     * RFID is already assigned to a different person (or repeated for a different
+     * number in the CSV) are also skipped.
      */
     @Transactional
     public StudentImportResponse importStudents(
@@ -118,6 +118,7 @@ public class StudentService {
         int imported = 0;
         int updated = 0;
         int skippedDuplicates = 0;
+        int skippedIncomplete = 0;
         Instant now = Instant.now();
 
         for (StudentImportRequest request : requests) {
@@ -140,6 +141,11 @@ public class StudentService {
                     persistAuditEvent(existing, "UPDATED", actorUserId, actorUsername);
                 }
                 releaseAndClaimRfid(knownRfids, previousRfid, existing.getRfid());
+                continue;
+            }
+
+            if (!hasRequiredNewStudentFields(request)) {
+                skippedIncomplete++;
                 continue;
             }
 
@@ -168,12 +174,13 @@ public class StudentService {
             }
         }
         log.info(
-                "Imported students imported={} updated={} skippedDuplicates={}",
+                "Imported students imported={} updated={} skippedDuplicates={} skippedIncomplete={}",
                 imported,
                 updated,
-                skippedDuplicates
+                skippedDuplicates,
+                skippedIncomplete
         );
-        return new StudentImportResponse(imported, updated, skippedDuplicates);
+        return new StudentImportResponse(imported, updated, skippedDuplicates, skippedIncomplete);
     }
 
     @Transactional
@@ -420,6 +427,13 @@ public class StudentService {
         if (normalized != null) {
             setter.accept(normalized);
         }
+    }
+
+    private static boolean hasRequiredNewStudentFields(StudentImportRequest request) {
+        return normalizeOptional(request.name()) != null
+                && normalizeOptional(request.department()) != null
+                && normalizeOptional(request.course()) != null
+                && normalizeOptional(request.school()) != null;
     }
 
     private static boolean rfidConflicts(String rfid, String currentRfid, Set<String> knownRfids) {
