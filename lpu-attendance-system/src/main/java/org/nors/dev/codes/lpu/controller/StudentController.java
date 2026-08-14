@@ -12,6 +12,7 @@ import org.nors.dev.codes.lpu.dto.PhotoUploadResponse;
 import org.nors.dev.codes.lpu.dto.StudentAuditEventResponse;
 import org.nors.dev.codes.lpu.dto.StudentFinanceTagImportResponse;
 import org.nors.dev.codes.lpu.dto.StudentImportResponse;
+import org.nors.dev.codes.lpu.dto.StudentImportRequest;
 import org.nors.dev.codes.lpu.dto.StudentPageResponse;
 import org.nors.dev.codes.lpu.dto.StudentRequest;
 import org.nors.dev.codes.lpu.dto.StudentResponse;
@@ -182,7 +183,7 @@ public class StudentController {
 
     @PostMapping("/import")
     public ResponseEntity<StudentImportResponse> importStudents(
-            @RequestBody List<@Valid StudentRequest> requests,
+            @RequestBody List<StudentImportRequest> requests,
             @AuthenticationPrincipal AuthenticatedUser user
     ) {
         Long actorUserId = user != null ? user.getId() : null;

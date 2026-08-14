@@ -13,6 +13,7 @@ import org.nors.dev.codes.lpu.dto.PhotoBulkUploadResponse;
 import org.nors.dev.codes.lpu.dto.StudentAuditEventResponse;
 import org.nors.dev.codes.lpu.dto.StudentFinanceTagImportResponse;
 import org.nors.dev.codes.lpu.dto.StudentImportResponse;
+import org.nors.dev.codes.lpu.dto.StudentImportRequest;
 import org.nors.dev.codes.lpu.dto.StudentPageResponse;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -96,13 +97,14 @@ public class StudentService {
 
     /**
      * Upserts students from CSV. Matching student numbers update the existing
-     * record; new numbers are inserted. Rows whose RFID is already assigned to a
-     * different person (or repeated for a different number in the CSV) are skipped.
-     * Blank RFID/photo/birthdate/LPU email on update leave the existing values unchanged.
+     * record; new numbers are inserted. Matching records can contain only a student
+     * number plus the fields to change. New rows must still provide all required
+     * student details. Rows whose RFID is already assigned to a different person
+     * (or repeated for a different number in the CSV) are skipped.
      */
     @Transactional
     public StudentImportResponse importStudents(
-            List<StudentRequest> requests,
+            List<StudentImportRequest> requests,
             Long actorUserId,
             String actorUsername
     ) {
@@ -118,7 +120,7 @@ public class StudentService {
         int skippedDuplicates = 0;
         Instant now = Instant.now();
 
-        for (StudentRequest request : requests) {
+        for (StudentImportRequest request : requests) {
             String studentNo = normalizeRequired(request.studentNo(), "Student number");
             String numberKey = studentNo.toLowerCase(java.util.Locale.ROOT);
             String rfid = normalizeOptional(request.rfid());
@@ -147,7 +149,7 @@ public class StudentService {
             }
 
             Student student = new Student();
-            applyRequest(student, request, studentNo);
+            applyRequest(student, request.asCreateRequest(), studentNo);
             student.setCreatedAt(now);
             student.setUpdatedAt(now);
             student.setDeleted(false);
@@ -398,24 +400,25 @@ public class StudentService {
         student.setSchool(normalizeRequired(request.school(), "School"));
     }
 
-    /** CSV upsert: blank optional fields keep the values already on the record. */
-    private void applyImportUpdate(Student student, StudentRequest request, String studentNo) {
-        String previousPhoto = student.getPhoto();
-        String previousRfid = student.getRfid();
-        var previousBirthdate = student.getBirthdate();
-        String previousLpuEmail = student.getLpuEmail();
-        applyRequest(student, request, studentNo);
-        if (normalizeOptional(request.photo()) == null) {
-            student.setPhoto(previousPhoto);
+    /** CSV upsert: omitted or blank fields keep the matching record's values. */
+    private void applyImportUpdate(Student student, StudentImportRequest request, String studentNo) {
+        student.setStudentNo(studentNo);
+        setWhenPresent(request.name(), student::setName);
+        setWhenPresent(request.photo(), student::setPhoto);
+        setWhenPresent(request.rfid(), student::setRfid);
+        if (request.birthdate() != null) {
+            student.setBirthdate(request.birthdate());
         }
-        if (normalizeOptional(request.rfid()) == null) {
-            student.setRfid(previousRfid);
-        }
-        if (request.birthdate() == null) {
-            student.setBirthdate(previousBirthdate);
-        }
-        if (normalizeOptional(request.lpuEmail()) == null) {
-            student.setLpuEmail(previousLpuEmail);
+        setWhenPresent(request.lpuEmail(), student::setLpuEmail);
+        setWhenPresent(request.department(), student::setDepartment);
+        setWhenPresent(request.course(), student::setCourse);
+        setWhenPresent(request.school(), student::setSchool);
+    }
+
+    private static void setWhenPresent(String value, java.util.function.Consumer<String> setter) {
+        String normalized = normalizeOptional(value);
+        if (normalized != null) {
+            setter.accept(normalized);
         }
     }
 

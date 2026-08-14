@@ -6,6 +6,17 @@ import { compressImageFile, compressImageFiles } from '../media/compress-image';
 import type { Student } from '../../pages/students/students.store';
 
 export type StudentPayload = Omit<Student, 'id' | 'financeTagged'>;
+export interface StudentImportPayload {
+  studentNo: string;
+  name?: string | null;
+  photo?: string | null;
+  rfid?: string | null;
+  birthdate?: string | null;
+  lpuEmail?: string | null;
+  department?: string | null;
+  course?: string | null;
+  school?: string | null;
+}
 export interface StudentImportResult {
   imported: number;
   updated: number;
@@ -75,7 +86,7 @@ export class StudentsApiService {
     return this.http.post<Student>(this.baseUrl, payload);
   }
 
-  importCsv(payload: StudentPayload[]): Observable<StudentImportResult> {
+  importCsv(payload: StudentImportPayload[]): Observable<StudentImportResult> {
     return this.http.post<StudentImportResult>(`${this.baseUrl}/import`, payload);
   }
 

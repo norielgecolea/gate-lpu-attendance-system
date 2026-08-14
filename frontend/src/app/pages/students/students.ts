@@ -36,7 +36,7 @@ import { Subject, catchError, debounceTime, distinctUntilChanged, filter, of, ta
 import {
   StudentsApiService,
   type StudentAuditEvent,
-  type StudentPayload,
+  type StudentImportPayload,
 } from '../../core/students/students-api.service';
 import { studentPhotoUrl } from '../../core/students/student-photo.util';
 import { infiniteScroll } from '../../shared/infinite-scroll';
@@ -381,7 +381,7 @@ function parseCsv(text: string): string[][] {
   return rows;
 }
 
-function mapStudentRows(rows: string[][]): StudentPayload[] {
+function mapStudentRows(rows: string[][]): StudentImportPayload[] {
   if (rows.length < 2) {
     return [];
   }
@@ -403,11 +403,8 @@ function mapStudentRows(rows: string[][]): StudentPayload[] {
     birthdate: indexOf('birthday', 'birthdate', 'dateofbirth', 'dob'),
     lpuEmail: indexOf('lpuemail', 'lpuemailaddress', 'email', 'emailaddress'),
   };
-  const missing = Object.entries(indexes)
-    .filter(([key, index]) => key !== 'rfid' && key !== 'birthdate' && key !== 'lpuEmail' && index < 0)
-    .map(([key]) => key);
-  if (missing.length) {
-    throw new Error(`CSV is missing required column(s): ${missing.join(', ')}.`);
+  if (indexes.studentNo < 0) {
+    throw new Error('CSV is missing the required Student Number or ID Number column.');
   }
 
   const value = (row: string[], index: number) => (index >= 0 ? (row[index] ?? '').trim() : '');
@@ -415,24 +412,21 @@ function mapStudentRows(rows: string[][]): StudentPayload[] {
     if (row.every((cell) => !cell.trim())) {
       return [];
     }
-    const required = {
-      name: value(row, indexes.name),
-      studentNo: value(row, indexes.studentNo),
-      department: value(row, indexes.department),
-      course: value(row, indexes.course),
-      school: value(row, indexes.school),
-    };
-    const empty = Object.entries(required).find(([, cell]) => !cell);
-    if (empty) {
-      throw new Error(`Row ${rowIndex + 2} is missing ${empty[0]}.`);
+    const studentNo = value(row, indexes.studentNo);
+    if (!studentNo) {
+      throw new Error(`Row ${rowIndex + 2} is missing studentNo.`);
     }
     const birthday = value(row, indexes.birthdate);
     return [{
-      ...required,
+      studentNo,
+      name: value(row, indexes.name) || null,
       photo: null,
       rfid: value(row, indexes.rfid) || null,
       birthdate: birthday ? normalizeBirthdate(birthday, rowIndex + 2) : null,
       lpuEmail: value(row, indexes.lpuEmail) || null,
+      department: value(row, indexes.department) || null,
+      course: value(row, indexes.course) || null,
+      school: value(row, indexes.school) || null,
     }];
   });
 }
