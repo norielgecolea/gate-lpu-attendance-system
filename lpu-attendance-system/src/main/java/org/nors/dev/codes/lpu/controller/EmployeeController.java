@@ -7,6 +7,7 @@ import java.util.Map;
 import org.nors.dev.codes.lpu.dto.AttendanceEventPageResponse;
 import org.nors.dev.codes.lpu.dto.AttendancePageResponse;
 import org.nors.dev.codes.lpu.dto.EmployeeAuditEventResponse;
+import org.nors.dev.codes.lpu.dto.EmployeeImportRequest;
 import org.nors.dev.codes.lpu.dto.EmployeeImportResponse;
 import org.nors.dev.codes.lpu.dto.EmployeeRequest;
 import org.nors.dev.codes.lpu.dto.EmployeeResponse;
@@ -166,7 +167,7 @@ public class EmployeeController {
 
     @PostMapping("/import")
     public ResponseEntity<EmployeeImportResponse> importEmployees(
-            @RequestBody List<@Valid EmployeeRequest> requests,
+            @RequestBody List<EmployeeImportRequest> requests,
             @AuthenticationPrincipal AuthenticatedUser user
     ) {
         Long actorUserId = user != null ? user.getId() : null;

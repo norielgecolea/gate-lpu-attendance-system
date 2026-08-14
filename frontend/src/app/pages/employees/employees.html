@@ -29,6 +29,7 @@
       type="button"
       [disabled]="importing()"
       (click)="csvInput.click()"
+      title="For existing employees, Employee Number plus only the fields to update is accepted."
     >
       <ng-icon name="lucideFileDown" class="text-base" />
       {{ importing() ? 'Importing…' : 'Import CSV' }}

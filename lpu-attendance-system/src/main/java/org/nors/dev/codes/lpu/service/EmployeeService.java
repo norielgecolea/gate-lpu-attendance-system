@@ -11,6 +11,7 @@ import java.util.Set;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.nors.dev.codes.lpu.dto.EmployeeAuditEventResponse;
+import org.nors.dev.codes.lpu.dto.EmployeeImportRequest;
 import org.nors.dev.codes.lpu.dto.EmployeeImportResponse;
 import org.nors.dev.codes.lpu.dto.EmployeeRequest;
 import org.nors.dev.codes.lpu.dto.EmployeeResponse;
@@ -100,13 +101,12 @@ public class EmployeeService {
 
     /**
      * Upserts employees from CSV. Matching employee numbers update the existing
-     * record; new numbers are inserted. Rows whose RFID is already assigned to a
-     * different person (or repeated for a different number in the CSV) are skipped.
-     * Blank RFID/photo/birthdate/LPU email on update leave the existing values unchanged.
+     * record; new numbers are inserted. Matching records can contain only an employee
+     * number plus the fields to change. Incomplete new rows and duplicate RFIDs are skipped.
      */
     @Transactional
     public EmployeeImportResponse importEmployees(
-            List<EmployeeRequest> requests,
+            List<EmployeeImportRequest> requests,
             Long actorUserId,
             String actorUsername
     ) {
@@ -120,9 +120,10 @@ public class EmployeeService {
         int imported = 0;
         int updated = 0;
         int skippedDuplicates = 0;
+        int skippedIncomplete = 0;
         Instant now = Instant.now();
 
-        for (EmployeeRequest request : requests) {
+        for (EmployeeImportRequest request : requests) {
             String employeeNo = normalizeRequired(request.employeeNo(), "Employee number");
             String numberKey = employeeNo.toLowerCase(java.util.Locale.ROOT);
             String rfid = normalizeOptional(request.rfid());
@@ -145,13 +146,18 @@ public class EmployeeService {
                 continue;
             }
 
+            if (!hasRequiredNewEmployeeFields(request)) {
+                skippedIncomplete++;
+                continue;
+            }
+
             if (rfidConflicts(rfid, null, knownRfids)) {
                 skippedDuplicates++;
                 continue;
             }
 
             Employee employee = new Employee();
-            applyRequest(employee, request, employeeNo);
+            applyRequest(employee, request.asCreateRequest(), employeeNo);
             employee.setCreatedAt(now);
             employee.setUpdatedAt(now);
             employee.setDeleted(false);
@@ -170,12 +176,13 @@ public class EmployeeService {
             }
         }
         log.info(
-                "Imported employees imported={} updated={} skippedDuplicates={}",
+                "Imported employees imported={} updated={} skippedDuplicates={} skippedIncomplete={}",
                 imported,
                 updated,
-                skippedDuplicates
+                skippedDuplicates,
+                skippedIncomplete
         );
-        return new EmployeeImportResponse(imported, updated, skippedDuplicates);
+        return new EmployeeImportResponse(imported, updated, skippedDuplicates, skippedIncomplete);
     }
 
     @Transactional
@@ -322,25 +329,29 @@ public class EmployeeService {
         employee.setPosition(normalizeOptional(request.position()));
     }
 
-    /** CSV upsert: blank optional fields keep the values already on the record. */
-    private void applyImportUpdate(Employee employee, EmployeeRequest request, String employeeNo) {
-        String previousPhoto = employee.getPhoto();
-        String previousRfid = employee.getRfid();
-        var previousBirthdate = employee.getBirthdate();
-        String previousLpuEmail = employee.getLpuEmail();
-        applyRequest(employee, request, employeeNo);
-        if (normalizeOptional(request.photo()) == null) {
-            employee.setPhoto(previousPhoto);
+    /** CSV upsert: omitted or blank fields keep the matching record's values. */
+    private void applyImportUpdate(Employee employee, EmployeeImportRequest request, String employeeNo) {
+        employee.setEmployeeNo(employeeNo);
+        setWhenPresent(request.name(), employee::setName);
+        setWhenPresent(request.photo(), employee::setPhoto);
+        setWhenPresent(request.rfid(), employee::setRfid);
+        if (request.birthdate() != null) {
+            employee.setBirthdate(request.birthdate());
         }
-        if (normalizeOptional(request.rfid()) == null) {
-            employee.setRfid(previousRfid);
+        setWhenPresent(request.lpuEmail(), employee::setLpuEmail);
+        setWhenPresent(request.department(), employee::setDepartment);
+        setWhenPresent(request.position(), employee::setPosition);
+    }
+
+    private static void setWhenPresent(String value, java.util.function.Consumer<String> setter) {
+        String normalized = normalizeOptional(value);
+        if (normalized != null) {
+            setter.accept(normalized);
         }
-        if (request.birthdate() == null) {
-            employee.setBirthdate(previousBirthdate);
-        }
-        if (normalizeOptional(request.lpuEmail()) == null) {
-            employee.setLpuEmail(previousLpuEmail);
-        }
+    }
+
+    private static boolean hasRequiredNewEmployeeFields(EmployeeImportRequest request) {
+        return normalizeOptional(request.name()) != null;
     }
 
     private static boolean rfidConflicts(String rfid, String currentRfid, Set<String> knownRfids) {

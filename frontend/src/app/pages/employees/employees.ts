@@ -36,7 +36,7 @@ import { catchError, filter, of, take } from 'rxjs';
 import {
   EmployeesApiService,
   type EmployeeAuditEvent,
-  type EmployeePayload,
+  type EmployeeImportPayload,
 } from '../../core/employees/employees-api.service';
 import { studentPhotoUrl } from '../../core/students/student-photo.util';
 import { infiniteScroll } from '../../shared/infinite-scroll';
@@ -212,7 +212,7 @@ export class Employees {
         next: (result) => {
           this.importing.set(false);
           this.importMessage.set(
-            `Imported ${result.imported} new, updated ${result.updated} existing. Skipped ${result.skippedDuplicates} duplicate RFID(s).`,
+            `Imported ${result.imported} new, updated ${result.updated} existing. Skipped ${result.skippedDuplicates} duplicate RFID(s) and ${result.skippedIncomplete} incomplete new record(s).`,
           );
           this.reload();
         },
@@ -360,8 +360,8 @@ function parseCsv(text: string): string[][] {
   return rows;
 }
 
-/** Maps CSV rows to employee payloads. Only Name + ID Number are required. */
-function mapEmployeeRows(rows: string[][]): EmployeePayload[] {
+/** Maps CSV rows to employee imports. Existing records need only an employee number. */
+function mapEmployeeRows(rows: string[][]): EmployeeImportPayload[] {
   if (rows.length < 2) {
     return [];
   }
@@ -382,8 +382,8 @@ function mapEmployeeRows(rows: string[][]): EmployeePayload[] {
     birthdate: indexOf('birthday', 'birthdate', 'dateofbirth', 'dob'),
     lpuEmail: indexOf('lpuemail', 'lpuemailaddress', 'email', 'emailaddress'),
   };
-  if (indexes.name < 0 || indexes.employeeNo < 0) {
-    throw new Error('CSV is missing required column(s): name, ID Number.');
+  if (indexes.employeeNo < 0) {
+    throw new Error('CSV is missing the required Employee Number or ID Number column.');
   }
 
   const value = (row: string[], index: number) => (index >= 0 ? (row[index] ?? '').trim() : '');
@@ -391,16 +391,15 @@ function mapEmployeeRows(rows: string[][]): EmployeePayload[] {
     if (row.every((cell) => !cell.trim())) {
       return [];
     }
-    const name = value(row, indexes.name);
     const employeeNo = value(row, indexes.employeeNo);
-    if (!name || !employeeNo) {
-      throw new Error(`Row ${rowIndex + 2} is missing name or ID Number.`);
+    if (!employeeNo) {
+      throw new Error(`Row ${rowIndex + 2} is missing employeeNo.`);
     }
     const birthday = value(row, indexes.birthdate);
     return [
       {
-        name,
         employeeNo,
+        name: value(row, indexes.name) || null,
         photo: null,
         rfid: value(row, indexes.rfid) || null,
         birthdate: birthday ? normalizeBirthdate(birthday, rowIndex + 2) : null,

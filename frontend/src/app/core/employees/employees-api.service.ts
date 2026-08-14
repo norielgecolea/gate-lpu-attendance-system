@@ -6,11 +6,22 @@ import { compressImageFile, compressImageFiles } from '../media/compress-image';
 import type { Employee } from '../../pages/employees/employees.store';
 
 export type EmployeePayload = Omit<Employee, 'id'>;
+export interface EmployeeImportPayload {
+  employeeNo: string;
+  name?: string | null;
+  photo?: string | null;
+  rfid?: string | null;
+  birthdate?: string | null;
+  lpuEmail?: string | null;
+  department?: string | null;
+  position?: string | null;
+}
 
 export interface EmployeeImportResult {
   imported: number;
   updated: number;
   skippedDuplicates: number;
+  skippedIncomplete: number;
 }
 
 export interface EmployeeAuditEvent {
@@ -56,7 +67,7 @@ export class EmployeesApiService {
     return this.http.post<Employee>(this.baseUrl, payload);
   }
 
-  importCsv(payload: EmployeePayload[]): Observable<EmployeeImportResult> {
+  importCsv(payload: EmployeeImportPayload[]): Observable<EmployeeImportResult> {
     return this.http.post<EmployeeImportResult>(`${this.baseUrl}/import`, payload);
   }
 
