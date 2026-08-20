@@ -1,68 +1,59 @@
-<div class="relative min-h-dvh w-full overflow-hidden bg-[#f6f7fb]">
+<div class="relative h-dvh w-full overflow-hidden bg-[#f6f7fb]">
   <div
-    class="absolute inset-0 scale-105 bg-slate-200 bg-cover bg-center"
+    class="pointer-events-none absolute inset-0 bg-slate-200 bg-cover bg-center"
     style="background-image: url('/background.webp')"
     aria-hidden="true"
   ></div>
   <div
-    class="absolute inset-0 bg-[radial-gradient(circle_at_15%_15%,rgba(141,37,70,0.28),transparent_30%),linear-gradient(120deg,rgba(255,255,255,0.92),rgba(255,255,255,0.72))]"
+    class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_15%,rgba(141,37,70,0.28),transparent_30%),linear-gradient(120deg,rgba(255,255,255,0.92),rgba(255,255,255,0.72))]"
     aria-hidden="true"
   ></div>
 
-  <div class="relative z-10 mx-auto flex min-h-dvh w-full max-w-3xl flex-col px-4 py-6 sm:px-6 sm:py-10">
-    <a
-      routerLink="/"
-      class="text-primary hover:bg-primary/10 mb-5 inline-flex w-fit items-center gap-2 rounded-full bg-white/70 px-3 py-1.5 text-sm font-semibold shadow-sm ring-1 ring-inset ring-white/70 backdrop-blur transition-colors"
-    >
-      <ng-icon name="lucideArrowLeft" class="text-base" />
-      Back to login
-    </a>
+  <div class="relative z-10 mx-auto flex h-dvh w-full max-w-2xl flex-col px-4 py-3 sm:px-5 sm:py-4">
+    <header class="mb-2 flex shrink-0 items-center gap-3">
+      <a
+        routerLink="/"
+        class="text-primary hover:bg-primary/10 inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-white/70 shadow-sm ring-1 ring-inset ring-white/70 backdrop-blur transition-colors"
+        aria-label="Back to login"
+      >
+        <ng-icon name="lucideArrowLeft" class="text-base" />
+      </a>
+      <img src="/logo.svg" alt="" class="h-8 w-8 object-contain" />
+      <div class="min-w-0 leading-tight">
+        <h1 class="truncate text-sm font-black text-gray-950 sm:text-base">
+          {{ appName }}
+        </h1>
+        <p class="text-primary text-[11px] font-semibold">{{ version }} · What’s new</p>
+      </div>
+    </header>
 
     <article
-      class="flex-1 overflow-hidden rounded-3xl bg-white/55 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_16px_40px_-12px_rgba(24,24,27,0.18)] ring-1 ring-inset ring-white/60 backdrop-blur-xl"
+      class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl bg-white/55 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_12px_28px_-12px_rgba(24,24,27,0.16)] ring-1 ring-inset ring-white/60 backdrop-blur-xl"
     >
-      <header class="border-b border-white/60 px-5 py-6 sm:px-8 sm:py-8">
-        <div class="mb-4 flex items-center gap-3">
-          <img src="/logo.svg" alt="LPU Laguna" class="h-12 w-12 object-contain" />
-          <div>
-            <p class="text-primary text-xs font-bold uppercase tracking-[0.2em]">LPU Laguna</p>
-            <p class="text-sm font-semibold text-gray-700">Gate Attendance</p>
-          </div>
-        </div>
-        <div
-          class="bg-primary/10 text-primary mb-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.16em]"
-        >
-          <ng-icon name="lucideSparkles" class="text-sm" />
-          What’s new
-        </div>
-        <h1 class="text-3xl font-black tracking-tight text-gray-950 sm:text-4xl">
-          {{ appName }} {{ version }}
-        </h1>
-        <p class="mt-2 max-w-xl text-sm leading-relaxed text-gray-600">
-          Patch notes for this release — what the campus gate system can do today.
-        </p>
-      </header>
-
-      <ol class="divide-y divide-zinc-950/10 px-5 py-2 sm:px-8">
-        @for (note of notes; track note.title; let i = $index) {
-          <li class="flex gap-4 py-4">
-            <span
-              class="bg-primary/10 text-primary mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold"
+      <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-2 sm:px-4">
+        @for (release of releases; track release.version) {
+          <section class="mb-3 last:mb-1">
+            <h2
+              class="bg-white/80 text-primary sticky top-0 z-10 -mx-1 mb-1 rounded px-1 py-1 text-[11px] font-bold uppercase tracking-[0.14em] backdrop-blur-md"
             >
-              {{ i + 1 }}
-            </span>
-            <div class="min-w-0">
-              <h2 class="text-sm font-bold text-gray-950 sm:text-base">{{ note.title }}</h2>
-              <p class="mt-0.5 text-sm leading-relaxed text-gray-600">{{ note.detail }}</p>
-            </div>
-          </li>
+              {{ appName }} {{ release.version }}
+            </h2>
+            <ul class="space-y-1">
+              @for (note of release.notes; track note.title) {
+                <li class="text-[12px] leading-snug text-gray-700 sm:text-[13px]">
+                  <span class="font-semibold text-gray-950">{{ note.title }}</span>
+                  <span class="text-gray-400"> — </span>
+                  <span>{{ note.detail }}</span>
+                </li>
+              }
+            </ul>
+          </section>
         }
-      </ol>
+      </div>
     </article>
 
-    <p class="px-2 py-5 text-center text-[11px] leading-relaxed text-gray-600/90 sm:text-xs">
+    <p class="mt-2 shrink-0 px-1 text-center text-[10px] leading-snug text-gray-600/90 sm:text-[11px]">
       © 2026 LPU - Laguna. Developed by MIS Department. All Rights Reserved.
-      {{ appName }} {{ version }}.
     </p>
   </div>
 </div>
