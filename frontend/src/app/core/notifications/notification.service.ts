@@ -29,6 +29,15 @@ export class NotificationService {
       return;
     }
 
+    const state = this.socket?.readyState;
+    if (
+      this.token === token &&
+      this.socket &&
+      (state === WebSocket.OPEN || state === WebSocket.CONNECTING)
+    ) {
+      return;
+    }
+
     this.token = token;
     this.intentionalClose = false;
     this.clearReconnect();
@@ -73,8 +82,10 @@ export class NotificationService {
     this.socket.onopen = () => {
       this.reconnectAttempt = 0;
       this.connected.set(true);
-      // HTTP snapshot for admin/monitor (guards get 403 — ignored).
-      // Skip applying if a WS GUARD_PRESENCE already arrived.
+      if (!this.canReadGuardPresence(this.token)) {
+        return;
+      }
+      // HTTP snapshot for admin/monitor; guards are not allowed on this endpoint.
       this.presenceApi.onlineLocations().subscribe({
         next: (locations) => {
           if (!this.presenceFromSocket) {
@@ -128,6 +139,21 @@ export class NotificationService {
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = undefined;
+    }
+  }
+
+  private canReadGuardPresence(token: string | null): boolean {
+    if (!token) {
+      return false;
+    }
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))) as {
+        role?: string;
+      };
+      const role = payload.role ?? '';
+      return role === 'SUPERADMIN' || role === 'MONITORING' || role === 'OSAS' || role === 'HR';
+    } catch {
+      return false;
     }
   }
 }
