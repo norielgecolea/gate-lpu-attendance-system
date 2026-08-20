@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { About } from './pages/about/about';
 import { Login } from './pages/login/login';
 import { AdminLayout } from './layouts/admin-layout/admin-layout';
 import { Dashboard } from './pages/dashboard/dashboard';
@@ -38,6 +39,7 @@ const HR_ADMIN_ROLES = ['SUPERADMIN', 'OSAS', 'HR'] as const;
 export const routes: Routes = [
   { path: '', component: Login, canActivate: [guestGuard], pathMatch: 'full' },
   { path: 'login', redirectTo: '' },
+  { path: 'about', component: About },
   {
     path: 'guard',
     component: GateKiosk,

@@ -1,15 +1,16 @@
 import { Component, OnDestroy, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideEye, lucideEyeOff } from '@ng-icons/lucide';
 import { firstValueFrom } from 'rxjs';
+import { APP_NAME, APP_VERSION } from '../../core/app-info';
 import { AuthService } from '../../core/auth/auth.service';
 import { FullscreenService } from '../../core/fullscreen.service';
 
 @Component({
   selector: 'app-login',
-  imports: [FormsModule, NgIcon],
+  imports: [FormsModule, NgIcon, RouterLink],
   viewProviders: [provideIcons({ lucideEye, lucideEyeOff })],
   templateUrl: './login.html',
   styles: `
@@ -57,6 +58,9 @@ export class Login implements OnDestroy {
   protected readonly rememberMe = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly loading = signal(false);
+
+  protected readonly appName = APP_NAME;
+  protected readonly appVersion = APP_VERSION;
 
   protected readonly heroImages = [
     { src: '/lpu-building.webp', alt: 'LPU Laguna campus' },
