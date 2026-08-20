@@ -9,7 +9,7 @@ export interface ServerTimeResponse {
   utcOffset: string;
 }
 
-/** Keeps displayed clocks aligned with the Tomcat host, not the kiosk browser. */
+/** Syncs to the server instant; always displays in Asia/Manila like admin attendance logs. */
 @Injectable({ providedIn: 'root' })
 export class ServerClockService {
   private static readonly SYNC_MS = 60_000;
@@ -63,29 +63,9 @@ export class ServerClockService {
           return;
         }
         this.skewMs = serverEpoch + Math.floor((receivedAt - sentAt) / 2) - receivedAt;
-        if (res.zoneId) {
-          this.zoneId.set(res.zoneId);
-        }
-        this.datePipeTimezone.set(toDatePipeTimezone(res.utcOffset, res.zoneId));
         this.tick();
       },
       error: () => undefined,
     });
   }
-}
-
-function toDatePipeTimezone(utcOffset?: string, zoneId?: string): string {
-  if (utcOffset === 'Z' || utcOffset === 'z') {
-    return '+0000';
-  }
-  if (utcOffset) {
-    const compact = utcOffset.replace(':', '');
-    if (/^[+-]\d{4}$/.test(compact)) {
-      return compact;
-    }
-  }
-  if (zoneId) {
-    return zoneId;
-  }
-  return '+0800';
 }

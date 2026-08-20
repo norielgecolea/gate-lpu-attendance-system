@@ -29,12 +29,19 @@
       class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl bg-white/55 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_16px_40px_-12px_rgba(24,24,27,0.18)] ring-1 ring-inset ring-white/60 backdrop-blur-xl"
     >
       <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 sm:px-7">
-        @for (release of releases; track release.version) {
-          <section class="mb-6 last:mb-1">
+        @for (release of releases; track release.version; let first = $first) {
+          <section class="mb-8 last:mb-2" [id]="'v' + release.version">
             <h2
-              class="bg-white/85 text-primary sticky top-0 z-10 -mx-2 mb-3 rounded-md px-2 py-2 text-xs font-bold uppercase tracking-[0.16em] backdrop-blur-md sm:text-sm"
+              class="sticky top-0 z-10 -mx-2 mb-3 flex items-center justify-between gap-2 rounded-md bg-white/90 px-2 py-2 backdrop-blur-md"
             >
-              {{ appName }} {{ release.version }}
+              <span class="text-primary text-xs font-bold uppercase tracking-[0.16em] sm:text-sm">
+                {{ appName }} {{ release.version }}
+              </span>
+              @if (first) {
+                <span class="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary uppercase tracking-wide">
+                  Current
+                </span>
+              }
             </h2>
             <ul class="divide-y divide-zinc-950/10">
               @for (note of release.notes; track note.title) {

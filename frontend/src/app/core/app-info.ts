@@ -10,8 +10,24 @@ export interface Release {
   notes: ReleaseNote[];
 }
 
-/** Newest first — add new versions at the top and keep older notes below. */
+/**
+ * Newest first. Add a new `{ version, notes }` object at the top;
+ * leave older releases in place so their patch notes stay on the page.
+ */
 export const RELEASES: Release[] = [
+  {
+    version: '2.2.0',
+    notes: [
+      {
+        title: 'Server time',
+        detail: 'Kiosk and monitor clocks follow the Tomcat host clock, not the browser.',
+      },
+      {
+        title: 'About this system',
+        detail: 'Login shows the version and opens patch notes for every release.',
+      },
+    ],
+  },
   {
     version: '2.1.0',
     notes: [
