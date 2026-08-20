@@ -11,6 +11,7 @@ import { provideClientHydration } from '@angular/platform-browser';
 import { routes } from './app.routes';
 import { authInterceptor } from './core/auth/auth.interceptor';
 import { AuthService } from './core/auth/auth.service';
+import { ServerClockService } from './core/time/server-clock.service';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -20,6 +21,7 @@ export const appConfig: ApplicationConfig = {
     provideHttpClient(withFetch(), withInterceptors([authInterceptor])),
     provideAppInitializer(() => {
       inject(AuthService).restoreSession();
+      inject(ServerClockService).start();
     }),
   ],
 };

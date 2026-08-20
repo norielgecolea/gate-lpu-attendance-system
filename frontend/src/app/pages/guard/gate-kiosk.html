@@ -54,7 +54,7 @@
 
     @if (current() || error()) {
       <div class="gate-header-clock">
-        <p class="gate-header-time">{{ clock() | date: 'hh:mm:ss a' }}</p>
+        <p class="gate-header-time">{{ clock() | date: 'hh:mm:ss a' : clockTz() }}</p>
       </div>
     }
 
@@ -189,8 +189,8 @@
       } @else {
         <div class="gate-idle">
           <div class="gate-idle-ring" aria-hidden="true"></div>
-          <p class="gate-idle-clock">{{ clock() | date: 'hh:mm:ss a' }}</p>
-          <p class="gate-idle-date">{{ clock() | date: 'EEEE, MMMM d' }}</p>
+          <p class="gate-idle-clock">{{ clock() | date: 'hh:mm:ss a' : clockTz() }}</p>
+          <p class="gate-idle-date">{{ clock() | date: 'EEEE, MMMM d' : clockTz() }}</p>
           <div class="gate-idle-icon">
             <ng-icon name="lucideScanBarcode" />
           </div>

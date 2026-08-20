@@ -35,6 +35,7 @@ import { FullscreenService } from '../../core/fullscreen.service';
 import { NotificationService } from '../../core/notifications/notification.service';
 import { studentPhotoUrl } from '../../core/students/student-photo.util';
 import { TapErrorLogsApiService } from '../../core/tap-errors/tap-error-logs-api.service';
+import { ServerClockService } from '../../core/time/server-clock.service';
 
 const EMPTY_SUMMARY: AttendanceSummary = {
   uniquePeople: 0,
@@ -207,9 +208,11 @@ export class Monitor implements OnDestroy {
   private readonly alertSound = inject(AlertSoundService);
   private readonly fullscreen = inject(FullscreenService);
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly serverClock = inject(ServerClockService);
   protected readonly notifications = inject(NotificationService);
 
-  protected readonly now = signal(new Date());
+  protected readonly now = this.serverClock.now;
+  protected readonly clockTz = this.serverClock.datePipeTimezone;
   protected readonly isFullscreen = signal(false);
   protected readonly loggingOut = signal(false);
 
@@ -261,7 +264,6 @@ export class Monitor implements OnDestroy {
 
   private readonly refresh = new Subject<void>();
   private readonly subs: Subscription[] = [];
-  private clockTimer?: ReturnType<typeof setInterval>;
   private pollTimer?: ReturnType<typeof setInterval>;
   private readonly onFullscreenChange = () =>
     this.isFullscreen.set(!!document.fullscreenElement);
@@ -302,7 +304,6 @@ export class Monitor implements OnDestroy {
     );
 
     if (isPlatformBrowser(this.platformId)) {
-      this.clockTimer = setInterval(() => this.now.set(new Date()), 1000);
       this.pollTimer = setInterval(() => this.loadAll(), Monitor.POLL_MS);
       this.isFullscreen.set(!!document.fullscreenElement);
       document.addEventListener('fullscreenchange', this.onFullscreenChange);
@@ -314,9 +315,6 @@ export class Monitor implements OnDestroy {
 
   ngOnDestroy(): void {
     this.subs.forEach((s) => s.unsubscribe());
-    if (this.clockTimer) {
-      clearInterval(this.clockTimer);
-    }
     if (this.pollTimer) {
       clearInterval(this.pollTimer);
     }
@@ -336,7 +334,7 @@ export class Monitor implements OnDestroy {
       id: this.nextAlertId++,
       identifier: payload.identifier?.trim() || 'Unknown ID',
       location: payload.location?.trim() || 'Unknown gate',
-      time: payload.tappedAt ? new Date(payload.tappedAt) : new Date(),
+      time: payload.tappedAt ? new Date(payload.tappedAt) : this.serverClock.now(),
     };
     // Keep at most 4 stacked alerts; each dismisses itself after 12s.
     this.tapErrors.update((list) => [alert, ...list].slice(0, 4));
@@ -407,7 +405,7 @@ export class Monitor implements OnDestroy {
   }
 
   private loadStats(): void {
-    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
+    const today = this.serverClock.todayIso();
     const summaryFor = (personType: PersonType) =>
       this.attendanceApi
         .summary({ personType, startDate: today, endDate: today })

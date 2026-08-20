@@ -5,7 +5,7 @@ import { AuthService } from './auth.service';
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
   const header = auth.getAuthorizationHeader();
-  if (!header || req.url.includes('/auth/login')) {
+  if (!header || req.url.includes('/auth/login') || req.url.includes('/kiosk/time')) {
     return next(req);
   }
   return next(

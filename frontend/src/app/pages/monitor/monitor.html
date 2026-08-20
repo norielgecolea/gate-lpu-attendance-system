@@ -76,10 +76,10 @@
 
       <div class="min-w-0 text-right leading-tight">
         <p class="text-xl font-bold tracking-tight tabular-nums sm:text-2xl md:text-3xl">
-          {{ now() | date: 'h:mm:ss a' }}
+          {{ now() | date: 'h:mm:ss a' : clockTz() }}
         </p>
         <p class="truncate text-[11px] text-slate-400 sm:text-xs">
-          {{ now() | date: 'EEE, MMM d, y' }}
+          {{ now() | date: 'EEE, MMM d, y' : clockTz() }}
         </p>
       </div>
     </div>
@@ -104,7 +104,7 @@
               Unrecognized ID <span class="font-semibold tabular-nums">{{ alert.identifier }}</span>
             </p>
             <p class="mt-0.5 text-xs text-red-200/60">
-              {{ alert.location }} · {{ alert.time | date: 'h:mm:ss a' }}
+              {{ alert.location }} · {{ alert.time | date: 'h:mm:ss a' : clockTz() }}
             </p>
           </div>
           <button
@@ -249,7 +249,7 @@
                 {{ tap.action === 'TIME_IN' ? 'IN' : 'OUT' }}
               </span>
               <p class="text-sm font-semibold tabular-nums sm:text-base">
-                {{ tapTime(tap) | date: 'h:mm:ss a' }}
+                {{ tapTime(tap) | date: 'h:mm:ss a' : clockTz() }}
               </p>
             </div>
           </article>
@@ -286,7 +286,7 @@
                   {{ tap.action === 'TIME_IN' ? 'IN' : 'OUT' }}
                 </span>
                 <span class="text-[11px] font-medium text-slate-300 tabular-nums sm:text-xs">
-                  {{ tapTime(tap) | date: 'h:mm:ss a' }}
+                  {{ tapTime(tap) | date: 'h:mm:ss a' : clockTz() }}
                 </span>
               </div>
             </article>

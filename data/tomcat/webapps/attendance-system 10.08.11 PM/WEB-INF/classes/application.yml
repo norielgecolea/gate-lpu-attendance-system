@@ -1,0 +1,32 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: lpu-attendance-system
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/postgres}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:Lpu-1234}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+app:
+  jwt:
+    # Base64-encoded 256-bit secret (override via APP_JWT_SECRET in production)
+    secret: ${APP_JWT_SECRET:bHB1LWdhdGUtYXR0ZW5kYW5jZS1qd3Qtc2VjcmV0LWtleS0zMmJ5dGVzIQ==}
+    expiration-ms: ${APP_JWT_EXPIRATION_MS:28800000}
+
+logging:
+  config: classpath:log4j2.xml

@@ -52,6 +52,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/auth/login").permitAll()
+                        // Kiosk/monitor clocks follow the Tomcat host, not the browser.
+                        .requestMatchers(HttpMethod.GET, "/api/kiosk/time").permitAll()
                         .requestMatchers(HttpMethod.GET, "/pictures/**").permitAll()
                         // <video> tags cannot attach auth headers
                         .requestMatchers(HttpMethod.GET, "/videos/**").permitAll()

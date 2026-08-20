@@ -37,6 +37,7 @@ import {
 } from '../../core/settings/guard-display-api.service';
 import { GateTonesApiService } from '../../core/settings/gate-tones-api.service';
 import { studentPhotoUrl } from '../../core/students/student-photo.util';
+import { ServerClockService } from '../../core/time/server-clock.service';
 import { GateSounds } from './gate-sounds';
 
 interface ConfettiPiece {
@@ -83,6 +84,7 @@ export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
   private readonly fullscreen = inject(FullscreenService);
   private readonly displayApi = inject(GuardDisplayApiService);
   private readonly tonesApi = inject(GateTonesApiService);
+  private readonly serverClock = inject(ServerClockService);
   private readonly sounds = new GateSounds();
   private wsSub?: Subscription;
   private wsErrorSub?: Subscription;
@@ -101,7 +103,8 @@ export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
   /** When all of today's taps are loaded and overflow the panel, render a duplicate set for a seamless carousel. */
   protected readonly loopList = signal(false);
   protected readonly flash = signal<'in' | 'out' | 'idle' | 'error'>('idle');
-  protected readonly clock = signal(new Date());
+  protected readonly clock = this.serverClock.now;
+  protected readonly clockTz = this.serverClock.datePipeTimezone;
   protected readonly guardName = this.auth.user;
   protected readonly animKey = signal(0);
   protected readonly confetti = signal<ConfettiPiece[]>([]);
@@ -119,7 +122,6 @@ export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
     return mode === 'RECENT_TAPS' ? 'recent' : 'none';
   });
 
-  private clockTimer?: ReturnType<typeof setInterval>;
   private hideTimer?: ReturnType<typeof setTimeout>;
   private errorTimer?: ReturnType<typeof setTimeout>;
   private focusTimer?: ReturnType<typeof setInterval>;
@@ -139,7 +141,6 @@ export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
       this.notifications.connect(token);
     }
     this.reloadRecent();
-    this.clockTimer = setInterval(() => this.clock.set(new Date()), 1000);
     // Keep capture field focused for RFID wedge scanners.
     this.focusTimer = setInterval(() => this.focusInput(), 1500);
     this.wsSub = this.notifications.events$
@@ -186,9 +187,6 @@ export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    if (this.clockTimer) {
-      clearInterval(this.clockTimer);
-    }
     if (this.focusTimer) {
       clearInterval(this.focusTimer);
     }
@@ -284,7 +282,7 @@ export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
         minute: '2-digit',
         second: '2-digit',
         hour12: true,
-        timeZone: 'Asia/Manila',
+        timeZone: this.serverClock.zoneId(),
       }).format(new Date(iso));
     } catch {
       return iso;
