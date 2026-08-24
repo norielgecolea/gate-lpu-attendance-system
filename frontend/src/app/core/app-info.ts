@@ -16,6 +16,20 @@ export interface Release {
  */
 export const RELEASES: Release[] = [
   {
+    version: '2.2.5',
+    notes: [
+      {
+        title: 'Cleaner ID taps',
+        detail:
+          'An accidental keyboard press at the gate no longer gets mixed into the next student or employee tap.',
+      },
+      {
+        title: 'View photos',
+        detail: 'Click a student or employee photo in admin pages to see it full size.',
+      },
+    ],
+  },
+  {
     version: '2.2.0',
     notes: [
       {
