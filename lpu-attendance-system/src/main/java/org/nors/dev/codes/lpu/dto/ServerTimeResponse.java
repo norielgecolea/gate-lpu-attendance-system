@@ -9,9 +9,10 @@ public record ServerTimeResponse(
         String zoneId,
         String utcOffset
 ) {
+    static final ZoneId CAMPUS_ZONE = ZoneId.of("Asia/Manila");
+
     public static ServerTimeResponse systemNow() {
-        ZoneId zone = ZoneId.systemDefault();
-        ZonedDateTime zoned = ZonedDateTime.now(zone);
-        return new ServerTimeResponse(zoned.toInstant(), zone.getId(), zoned.getOffset().getId());
+        ZonedDateTime zoned = ZonedDateTime.now(CAMPUS_ZONE);
+        return new ServerTimeResponse(zoned.toInstant(), CAMPUS_ZONE.getId(), zoned.getOffset().getId());
     }
 }

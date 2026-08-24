@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Public clock source for kiosk and monitor UIs — follows the Tomcat host OS. */
+/** Public clock source for kiosk and monitor UIs — server instant, campus timezone. */
 @RestController
 @RequestMapping("/api/kiosk")
 public class KioskTimeController {

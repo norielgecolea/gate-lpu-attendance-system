@@ -34,6 +34,7 @@ services:
       APP_SYNC_API_KEY: ${APP_SYNC_API_KEY:-}
       APP_PICTURES_DIR: /usr/local/tomcat/pictures
       APP_VIDEOS_DIR: /usr/local/tomcat/videos
+      TZ: Asia/Manila
       JAVA_OPTS: "-Dlpu.log.dir=/usr/local/tomcat/logs"
     volumes:
       # Deploy: mvn -f lpu-attendance-system clean package && cp lpu-attendance-system/target/attendance-system.war data/tomcat/webapps/
@@ -60,7 +61,17 @@ services:
       HUSKY: "0"
       NG_ALLOWED_HOSTS: "*"
       NG_TRUST_PROXY_HEADERS: "X-FORWARDED-FOR,X-FORWARDED-PROTO,X-FORWARDED-HOST"
-    command: sh -c "test -f package.json || { echo 'Missing package.json — mount ./frontend to /app'; exit 1; } && npm install && npx ng serve --host 0.0.0.0 --port 4200 --proxy-config proxy.conf.js"
+      PORT: "4200"
+      HOST: "0.0.0.0"
+    # Serve the production SSR build. Set FRONTEND_MODE=development to use ng serve.
+    command: >
+      sh -c "test -f package.json || { echo 'Missing package.json — mount ./frontend to /app'; exit 1; };
+      if [ \"$${FRONTEND_MODE:-production}\" = development ]; then
+        npm install && npx ng serve --host 0.0.0.0 --port 4200 --proxy-config proxy.conf.js;
+      else
+        test -f dist/lpu-gate-attendance/server/server.mjs || { npm install && npx ng build; };
+        PORT=4200 HOST=0.0.0.0 node dist/lpu-gate-attendance/server/server.mjs;
+      fi"
     stdin_open: true
     tty: true
     depends_on:

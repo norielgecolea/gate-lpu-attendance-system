@@ -23,7 +23,7 @@ server {
         proxy_read_timeout 86400;
     }
 
-    # Angular frontend (dev server) + Vite HMR websocket
+    # Angular frontend (production SSR on :4200, or ng serve when FRONTEND_MODE=development)
     location / {
         proxy_pass http://${UPSTREAM_HOST}:${UPSTREAM_PORT};
         proxy_http_version 1.1;
