@@ -28,6 +28,7 @@ import {
   type RfidLookupResult,
   type StudentCreatedAudit,
 } from '../../core/rfid/rfid-api.service';
+import { applyScanInput } from '../../core/rfid/wedge-scan-buffer';
 import { studentPhotoUrl } from '../../core/students/student-photo.util';
 import {
   StudentFormDialog,
@@ -65,6 +66,8 @@ export class RfidChecker implements AfterViewInit, OnDestroy {
   private readonly studentsStore = inject(StudentsStore);
   private readonly employeesStore = inject(EmployeesStore);
   private focusTimer?: ReturnType<typeof setInterval>;
+  private lastScanInputAt = 0;
+  private scanBuffer = '';
 
   protected readonly loading = signal(false);
   protected readonly result = signal<RfidLookupResult | null>(null);
@@ -98,13 +101,28 @@ export class RfidChecker implements AfterViewInit, OnDestroy {
     this.focusInput();
   }
 
+  /** Drop leftover keys when a new RFID burst starts after a pause. */
+  protected onScanInput(event: Event): void {
+    const el = event.target as HTMLInputElement;
+    const now = performance.now();
+    const elapsed = this.lastScanInputAt === 0 ? Number.POSITIVE_INFINITY : now - this.lastScanInputAt;
+    this.lastScanInputAt = now;
+    const cleaned = applyScanInput(this.scanBuffer, el.value, elapsed);
+    this.scanBuffer = cleaned;
+    if (el.value !== cleaned) {
+      el.value = cleaned;
+    }
+  }
+
   protected submit(): void {
     const el = this.scanInput?.nativeElement;
-    const value = (el?.value ?? '').trim();
+    const value = (el?.value ?? this.scanBuffer).trim();
     if (!value || this.loading()) {
       return;
     }
 
+    this.scanBuffer = '';
+    this.lastScanInputAt = 0;
     if (el) {
       el.value = '';
     }

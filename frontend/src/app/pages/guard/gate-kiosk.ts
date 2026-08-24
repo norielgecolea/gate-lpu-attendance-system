@@ -29,6 +29,7 @@ import {
 import { AuthService } from '../../core/auth/auth.service';
 import { FullscreenService } from '../../core/fullscreen.service';
 import { NotificationService } from '../../core/notifications/notification.service';
+import { applyScanInput } from '../../core/rfid/wedge-scan-buffer';
 import {
   GuardDisplayApiService,
   type GuardDisplayMode,
@@ -125,6 +126,7 @@ export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
   private hideTimer?: ReturnType<typeof setTimeout>;
   private errorTimer?: ReturnType<typeof setTimeout>;
   private focusTimer?: ReturnType<typeof setInterval>;
+  private lastScanInputAt = 0;
 
   /** Continuous ticker scroll through today's taps. */
   private static readonly AUTO_SCROLL_PX_PER_SEC = 55;
@@ -206,6 +208,19 @@ export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
     this.focusInput();
   }
 
+  /** Drop leftover keys when a new RFID burst starts after a pause. */
+  protected onScanInput(event: Event): void {
+    const el = event.target as HTMLInputElement;
+    const now = performance.now();
+    const elapsed = this.lastScanInputAt === 0 ? Number.POSITIVE_INFINITY : now - this.lastScanInputAt;
+    this.lastScanInputAt = now;
+    const cleaned = applyScanInput(this.identifier(), el.value, elapsed);
+    if (el.value !== cleaned) {
+      el.value = cleaned;
+    }
+    this.identifier.set(cleaned);
+  }
+
   protected submit(): void {
     const el = this.idInput?.nativeElement;
     // Prefer the native value — wedge scanners can finish Enter before ngModel catches up.
@@ -216,6 +231,7 @@ export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
 
     // Clear immediately so the next rapid tap starts a fresh scan buffer.
     this.identifier.set('');
+    this.lastScanInputAt = 0;
     if (el) {
       el.value = '';
     }

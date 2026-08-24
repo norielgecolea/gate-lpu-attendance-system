@@ -88,7 +88,7 @@
       spellcheck="false"
       tabindex="0"
       [ngModel]="identifier()"
-      (ngModelChange)="identifier.set($event)"
+      (input)="onScanInput($event)"
     />
   </form>
 
