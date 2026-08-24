@@ -133,6 +133,8 @@
               <hlm-avatar
                 class="ring-offset-background size-10 ring-2 ring-offset-2 sm:size-11"
                 [ngClass]="isStudent(tap) ? 'ring-sky-500/55' : 'ring-violet-500/55'"
+                [photoPreview]="personPhoto(tap)"
+                [photoPreviewAlt]="personName(tap)"
               >
                 @if (personPhoto(tap); as src) {
                   <img [src]="src" [alt]="personName(tap)" hlmAvatarImage />

@@ -96,6 +96,8 @@
               [src]="src"
               [alt]="student.name"
               class="border-border size-28 shrink-0 rounded-lg border object-cover"
+              [photoPreview]="src"
+              [photoPreviewAlt]="student.name"
             />
           } @else {
             <div
@@ -185,6 +187,8 @@
               [src]="src"
               [alt]="employee.name"
               class="border-border size-28 shrink-0 rounded-lg border object-cover"
+              [photoPreview]="src"
+              [photoPreviewAlt]="employee.name"
             />
           } @else {
             <div

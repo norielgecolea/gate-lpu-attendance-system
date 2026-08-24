@@ -11,11 +11,12 @@ import { HlmInput } from '@spartan-ng/helm/input';
 import { EmployeesApiService } from '../../core/employees/employees-api.service';
 import { RfidApiService } from '../../core/rfid/rfid-api.service';
 import { studentPhotoUrl } from '../../core/students/student-photo.util';
+import { PhotoPreview } from '../../shared/photo-preview/photo-preview.directive';
 import type { Employee } from './employees.store';
 
 @Component({
   selector: 'app-employee-rfid-registration',
-  imports: [FormsModule, NgIcon, HlmButton, HlmInput],
+  imports: [FormsModule, NgIcon, HlmButton, HlmInput, PhotoPreview],
   viewProviders: [
     provideIcons({
       lucideSearch,

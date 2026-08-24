@@ -47,7 +47,10 @@
             <tr hlmTr>
               <td hlmTd>
                 <div class="flex items-center gap-3">
-                  <hlm-avatar>
+                  <hlm-avatar
+                    [photoPreview]="photoSrc(student.photo)"
+                    [photoPreviewAlt]="student.name"
+                  >
                     @if (photoSrc(student.photo); as src) {
                       <img [src]="src" [alt]="student.name" hlmAvatarImage />
                     }

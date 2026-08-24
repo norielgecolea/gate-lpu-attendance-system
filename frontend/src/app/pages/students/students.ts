@@ -40,6 +40,7 @@ import {
 } from '../../core/students/students-api.service';
 import { studentPhotoUrl } from '../../core/students/student-photo.util';
 import { infiniteScroll } from '../../shared/infinite-scroll';
+import { PhotoPreview } from '../../shared/photo-preview/photo-preview.directive';
 import {
   StudentFormDialog,
   type StudentFormResult,
@@ -60,6 +61,7 @@ import { type Student, StudentsStore } from './students.store';
     HlmSeparator,
     HlmTableImports,
     HlmAvatarImports,
+    PhotoPreview,
   ],
   viewProviders: [
     provideIcons({

@@ -30,6 +30,7 @@ import {
 } from '../../core/rfid/rfid-api.service';
 import { applyScanInput } from '../../core/rfid/wedge-scan-buffer';
 import { studentPhotoUrl } from '../../core/students/student-photo.util';
+import { PhotoPreview } from '../../shared/photo-preview/photo-preview.directive';
 import {
   StudentFormDialog,
   type StudentFormResult,
@@ -43,7 +44,7 @@ import { type Employee, EmployeesStore } from '../employees/employees.store';
 
 @Component({
   selector: 'app-rfid-checker',
-  imports: [RouterLink, NgIcon, HlmButton],
+  imports: [RouterLink, NgIcon, HlmButton, PhotoPreview],
   viewProviders: [
     provideIcons({
       lucideScanBarcode,

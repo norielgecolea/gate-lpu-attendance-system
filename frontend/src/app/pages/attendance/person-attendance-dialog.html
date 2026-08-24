@@ -9,7 +9,7 @@
     <p class="text-muted-foreground py-8 text-center">{{ personError() }}</p>
   } @else if (person(); as p) {
     <div class="bg-card flex flex-wrap items-center gap-3 rounded-lg border p-3">
-      <hlm-avatar>
+      <hlm-avatar [photoPreview]="photoSrc(p.photo)" [photoPreviewAlt]="p.name">
         @if (photoSrc(p.photo); as src) {
           <img [src]="src" [alt]="p.name" hlmAvatarImage />
         }

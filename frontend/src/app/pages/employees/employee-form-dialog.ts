@@ -12,6 +12,7 @@ import { HlmFieldImports } from '@spartan-ng/helm/field';
 import { HlmInput } from '@spartan-ng/helm/input';
 import { RfidApiService } from '../../core/rfid/rfid-api.service';
 import { studentPhotoUrl } from '../../core/students/student-photo.util';
+import { PhotoPreview } from '../../shared/photo-preview/photo-preview.directive';
 import type { Employee } from './employees.store';
 
 export interface EmployeeFormContext {
@@ -44,6 +45,7 @@ export interface EmployeeFormResult {
     HlmDialogFooter,
     HlmFieldImports,
     HlmInput,
+    PhotoPreview,
   ],
   templateUrl: './employee-form-dialog.html',
 })

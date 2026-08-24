@@ -24,6 +24,7 @@ import {
 } from '../../core/attendance/attendance-api.service';
 import { NotificationService } from '../../core/notifications/notification.service';
 import { studentPhotoUrl } from '../../core/students/student-photo.util';
+import { PhotoPreview } from '../../shared/photo-preview/photo-preview.directive';
 import { StudentsApiService } from '../../core/students/students-api.service';
 
 interface StatCard {
@@ -48,7 +49,7 @@ const DONUT_CIRCUMFERENCE = 2 * Math.PI * 42;
 
 @Component({
   selector: 'app-dashboard',
-  imports: [DecimalPipe, DatePipe, NgClass, NgIcon, HlmCardImports, HlmAvatarImports],
+  imports: [DecimalPipe, DatePipe, NgClass, NgIcon, HlmCardImports, HlmAvatarImports, PhotoPreview],
   viewProviders: [
     provideIcons({
       lucideActivity,

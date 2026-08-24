@@ -27,6 +27,7 @@ import { EmployeesApiService } from '../../core/employees/employees-api.service'
 import { StudentsApiService } from '../../core/students/students-api.service';
 import { studentPhotoUrl } from '../../core/students/student-photo.util';
 import { infiniteScroll } from '../../shared/infinite-scroll';
+import { PhotoPreview } from '../../shared/photo-preview/photo-preview.directive';
 import type { Employee } from '../employees/employees.store';
 import type { Student } from '../students/students.store';
 
@@ -46,6 +47,7 @@ type DatePreset = 'today' | 'week' | 'month' | 'custom';
     HlmDialogTitle,
     HlmAvatarImports,
     HlmTableImports,
+    PhotoPreview,
   ],
   viewProviders: [
     provideIcons({

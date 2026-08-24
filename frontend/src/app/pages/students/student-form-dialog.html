@@ -32,6 +32,8 @@
           [src]="previewUrl()!"
           alt="Student photo preview"
           class="border-border size-20 shrink-0 rounded-lg border object-cover shadow-sm"
+          [photoPreview]="previewUrl()"
+          photoPreviewAlt="Student photo"
         />
       } @else {
         <div

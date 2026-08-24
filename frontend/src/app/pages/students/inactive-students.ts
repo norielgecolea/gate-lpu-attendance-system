@@ -8,11 +8,12 @@ import { HlmInput } from '@spartan-ng/helm/input';
 import { HlmTableImports } from '@spartan-ng/helm/table';
 import { StudentsApiService } from '../../core/students/students-api.service';
 import { studentPhotoUrl } from '../../core/students/student-photo.util';
+import { PhotoPreview } from '../../shared/photo-preview/photo-preview.directive';
 import type { Student } from './students.store';
 
 @Component({
   selector: 'app-inactive-students',
-  imports: [FormsModule, NgIcon, HlmButton, HlmInput, HlmTableImports, HlmAvatarImports],
+  imports: [FormsModule, NgIcon, HlmButton, HlmInput, HlmTableImports, HlmAvatarImports, PhotoPreview],
   viewProviders: [provideIcons({ lucideSearch, lucideRotateCcw, lucideTrash2 })],
   templateUrl: './inactive-students.html',
   host: { class: 'flex h-full flex-col' },

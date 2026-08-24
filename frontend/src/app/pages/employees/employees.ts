@@ -40,6 +40,7 @@ import {
 } from '../../core/employees/employees-api.service';
 import { studentPhotoUrl } from '../../core/students/student-photo.util';
 import { infiniteScroll } from '../../shared/infinite-scroll';
+import { PhotoPreview } from '../../shared/photo-preview/photo-preview.directive';
 import {
   EmployeeFormDialog,
   type EmployeeFormResult,
@@ -60,6 +61,7 @@ import { type Employee, EmployeesStore } from './employees.store';
     HlmSeparator,
     HlmTableImports,
     HlmAvatarImports,
+    PhotoPreview,
   ],
   viewProviders: [
     provideIcons({

@@ -12,6 +12,7 @@ import { HlmFieldImports } from '@spartan-ng/helm/field';
 import { HlmInput } from '@spartan-ng/helm/input';
 import { RfidApiService } from '../../core/rfid/rfid-api.service';
 import { studentPhotoUrl } from '../../core/students/student-photo.util';
+import { PhotoPreview } from '../../shared/photo-preview/photo-preview.directive';
 import type { Student } from './students.store';
 
 export interface StudentFormContext {
@@ -45,6 +46,7 @@ export interface StudentFormResult {
     HlmDialogFooter,
     HlmFieldImports,
     HlmInput,
+    PhotoPreview,
   ],
   templateUrl: './student-form-dialog.html',
 })

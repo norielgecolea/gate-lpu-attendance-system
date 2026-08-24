@@ -155,7 +155,10 @@
                   @switch (cell.column.id) {
                     @case ('name') {
                       <div class="flex items-center gap-3">
-                        <hlm-avatar>
+                        <hlm-avatar
+                          [photoPreview]="photoSrc(row.original.photo)"
+                          [photoPreviewAlt]="row.original.name"
+                        >
                           @if (photoSrc(row.original.photo); as src) {
                             <img [src]="src" [alt]="row.original.name" hlmAvatarImage />
                           }

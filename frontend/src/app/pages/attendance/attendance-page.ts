@@ -34,6 +34,7 @@ import {
 } from '../../core/attendance/attendance-api.service';
 import { studentPhotoUrl } from '../../core/students/student-photo.util';
 import { infiniteScroll } from '../../shared/infinite-scroll';
+import { PhotoPreview } from '../../shared/photo-preview/photo-preview.directive';
 
 type DatePreset = 'today' | 'week' | 'month' | 'custom';
 
@@ -50,6 +51,7 @@ type DatePreset = 'today' | 'week' | 'month' | 'custom';
     HlmSeparator,
     HlmTableImports,
     HlmAvatarImports,
+    PhotoPreview,
   ],
   viewProviders: [
     provideIcons({
