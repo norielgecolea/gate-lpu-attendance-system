@@ -1,5 +1,9 @@
-/** Max gap between keystrokes that still counts as one RFID wedge burst. */
-export const SCAN_BURST_GAP_MS = 120;
+/**
+ * Max gap between keystrokes that still counts as one RFID wedge burst.
+ * Wider than a typical reader interval so a lagging kiosk PC does not split one tap.
+ * Accidental keys then a real tap still have a much larger pause, so the stale prefix is dropped.
+ */
+export const SCAN_BURST_GAP_MS = 400;
 
 /**
  * Isolates a keyboard-wedge RFID burst from leftover keys.

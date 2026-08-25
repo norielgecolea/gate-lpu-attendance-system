@@ -14,8 +14,12 @@ describe('applyScanInput', () => {
     expect(applyScanInput('12', '123', SCAN_BURST_GAP_MS)).toBe('123');
   });
 
+  it('keeps appending when lag stretches the burst under the gap', () => {
+    expect(applyScanInput('12', '123', 350)).toBe('123');
+  });
+
   it('starts a new scan on the first character after a pause', () => {
-    expect(applyScanInput('a', 'a1', 200)).toBe('1');
+    expect(applyScanInput('a', 'a1', SCAN_BURST_GAP_MS + 100)).toBe('1');
   });
 
   it('keeps a first character when the previous buffer is empty', () => {
