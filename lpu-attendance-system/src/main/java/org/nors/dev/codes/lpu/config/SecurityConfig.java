@@ -125,9 +125,11 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         // Origin has no path — trailing /* would reject browser CORS and return 403
         configuration.setAllowedOriginPatterns(List.of(
-        		"https://attendance.norielgecolea.com",
                 "http://localhost:*",
                 "http://127.0.0.1:*",
+                "https://attendance.norielgecolea.com",
+                "https://*.norielgecolea.com",
+                "https://attendance.lpulaguna.com",
                 "https://rfidattendance.lpulaguna.com",
                 "https://*.lpulaguna.com"
         ));
