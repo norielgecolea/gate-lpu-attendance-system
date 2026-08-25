@@ -32,6 +32,11 @@ app.use(
     maxAge: '1y',
     index: false,
     redirect: false,
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.html')) {
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+      }
+    },
   }),
 );
 
@@ -41,7 +46,14 @@ app.use(
 app.use((req, res, next) => {
   angularApp
     .handle(req)
-    .then((response) => (response ? writeResponseToNodeResponse(response, res) : next()))
+    .then((response) => {
+      if (!response) {
+        next();
+        return;
+      }
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+      writeResponseToNodeResponse(response, res);
+    })
     .catch(next);
 });
 

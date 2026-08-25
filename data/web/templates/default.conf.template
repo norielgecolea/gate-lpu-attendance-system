@@ -34,5 +34,7 @@ server {
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection $connection_upgrade;
         proxy_read_timeout 86400;
+        # Login/about HTML must not be cached or Cloudflare keeps an old version number.
+        add_header Cache-Control "no-store, no-cache, must-revalidate" always;
     }
 }
