@@ -16,9 +16,10 @@ spring:
       minimum-idle: 2
   servlet:
     multipart:
-      # Large limits accommodate guard display video uploads; photos are still validated per type.
-      max-file-size: 200MB
-      max-request-size: 220MB
+      # Large limits accommodate full-system backup restore (database + media).
+      # Individual video/photo endpoints still enforce their own type and size checks.
+      max-file-size: 2GB
+      max-request-size: 2GB
       enabled: true
   jpa:
     open-in-view: false

@@ -6,6 +6,8 @@ module.exports = {
     target: backendUrl,
     secure: false,
     changeOrigin: true,
+    timeout: 3_600_000,
+    proxyTimeout: 3_600_000,
   },
   [`${contextPath}/ws`]: {
     target: backendUrl,

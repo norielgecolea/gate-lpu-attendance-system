@@ -30,6 +30,7 @@ yarn-error.log*
 data/postgres-data/
 data/pictures/
 data/videos/
+data/tones/
 data/tomcat/logs/
 data/cloudflared/
 

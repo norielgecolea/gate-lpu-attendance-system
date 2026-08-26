@@ -14,6 +14,7 @@ import {
   lucideBanknote,
   lucideChartColumn,
   lucideClock,
+  lucideDatabaseBackup,
   lucideGraduationCap,
   lucideHistory,
   lucideIdCard,
@@ -97,6 +98,7 @@ interface TapErrorAlert {
       lucideScanBarcode,
       lucideShieldCheck,
       lucideHistory,
+      lucideDatabaseBackup,
       lucidePanelLeft,
       lucideMenu,
       lucideGraduationCap,
@@ -186,6 +188,7 @@ export class AdminLayout implements OnDestroy {
       items: [
         { label: 'User Management', icon: 'lucideShieldCheck', route: '/users' },
         { label: 'Audit Logs', icon: 'lucideHistory', route: '/audit-logs' },
+        { label: 'Backup & Restore', icon: 'lucideDatabaseBackup', route: '/backup' },
         {
           label: 'Guard Display',
           icon: 'lucideMonitorPlay',

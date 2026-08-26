@@ -34,6 +34,7 @@ services:
       APP_SYNC_API_KEY: ${APP_SYNC_API_KEY:-}
       APP_PICTURES_DIR: /usr/local/tomcat/pictures
       APP_VIDEOS_DIR: /usr/local/tomcat/videos
+      APP_TONES_DIR: /usr/local/tomcat/tones
       TZ: Asia/Manila
       JAVA_OPTS: "-Dlpu.log.dir=/usr/local/tomcat/logs"
     volumes:
@@ -42,6 +43,7 @@ services:
       - ./data/tomcat/logs:/usr/local/tomcat/logs
       - ./data/pictures:/usr/local/tomcat/pictures
       - ./data/videos:/usr/local/tomcat/videos
+      - ./data/tones:/usr/local/tomcat/tones
     depends_on:
       postgres:
         condition: service_healthy

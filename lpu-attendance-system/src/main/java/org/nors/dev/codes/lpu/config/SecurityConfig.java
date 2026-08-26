@@ -106,6 +106,7 @@ public class SecurityConfig {
                         )
                         .hasAnyRole("SUPERADMIN", "MONITORING", "OSAS", "HR")
                         .requestMatchers("/api/attendance/**").hasAnyRole("SUPERADMIN", "OSAS", "HR")
+                        .requestMatchers("/api/backup", "/api/backup/**").hasRole("SUPERADMIN")
                         .requestMatchers("/api/**").hasRole("SUPERADMIN")
                         .anyRequest().permitAll()
                 )
@@ -138,7 +139,7 @@ public class SecurityConfig {
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
-        configuration.setExposedHeaders(List.of("Authorization"));
+        configuration.setExposedHeaders(List.of("Authorization", "Content-Disposition"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

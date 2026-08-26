@@ -4,6 +4,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.AsyncSupportConfigurer;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -15,6 +16,12 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     public WebMvcConfig(UploadProperties uploadProperties) {
         this.uploadProperties = uploadProperties;
+    }
+
+    @Override
+    public void configureAsyncSupport(AsyncSupportConfigurer configurer) {
+        // Backup zip streaming can take a long time on large attendance + media sets.
+        configurer.setDefaultTimeout(3_600_000L);
     }
 
     @Override

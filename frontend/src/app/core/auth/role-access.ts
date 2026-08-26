@@ -53,5 +53,8 @@ export function canAccessAdminRoute(role: string | null | undefined, route: stri
   if (route === '/audit-logs') {
     return role === 'SUPERADMIN';
   }
+  if (route === '/backup') {
+    return role === 'SUPERADMIN';
+  }
   return false;
 }

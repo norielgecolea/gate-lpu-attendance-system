@@ -1,0 +1,101 @@
+<div class="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto pb-6">
+  @if (error()) {
+    <p class="text-destructive text-sm" role="alert">{{ error() }}</p>
+  }
+  @if (message()) {
+    <p class="text-sm text-emerald-700" role="status">{{ message() }}</p>
+  }
+
+  <section class="bg-card rounded-lg border p-5 shadow-sm">
+    <div class="flex flex-wrap items-start gap-3">
+      <div class="min-w-0 flex-1">
+        <h2 class="text-foreground text-base font-semibold">Download backup</h2>
+        <p class="text-muted-foreground mt-0.5 text-sm">
+          Creates a zip of the full database plus photos, guard videos, and gate tones.
+          Keep a copy off this server.
+        </p>
+      </div>
+      <button
+        hlmBtn
+        type="button"
+        class="gap-1.5"
+        [disabled]="downloading() || restoring()"
+        (click)="downloadBackup()"
+      >
+        <ng-icon name="lucideDownload" class="text-base" />
+        {{ downloading() ? 'Creating backup…' : 'Download backup' }}
+      </button>
+    </div>
+  </section>
+
+  <section class="bg-card rounded-lg border p-5 shadow-sm">
+    <div class="flex flex-wrap items-start gap-3">
+      <div class="min-w-0 flex-1">
+        <h2 class="text-foreground text-base font-semibold">Restore backup</h2>
+        <p class="text-muted-foreground mt-0.5 text-sm">
+          Replaces <span class="text-foreground font-medium">all current data and media</span>
+          with an archive from this page. This cannot be undone from the app. Do this while
+          gate kiosks are idle.
+        </p>
+      </div>
+    </div>
+
+    <div
+      class="border-destructive/30 bg-destructive/5 text-destructive mt-4 flex gap-3 rounded-xl border p-4 text-sm"
+      role="note"
+    >
+      <ng-icon name="lucideTriangleAlert" class="mt-0.5 shrink-0 text-base" />
+      <p>
+        Restore overwrites students, employees, attendance, users, settings, photos, videos, and
+        tones. A SQL-only file is rejected — use a zip created by Download backup.
+      </p>
+    </div>
+
+    <div class="mt-4 flex flex-col gap-3">
+      <label
+        hlmBtn
+        variant="outline"
+        class="w-fit cursor-pointer gap-1.5"
+        [class.pointer-events-none]="restoring() || downloading()"
+        [class.opacity-60]="restoring() || downloading()"
+      >
+        <ng-icon name="lucideUpload" class="text-base" />
+        {{ selectedFile()?.name || 'Choose backup zip' }}
+        <input
+          type="file"
+          class="hidden"
+          accept=".zip,application/zip"
+          [disabled]="restoring() || downloading()"
+          (change)="onFileSelected($event)"
+        />
+      </label>
+
+      <label class="block max-w-md">
+        <span class="text-muted-foreground mb-1 block text-xs font-medium uppercase tracking-wide">
+          Type RESTORE to confirm
+        </span>
+        <input
+          hlmInput
+          class="bg-background w-full"
+          type="text"
+          autocomplete="off"
+          [ngModel]="confirmText()"
+          (ngModelChange)="confirmText.set($event)"
+          [disabled]="restoring() || downloading() || !selectedFile()"
+          placeholder="RESTORE"
+        />
+      </label>
+
+      <button
+        hlmBtn
+        variant="destructive"
+        type="button"
+        class="w-fit gap-1.5"
+        [disabled]="!canRestore()"
+        (click)="restoreBackup()"
+      >
+        {{ restoring() ? 'Restoring…' : 'Restore backup' }}
+      </button>
+    </div>
+  </section>
+</div>
