@@ -131,7 +131,9 @@ public class SecurityConfig {
                 "https://*.norielgecolea.com",
                 "https://attendance.lpulaguna.com",
                 "https://rfidattendance.lpulaguna.com",
-                "https://*.lpulaguna.com"
+                "https://*.lpulaguna.com",
+                "https://attendancev2.lpu-laguna.edu.ph",
+                "https://*.lpu-laguna.edu.ph"
         ));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
