@@ -30,6 +30,9 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
 app:
+  backup:
+    pg-dump: ${APP_PG_DUMP:pg_dump}
+    psql: ${APP_PSQL:psql}
   jwt:
     # Base64-encoded 256-bit secret (override via APP_JWT_SECRET in production)
     secret: ${APP_JWT_SECRET:bHB1LWdhdGUtYXR0ZW5kYW5jZS1qd3Qtc2VjcmV0LWtleS0zMmJ5dGVzIQ==}

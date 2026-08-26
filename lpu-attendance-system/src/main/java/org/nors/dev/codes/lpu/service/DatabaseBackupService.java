@@ -35,39 +35,55 @@ public class DatabaseBackupService {
     private static final Duration DUMP_TIMEOUT = Duration.ofMinutes(60);
     private static final Duration RESTORE_TIMEOUT = Duration.ofMinutes(60);
     private static final Duration VERSION_TIMEOUT = Duration.ofSeconds(5);
+    private static final List<String> PG_DUMP_CANDIDATES = List.of(
+            "pg_dump",
+            "/usr/bin/pg_dump",
+            "/usr/lib/postgresql/17/bin/pg_dump",
+            "/usr/lib/postgresql/16/bin/pg_dump",
+            "/usr/pgsql-17/bin/pg_dump",
+            "/Library/PostgreSQL/18/bin/pg_dump",
+            "/Library/PostgreSQL/17/bin/pg_dump"
+    );
+    private static final List<String> PSQL_CANDIDATES = List.of(
+            "psql",
+            "/usr/bin/psql",
+            "/usr/lib/postgresql/17/bin/psql",
+            "/usr/lib/postgresql/16/bin/psql",
+            "/usr/pgsql-17/bin/psql",
+            "/Library/PostgreSQL/18/bin/psql",
+            "/Library/PostgreSQL/17/bin/psql"
+    );
 
     private final DataSource dataSource;
     private final PostgresTarget target;
+    private final String pgDumpConfigured;
+    private final String psqlConfigured;
+    private volatile String pgDumpPath;
+    private volatile String psqlPath;
 
     public DatabaseBackupService(
             DataSource dataSource,
             @Value("${spring.datasource.url}") String jdbcUrl,
             @Value("${spring.datasource.username}") String username,
-            @Value("${spring.datasource.password}") String password
+            @Value("${spring.datasource.password}") String password,
+            @Value("${app.backup.pg-dump:pg_dump}") String pgDumpConfigured,
+            @Value("${app.backup.psql:psql}") String psqlConfigured
     ) {
         this.dataSource = dataSource;
         this.target = parseJdbcUrl(jdbcUrl, username, password);
+        this.pgDumpConfigured = pgDumpConfigured;
+        this.psqlConfigured = psqlConfigured;
     }
 
     public void ensureToolsAvailable() {
-        if (!commandWorks("pg_dump")) {
-            throw new ResponseStatusException(
-                    HttpStatus.SERVICE_UNAVAILABLE,
-                    "pg_dump is not available on this server. Install postgresql-client to create backups."
-            );
-        }
-        if (!commandWorks("psql")) {
-            throw new ResponseStatusException(
-                    HttpStatus.SERVICE_UNAVAILABLE,
-                    "psql is not available on this server. Install postgresql-client to restore backups."
-            );
-        }
+        resolvePgDump();
+        resolvePsql();
     }
 
     public void dumpToFile(Path destination) {
-        ensureToolsAvailable();
+        String pgDump = resolvePgDump();
         List<String> command = new ArrayList<>();
-        command.add("pg_dump");
+        command.add(pgDump);
         command.addAll(connectionArgs());
         command.add("--no-owner");
         command.add("--no-acl");
