@@ -108,10 +108,10 @@ public class DatabaseBackupService {
     }
 
     public void restoreFromFile(Path sqlFile) {
-        ensureToolsAvailable();
+        String psql = resolvePsql();
         terminateOtherBackends();
         List<String> command = new ArrayList<>();
-        command.add("psql");
+        command.add(psql);
         command.addAll(connectionArgs());
         command.add("--single-transaction");
         command.add("-v");
@@ -237,6 +237,54 @@ public class DatabaseBackupService {
         } catch (IOException ignored) {
             // Process ended.
         }
+    }
+
+    private String resolvePgDump() {
+        String cached = pgDumpPath;
+        if (cached != null) {
+            return cached;
+        }
+        String found = findTool(pgDumpConfigured, PG_DUMP_CANDIDATES);
+        if (found == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "pg_dump is not available on this server. Install postgresql-client to create backups."
+            );
+        }
+        pgDumpPath = found;
+        log.info("Using pg_dump at {}", found);
+        return found;
+    }
+
+    private String resolvePsql() {
+        String cached = psqlPath;
+        if (cached != null) {
+            return cached;
+        }
+        String found = findTool(psqlConfigured, PSQL_CANDIDATES);
+        if (found == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "psql is not available on this server. Install postgresql-client to restore backups."
+            );
+        }
+        psqlPath = found;
+        log.info("Using psql at {}", found);
+        return found;
+    }
+
+    static String findTool(String configured, List<String> candidates) {
+        List<String> names = new ArrayList<>();
+        if (configured != null && !configured.isBlank()) {
+            names.add(configured.trim());
+        }
+        names.addAll(candidates);
+        for (String name : names) {
+            if (commandWorks(name)) {
+                return name;
+            }
+        }
+        return null;
     }
 
     private static boolean commandWorks(String command) {
