@@ -2,15 +2,9 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
-  lucideCircleCheck,
-  lucideDatabaseBackup,
   lucideDownload,
-  lucideImages,
-  lucideMusic2,
   lucideTriangleAlert,
   lucideUpload,
-  lucideVideo,
-  lucideX,
 } from '@ng-icons/lucide';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmInput } from '@spartan-ng/helm/input';
@@ -24,17 +18,7 @@ import {
   selector: 'app-backup',
   imports: [FormsModule, NgIcon, HlmButton, HlmInput],
   viewProviders: [
-    provideIcons({
-      lucideCircleCheck,
-      lucideDatabaseBackup,
-      lucideDownload,
-      lucideImages,
-      lucideMusic2,
-      lucideTriangleAlert,
-      lucideUpload,
-      lucideVideo,
-      lucideX,
-    }),
+    provideIcons({ lucideDownload, lucideUpload, lucideTriangleAlert }),
   ],
   templateUrl: './backup.html',
   host: { class: 'flex h-full flex-col' },
@@ -50,7 +34,6 @@ export class Backup {
   protected readonly message = signal<string | null>(null);
   protected readonly selectedFile = signal<File | null>(null);
   protected readonly confirmText = signal('');
-  protected readonly dragging = signal(false);
   protected readonly busy = computed(() => this.downloading() || this.restoring());
   protected readonly canRestore = computed(
     () =>
@@ -59,44 +42,10 @@ export class Backup {
       !this.busy(),
   );
 
-  protected fileSize(file: File): string {
-    return formatFileSize(file.size);
-  }
-
-  protected clearSelectedFile(): void {
-    this.selectedFile.set(null);
-    this.confirmText.set('');
-    this.dragging.set(false);
-  }
-
-  protected onDragOver(event: DragEvent): void {
-    event.preventDefault();
-    if (!this.busy()) {
-      this.dragging.set(true);
-    }
-  }
-
-  protected onDragLeave(): void {
-    this.dragging.set(false);
-  }
-
-  protected onDrop(event: DragEvent): void {
-    event.preventDefault();
-    this.dragging.set(false);
-    if (this.busy()) {
-      return;
-    }
-    this.applyFile(event.dataTransfer?.files?.[0] ?? null);
-  }
-
   protected onFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0] ?? null;
     input.value = '';
-    this.applyFile(file);
-  }
-
-  private applyFile(file: File | null): void {
     this.error.set(null);
     this.message.set(null);
     this.confirmText.set('');
@@ -186,16 +135,6 @@ function backupFilename(): string {
       .map((part) => [part.type, part.value]),
   );
   return `lpu-attendance-backup-${parts['year']}${parts['month']}${parts['day']}-${parts['hour']}${parts['minute']}${parts['second']}.zip`;
-}
-
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) {
-    return `${bytes} B`;
-  }
-  if (bytes < 1024 * 1024) {
-    return `${(bytes / 1024).toFixed(1)} KB`;
-  }
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function downloadBlob(blob: Blob, filename: string): void {
