@@ -214,7 +214,7 @@ public class DatabaseBackupService {
         List<JdbcBackupSequence> sequences = new ArrayList<>();
         try (PreparedStatement statement = connection.prepareStatement(
                 """
-                SELECT sequencename, COALESCE(last_value, 1), COALESCE(is_called, false)
+                SELECT sequencename, last_value, start_value
                 FROM pg_sequences
                 WHERE schemaname = ?
                 ORDER BY sequencename
@@ -223,10 +223,15 @@ public class DatabaseBackupService {
             statement.setString(1, SCHEMA);
             try (ResultSet rows = statement.executeQuery()) {
                 while (rows.next()) {
+                    long lastValue = rows.getLong("last_value");
+                    boolean unused = rows.wasNull();
+                    if (unused) {
+                        lastValue = rows.getLong("start_value");
+                    }
                     sequences.add(new JdbcBackupSequence(
-                            rows.getString(1),
-                            rows.getLong(2),
-                            rows.getBoolean(3)
+                            rows.getString("sequencename"),
+                            lastValue,
+                            !unused
                     ));
                 }
             }
