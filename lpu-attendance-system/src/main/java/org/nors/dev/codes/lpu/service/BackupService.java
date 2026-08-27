@@ -121,7 +121,8 @@ public class BackupService {
                 log.error("Database was restored but media replacement failed", ex);
                 throw new ResponseStatusException(
                         HttpStatus.INTERNAL_SERVER_ERROR,
-                        "Database was restored but photos, videos, or tones could not be replaced",
+                        "Database was restored but photos, videos, or tones could not be replaced"
+                                + (ex.getMessage() != null ? ": " + ex.getMessage() : ""),
                         ex
                 );
             }

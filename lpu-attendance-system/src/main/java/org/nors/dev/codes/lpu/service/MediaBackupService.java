@@ -143,39 +143,44 @@ public class MediaBackupService {
         );
     }
 
+    /**
+     * Replaces files inside {@code live} with {@code incoming}. The live directory itself is
+     * never renamed or deleted so Docker bind mounts (pictures/videos/tones) keep working.
+     */
     public int replaceDirectory(Path live, Path incoming) throws IOException {
         Files.createDirectories(incoming);
-        if (live.getParent() != null) {
-            Files.createDirectories(live.getParent());
-        }
+        Files.createDirectories(live);
 
-        Path backup = live.resolveSibling(live.getFileName() + ".restore-prev");
-        deleteRecursive(backup);
+        Path snapshot = live.resolveSibling(live.getFileName() + ".restore-prev");
+        deleteRecursive(snapshot);
+        Files.createDirectories(snapshot);
+        copyDirectory(live, snapshot);
 
-        boolean liveMoved = false;
         try {
-            if (Files.exists(live)) {
-                moveDirectory(live, backup);
-                liveMoved = true;
-            }
-            moveDirectory(incoming, live);
+            clearDirectoryContents(live);
+            copyDirectory(incoming, live);
         } catch (IOException ex) {
-            if (liveMoved && Files.exists(backup) && !Files.exists(live)) {
-                moveDirectory(backup, live);
+            try {
+                clearDirectoryContents(live);
+                copyDirectory(snapshot, live);
+            } catch (IOException rollback) {
+                ex.addSuppressed(rollback);
             }
             throw ex;
+        } finally {
+            deleteRecursive(snapshot);
         }
-
-        deleteRecursive(backup);
         return countFiles(live);
     }
 
-    static void moveDirectory(Path source, Path target) throws IOException {
-        try {
-            Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
-        } catch (IOException ex) {
-            copyDirectory(source, target);
-            deleteRecursive(source);
+    static void clearDirectoryContents(Path directory) throws IOException {
+        if (!Files.isDirectory(directory)) {
+            return;
+        }
+        try (var children = Files.list(directory)) {
+            for (Path child : children.toList()) {
+                deleteRecursive(child);
+            }
         }
     }
 

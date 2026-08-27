@@ -92,6 +92,24 @@ class MediaBackupServiceTest {
         assertEquals("{\"engine\":\"jdbc\",\"version\":1}", Files.readString(extracted.databaseDir().resolve("meta.json")));
     }
 
+    @Test
+    void replaceDirectory_keepsLiveFolderAndSwapsFiles() throws IOException {
+        Path live = tempDir.resolve("live-pictures");
+        Path incoming = tempDir.resolve("incoming-pictures");
+        Files.createDirectories(live);
+        Files.createDirectories(incoming);
+        Files.writeString(live.resolve("old.jpg"), "old");
+        Files.writeString(incoming.resolve("new.jpg"), "new");
+
+        MediaBackupService service = new MediaBackupService(uploadProperties());
+        int copied = service.replaceDirectory(live, incoming);
+
+        assertTrue(Files.isDirectory(live));
+        assertEquals(1, copied);
+        assertFalse(Files.exists(live.resolve("old.jpg")));
+        assertEquals("new", Files.readString(live.resolve("new.jpg")));
+    }
+
     private UploadProperties uploadProperties() {
         UploadProperties properties = new UploadProperties();
         properties.setPicturesDir(tempDir.resolve("pictures").toString());
