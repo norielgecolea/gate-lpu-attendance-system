@@ -9,7 +9,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import org.apache.logging.log4j.LogManager;
@@ -38,7 +38,7 @@ public class BackupService {
     private final DatabaseBackupService databaseBackupService;
     private final MediaBackupService mediaBackupService;
     private final ObjectMapper objectMapper;
-    private final ReentrantLock lock = new ReentrantLock();
+    private final AtomicBoolean inProgress = new AtomicBoolean(false);
     private final String appVersion;
 
     public BackupService(
@@ -54,36 +54,40 @@ public class BackupService {
     }
 
     public BackupDownload startDownload() {
-        if (!lock.tryLock()) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "A backup or restore is already in progress"
-            );
-        }
+        acquire();
         Path dumpDir = null;
-        boolean transferred = false;
+        Path zipFile = null;
+        boolean streaming = false;
         try {
             dumpDir = Files.createTempDirectory("lpu-backup-db-");
             databaseBackupService.dumpToDirectory(dumpDir);
-            Path dump = dumpDir;
+            zipFile = Files.createTempFile("lpu-backup-", ".zip");
+            try (OutputStream output = Files.newOutputStream(zipFile)) {
+                writeZip(output, dumpDir);
+            }
+            deleteQuietly(dumpDir);
+            dumpDir = null;
+
+            Path zip = zipFile;
+            long size = Files.size(zip);
             StreamingResponseBody body = output -> {
                 try {
-                    writeZip(output, dump);
+                    Files.copy(zip, output);
                 } finally {
-                    deleteQuietly(dump);
-                    lock.unlock();
+                    deleteQuietly(zip);
                 }
             };
-            transferred = true;
-            dumpDir = null;
-            return new BackupDownload(backupFilename(), body);
+            streaming = true;
+            zipFile = null;
+            return new BackupDownload(backupFilename(), body, size);
         } catch (IOException ex) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Could not create backup", ex);
         } finally {
-            if (!transferred) {
+            if (!streaming) {
                 deleteQuietly(dumpDir);
-                lock.unlock();
+                deleteQuietly(zipFile);
             }
+            inProgress.set(false);
         }
     }
 
@@ -95,12 +99,7 @@ public class BackupService {
         if (!originalName.endsWith(".zip")) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Backup must be a .zip file");
         }
-        if (!lock.tryLock()) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "A backup or restore is already in progress"
-            );
-        }
+        acquire();
         Path upload = null;
         Path staging = null;
         try {
@@ -134,7 +133,7 @@ public class BackupService {
         } finally {
             deleteQuietly(upload);
             deleteQuietly(staging);
-            lock.unlock();
+            inProgress.set(false);
         }
     }
 
@@ -180,6 +179,15 @@ public class BackupService {
         return "lpu-attendance-backup-" + timestamp + ".zip";
     }
 
+    private void acquire() {
+        if (!inProgress.compareAndSet(false, true)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "A backup or restore is already in progress"
+            );
+        }
+    }
+
     private static void deleteQuietly(Path path) {
         if (path == null) {
             return;
@@ -191,7 +199,7 @@ public class BackupService {
         }
     }
 
-    public record BackupDownload(String filename, StreamingResponseBody body) {
+    public record BackupDownload(String filename, StreamingResponseBody body, long contentLength) {
         public String contentDisposition() {
             return "attachment; filename=\"" + filename + "\"";
         }

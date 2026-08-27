@@ -31,6 +31,7 @@ public class BackupController {
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, download.contentDisposition())
                 .contentType(ZIP)
+                .contentLength(download.contentLength())
                 .body(download.body());
     }
 
