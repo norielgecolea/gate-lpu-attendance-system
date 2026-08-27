@@ -25,6 +25,15 @@
           </button>
         }
         <button
+          class="monitor-action-btn"
+          type="button"
+          aria-label="Change password"
+          title="Change password"
+          (click)="openChangePassword()"
+        >
+          <ng-icon name="lucideKeyRound" class="text-lg" />
+        </button>
+        <button
           class="monitor-action-btn monitor-action-btn--danger"
           type="button"
           aria-label="Logout"

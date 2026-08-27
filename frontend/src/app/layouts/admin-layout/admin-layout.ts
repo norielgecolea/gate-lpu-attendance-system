@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, OnDestroy, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   NavigationEnd,
@@ -18,6 +18,7 @@ import {
   lucideGraduationCap,
   lucideHistory,
   lucideIdCard,
+  lucideKeyRound,
   lucideLayoutDashboard,
   lucideLogOut,
   lucideMenu,
@@ -34,6 +35,7 @@ import {
   lucideX,
 } from '@ng-icons/lucide';
 import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmDialogService } from '@spartan-ng/helm/dialog';
 import {
   HlmNavigationMenu,
   HlmNavigationMenuItem,
@@ -44,6 +46,7 @@ import { AlertSoundService } from '../../core/alert-sound.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { canAccessAdminRoute } from '../../core/auth/role-access';
 import { NotificationService } from '../../core/notifications/notification.service';
+import { ChangePasswordDialog } from '../../shared/change-password/change-password-dialog';
 
 interface NavItem {
   label: string;
@@ -102,6 +105,7 @@ interface TapErrorAlert {
       lucidePanelLeft,
       lucideMenu,
       lucideGraduationCap,
+      lucideKeyRound,
       lucideUserRound,
       lucideLogOut,
       lucideTriangleAlert,
@@ -150,6 +154,7 @@ export class AdminLayout implements OnDestroy {
   protected readonly sidebarOpen = signal(true);
   protected readonly mobileNavOpen = signal(false);
   protected readonly loggingOut = signal(false);
+  protected readonly accountMenuOpen = signal(false);
   protected readonly tapErrors = signal<TapErrorAlert[]>([]);
   private nextAlertId = 1;
   private readonly alertTimers = new Set<ReturnType<typeof setTimeout>>();
@@ -220,6 +225,7 @@ export class AdminLayout implements OnDestroy {
 
   private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
+  private readonly dialog = inject(HlmDialogService);
   private readonly alertSound = inject(AlertSoundService);
   protected readonly notifications = inject(NotificationService);
 
@@ -237,6 +243,7 @@ export class AdminLayout implements OnDestroy {
         this.currentUrl.set(this.router.url);
         this.pageTitle.set(this.resolveTitle());
         this.mobileNavOpen.set(false);
+        this.accountMenuOpen.set(false);
       });
 
     this.tapErrorSub = this.notifications.events$
@@ -291,6 +298,22 @@ export class AdminLayout implements OnDestroy {
 
   protected showSidebarLabels(): boolean {
     return this.sidebarOpen() || this.mobileNavOpen();
+  }
+
+  protected toggleAccountMenu(event: Event): void {
+    event.stopPropagation();
+    this.accountMenuOpen.update((open) => !open);
+  }
+
+  @HostListener('document:click')
+  protected closeAccountMenu(): void {
+    this.accountMenuOpen.set(false);
+  }
+
+  protected openChangePassword(): void {
+    this.accountMenuOpen.set(false);
+    this.closeMobileNav();
+    ChangePasswordDialog.open(this.dialog);
   }
 
   protected logout(): void {

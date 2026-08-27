@@ -4,7 +4,7 @@ import { Injectable, PLATFORM_ID, computed, inject, signal } from '@angular/core
 import { Router } from '@angular/router';
 import { Observable, catchError, of, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { AuthUser, LoginRequest, LoginResponse } from './auth.models';
+import { AuthUser, ChangePasswordRequest, LoginRequest, LoginResponse } from './auth.models';
 import { NotificationService } from '../notifications/notification.service';
 
 const TOKEN_KEY = 'lpu_auth_token';
@@ -57,6 +57,13 @@ export class AuthService {
           this.notifications.connect(response.token);
         }),
       );
+  }
+
+  changePassword(request: ChangePasswordRequest): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(
+      `${environment.apiBaseUrl}/auth/change-password`,
+      request,
+    );
   }
 
   logout(): Observable<unknown> {

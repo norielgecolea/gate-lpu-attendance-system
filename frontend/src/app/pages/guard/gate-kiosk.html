@@ -69,6 +69,19 @@
         variant="outline"
         size="sm"
         class="gate-logout"
+        aria-label="Change password"
+        title="Change password"
+        (click)="openChangePassword()"
+      >
+        <ng-icon name="lucideKeyRound" />
+        <span class="gate-password-label">Password</span>
+      </button>
+      <button
+        hlmBtn
+        type="button"
+        variant="outline"
+        size="sm"
+        class="gate-logout"
         (click)="logout()"
       >
         <ng-icon name="lucideLogOut" />

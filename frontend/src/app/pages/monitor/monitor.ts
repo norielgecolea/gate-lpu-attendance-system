@@ -15,11 +15,13 @@ import {
   lucideDoorOpen,
   lucideExpand,
   lucideGraduationCap,
+  lucideKeyRound,
   lucideLogOut,
   lucideTriangleAlert,
   lucideX,
 } from '@ng-icons/lucide';
 import { HlmAvatarImports } from '@spartan-ng/helm/avatar';
+import { HlmDialogService } from '@spartan-ng/helm/dialog';
 import { Subject, Subscription, catchError, debounceTime, filter, forkJoin, of } from 'rxjs';
 import {
   AttendanceApiService,
@@ -36,6 +38,7 @@ import { NotificationService } from '../../core/notifications/notification.servi
 import { studentPhotoUrl } from '../../core/students/student-photo.util';
 import { TapErrorLogsApiService } from '../../core/tap-errors/tap-error-logs-api.service';
 import { ServerClockService } from '../../core/time/server-clock.service';
+import { ChangePasswordDialog } from '../../shared/change-password/change-password-dialog';
 
 const EMPTY_SUMMARY: AttendanceSummary = {
   uniquePeople: 0,
@@ -74,6 +77,7 @@ interface TapErrorAlert {
       lucideDoorOpen,
       lucideExpand,
       lucideGraduationCap,
+      lucideKeyRound,
       lucideLogOut,
       lucideTriangleAlert,
       lucideX,
@@ -205,6 +209,7 @@ export class Monitor implements OnDestroy {
   private readonly attendanceApi = inject(AttendanceApiService);
   private readonly tapErrorApi = inject(TapErrorLogsApiService);
   private readonly auth = inject(AuthService);
+  private readonly dialog = inject(HlmDialogService);
   private readonly alertSound = inject(AlertSoundService);
   private readonly fullscreen = inject(FullscreenService);
   private readonly platformId = inject(PLATFORM_ID);
@@ -348,6 +353,10 @@ export class Monitor implements OnDestroy {
 
   protected enterFullscreen(): void {
     void this.fullscreen.enter().then(() => this.onFullscreenChange());
+  }
+
+  protected openChangePassword(): void {
+    ChangePasswordDialog.open(this.dialog);
   }
 
   protected logout(): void {

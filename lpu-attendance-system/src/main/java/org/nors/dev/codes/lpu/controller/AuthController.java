@@ -2,6 +2,7 @@ package org.nors.dev.codes.lpu.controller;
 
 import jakarta.validation.Valid;
 import java.util.Map;
+import org.nors.dev.codes.lpu.dto.ChangePasswordRequest;
 import org.nors.dev.codes.lpu.dto.LoginRequest;
 import org.nors.dev.codes.lpu.dto.LoginResponse;
 import org.nors.dev.codes.lpu.security.AuthenticatedUser;
@@ -34,6 +35,15 @@ public class AuthController {
         String username = user != null ? user.getUsername() : "unknown";
         authService.logout(username);
         return ResponseEntity.ok(Map.of("message", "Logged out"));
+    }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<Map<String, String>> changePassword(
+            @Valid @RequestBody ChangePasswordRequest request,
+            @AuthenticationPrincipal AuthenticatedUser user
+    ) {
+        authService.changePassword(user, request);
+        return ResponseEntity.ok(Map.of("message", "Password updated"));
     }
 
     @GetMapping("/me")

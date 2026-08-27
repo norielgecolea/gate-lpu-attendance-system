@@ -3,9 +3,11 @@ package org.nors.dev.codes.lpu.service;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.nors.dev.codes.lpu.dto.AuthEventMessage;
+import org.nors.dev.codes.lpu.dto.ChangePasswordRequest;
 import org.nors.dev.codes.lpu.dto.LoginRequest;
 import org.nors.dev.codes.lpu.dto.LoginResponse;
 import org.nors.dev.codes.lpu.model.User;
+import org.nors.dev.codes.lpu.security.AuthenticatedUser;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -81,6 +83,17 @@ public class AuthService {
         log.info("Logout for username={}", username);
         notificationService.broadcast(
                 AuthEventMessage.of("AUTH_LOGOUT", username, "Superadmin signed out")
+        );
+    }
+
+    @Transactional
+    public void changePassword(AuthenticatedUser actor, ChangePasswordRequest request) {
+        if (actor == null || actor.getId() == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
+        }
+        userService.changeOwnPassword(actor.getId(), request.currentPassword(), request.newPassword());
+        notificationService.broadcast(
+                AuthEventMessage.of("AUTH_PASSWORD_CHANGED", actor.getUsername(), "Password changed")
         );
     }
 }

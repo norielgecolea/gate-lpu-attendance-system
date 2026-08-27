@@ -16,12 +16,14 @@ import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
   lucideCircleAlert,
   lucideClock,
+  lucideKeyRound,
   lucideLogOut,
   lucideScanBarcode,
   lucideUserRound,
 } from '@ng-icons/lucide';
 import { HlmButton } from '@spartan-ng/helm/button';
-import { Subscription, filter } from 'rxjs';
+import { HlmDialogService } from '@spartan-ng/helm/dialog';
+import { Subscription, filter, take } from 'rxjs';
 import {
   AttendanceApiService,
   type TapResponse,
@@ -40,6 +42,7 @@ import { GateTonesApiService } from '../../core/settings/gate-tones-api.service'
 import { studentPhotoUrl } from '../../core/students/student-photo.util';
 import { ServerClockService } from '../../core/time/server-clock.service';
 import { GateSounds } from './gate-sounds';
+import { ChangePasswordDialog } from '../../shared/change-password/change-password-dialog';
 
 interface ConfettiPiece {
   left: string;
@@ -66,6 +69,7 @@ interface BalloonPiece {
     provideIcons({
       lucideScanBarcode,
       lucideClock,
+      lucideKeyRound,
       lucideLogOut,
       lucideUserRound,
       lucideCircleAlert,
@@ -81,6 +85,7 @@ export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
 
   private readonly api = inject(AttendanceApiService);
   private readonly auth = inject(AuthService);
+  private readonly dialog = inject(HlmDialogService);
   private readonly notifications = inject(NotificationService);
   private readonly fullscreen = inject(FullscreenService);
   private readonly displayApi = inject(GuardDisplayApiService);
@@ -107,6 +112,7 @@ export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
   protected readonly clock = this.serverClock.now;
   protected readonly clockTz = this.serverClock.datePipeTimezone;
   protected readonly guardName = this.auth.user;
+  protected readonly accountDialogOpen = signal(false);
   protected readonly animKey = signal(0);
   protected readonly confetti = signal<ConfettiPiece[]>([]);
   protected readonly balloons = signal<BalloonPiece[]>([]);
@@ -266,6 +272,16 @@ export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
   protected logout(): void {
     void this.fullscreen.exit();
     this.auth.logout().subscribe();
+  }
+
+  protected openChangePassword(): void {
+    this.accountDialogOpen.set(true);
+    ChangePasswordDialog.open(this.dialog)
+      .closed$.pipe(take(1))
+      .subscribe(() => {
+        this.accountDialogOpen.set(false);
+        this.focusInput();
+      });
   }
 
   protected photoSrc(photo: string | null | undefined): string | null {
@@ -564,6 +580,9 @@ export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private focusInput(): void {
+    if (this.accountDialogOpen()) {
+      return;
+    }
     const el = this.idInput?.nativeElement;
     if (!el) {
       return;

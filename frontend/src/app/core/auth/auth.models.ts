@@ -19,6 +19,11 @@ export interface AuthUser {
   location?: string | null;
 }
 
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
 export interface AuthEventMessage {
   type: string;
   username?: string;

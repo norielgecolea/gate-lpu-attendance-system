@@ -1225,7 +1225,8 @@
     grid-template-columns: 1fr;
   }
 
-  .gate-meta-user .gate-user {
+  .gate-meta-user .gate-user,
+  .gate-meta-user .gate-password-label {
     display: none;
   }
 
