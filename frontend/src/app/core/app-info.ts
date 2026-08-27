@@ -16,6 +16,20 @@ export interface Release {
  */
 export const RELEASES: Release[] = [
   {
+    version: '2.3.0',
+    notes: [
+      {
+        title: 'Backup & Restore',
+        detail:
+          'Superadmin can download a zip of the database, photos, guard videos, and gate tones, then restore from that zip when needed.',
+      },
+      {
+        title: 'Change password',
+        detail: 'Signed-in users can change their own password from the account menu.',
+      },
+    ],
+  },
+  {
     version: '2.2.5',
     notes: [
       {
