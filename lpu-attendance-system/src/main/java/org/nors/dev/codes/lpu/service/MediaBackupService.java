@@ -26,8 +26,9 @@ public class MediaBackupService {
     static final String PICTURES_PREFIX = "pictures";
     static final String VIDEOS_PREFIX = "videos";
     static final String TONES_PREFIX = "tones";
+    static final String DATABASE_PREFIX = "database";
     static final String MANIFEST_ENTRY = "manifest.json";
-    static final String DATABASE_ENTRY = "database.sql";
+    static final String DATABASE_META_ENTRY = "database/meta.json";
 
     private final Path picturesDir;
     private final Path videosDir;
@@ -75,7 +76,7 @@ public class MediaBackupService {
 
     public ExtractedBackup extractZip(Path zipFile, Path stagingRoot) throws IOException {
         Files.createDirectories(stagingRoot);
-        Path sqlFile = null;
+        Path databaseMeta = null;
         Path manifestFile = null;
         int pictures = 0;
         int videos = 0;
@@ -101,8 +102,8 @@ public class MediaBackupService {
                 try (InputStream input = zip.getInputStream(entry); OutputStream output = Files.newOutputStream(destination)) {
                     input.transferTo(output);
                 }
-                if (DATABASE_ENTRY.equals(name)) {
-                    sqlFile = destination;
+                if (DATABASE_META_ENTRY.equals(name)) {
+                    databaseMeta = destination;
                 } else if (MANIFEST_ENTRY.equals(name)) {
                     manifestFile = destination;
                 } else if (name.startsWith(PICTURES_PREFIX + "/")) {
@@ -123,15 +124,15 @@ public class MediaBackupService {
                     "Not a valid LPU attendance backup (missing manifest.json)"
             );
         }
-        if (sqlFile == null || !Files.isRegularFile(sqlFile) || Files.size(sqlFile) == 0) {
+        if (databaseMeta == null || !Files.isRegularFile(databaseMeta) || Files.size(databaseMeta) == 0) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Not a valid LPU attendance backup (missing database.sql)"
+                    "Not a valid LPU attendance backup (missing database/meta.json)"
             );
         }
 
         return new ExtractedBackup(
-                sqlFile,
+                databaseMeta.getParent(),
                 manifestFile,
                 stagingRoot.resolve(PICTURES_PREFIX),
                 stagingRoot.resolve(VIDEOS_PREFIX),
@@ -200,7 +201,8 @@ public class MediaBackupService {
             normalized = normalized.substring(0, normalized.length() - 1);
         }
         return MANIFEST_ENTRY.equals(normalized)
-                || DATABASE_ENTRY.equals(normalized)
+                || DATABASE_PREFIX.equals(normalized)
+                || normalized.startsWith(DATABASE_PREFIX + "/")
                 || PICTURES_PREFIX.equals(normalized)
                 || normalized.startsWith(PICTURES_PREFIX + "/")
                 || VIDEOS_PREFIX.equals(normalized)
@@ -254,7 +256,7 @@ public class MediaBackupService {
     }
 
     record ExtractedBackup(
-            Path sqlFile,
+            Path databaseDir,
             Path manifestFile,
             Path picturesDir,
             Path videosDir,

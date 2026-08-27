@@ -29,7 +29,7 @@ public class BackupService {
     private static final ZoneId MANILA = ZoneId.of("Asia/Manila");
     private static final DateTimeFormatter FILENAME_TIME = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
     private static final List<String> INCLUDED_PATHS = List.of(
-            MediaBackupService.DATABASE_ENTRY,
+            MediaBackupService.DATABASE_PREFIX + "/",
             MediaBackupService.PICTURES_PREFIX + "/",
             MediaBackupService.VIDEOS_PREFIX + "/",
             MediaBackupService.TONES_PREFIX + "/"
@@ -60,13 +60,12 @@ public class BackupService {
                     "A backup or restore is already in progress"
             );
         }
-        Path sqlFile = null;
+        Path dumpDir = null;
         boolean transferred = false;
         try {
-            databaseBackupService.ensureToolsAvailable();
-            sqlFile = Files.createTempFile("lpu-backup-", ".sql");
-            databaseBackupService.dumpToFile(sqlFile);
-            Path dump = sqlFile;
+            dumpDir = Files.createTempDirectory("lpu-backup-db-");
+            databaseBackupService.dumpToDirectory(dumpDir);
+            Path dump = dumpDir;
             StreamingResponseBody body = output -> {
                 try {
                     writeZip(output, dump);
@@ -76,13 +75,13 @@ public class BackupService {
                 }
             };
             transferred = true;
-            sqlFile = null;
+            dumpDir = null;
             return new BackupDownload(backupFilename(), body);
         } catch (IOException ex) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Could not create backup", ex);
         } finally {
             if (!transferred) {
-                deleteQuietly(sqlFile);
+                deleteQuietly(dumpDir);
                 lock.unlock();
             }
         }
@@ -105,13 +104,12 @@ public class BackupService {
         Path upload = null;
         Path staging = null;
         try {
-            databaseBackupService.ensureToolsAvailable();
             upload = Files.createTempFile("lpu-restore-", ".zip");
             file.transferTo(upload);
             staging = Files.createTempDirectory("lpu-restore-staging-");
             MediaBackupService.ExtractedBackup extracted = mediaBackupService.extractZip(upload, staging);
             validateManifest(extracted.manifestFile());
-            databaseBackupService.restoreFromFile(extracted.sqlFile());
+            databaseBackupService.restoreFromDirectory(extracted.databaseDir());
             int pictures;
             int videos;
             int tones;
@@ -139,7 +137,7 @@ public class BackupService {
         }
     }
 
-    void writeZip(OutputStream output, Path sqlFile) throws IOException {
+    void writeZip(OutputStream output, Path dumpDir) throws IOException {
         try (ZipOutputStream zip = new ZipOutputStream(output)) {
             zip.putNextEntry(new ZipEntry(MediaBackupService.MANIFEST_ENTRY));
             zip.write(objectMapper.writeValueAsBytes(new BackupManifest(
@@ -150,10 +148,7 @@ public class BackupService {
             )));
             zip.closeEntry();
 
-            zip.putNextEntry(new ZipEntry(MediaBackupService.DATABASE_ENTRY));
-            Files.copy(sqlFile, zip);
-            zip.closeEntry();
-
+            mediaBackupService.addDirectoryToZip(zip, MediaBackupService.DATABASE_PREFIX, dumpDir);
             mediaBackupService.addDirectoryToZip(zip, MediaBackupService.PICTURES_PREFIX, mediaBackupService.picturesDir());
             mediaBackupService.addDirectoryToZip(zip, MediaBackupService.VIDEOS_PREFIX, mediaBackupService.videosDir());
             mediaBackupService.addDirectoryToZip(zip, MediaBackupService.TONES_PREFIX, mediaBackupService.tonesDir());

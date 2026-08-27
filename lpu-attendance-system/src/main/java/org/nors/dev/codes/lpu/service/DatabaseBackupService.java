@@ -1,26 +1,30 @@
 package org.nors.dev.codes.lpu.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zaxxer.hikari.HikariDataSource;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.Reader;
+import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import javax.sql.DataSource;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.springframework.beans.factory.annotation.Value;
+import org.nors.dev.codes.lpu.dto.JdbcBackupMeta;
+import org.nors.dev.codes.lpu.dto.JdbcBackupSequence;
+import org.nors.dev.codes.lpu.dto.JdbcBackupTable;
+import org.postgresql.PGConnection;
+import org.postgresql.copy.CopyManager;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -29,101 +33,108 @@ import org.springframework.web.server.ResponseStatusException;
 public class DatabaseBackupService {
 
     private static final Logger log = LogManager.getLogger(DatabaseBackupService.class);
-    private static final Pattern JDBC_URL = Pattern.compile(
-            "^jdbc:postgresql://([^:/?]+)(?::(\\d+))?/([^?]+)(?:\\?.*)?$"
-    );
-    private static final Duration DUMP_TIMEOUT = Duration.ofMinutes(60);
-    private static final Duration RESTORE_TIMEOUT = Duration.ofMinutes(60);
-    private static final Duration VERSION_TIMEOUT = Duration.ofSeconds(5);
-    private static final List<String> PG_DUMP_CANDIDATES = List.of(
-            "pg_dump",
-            "/usr/bin/pg_dump",
-            "/usr/lib/postgresql/17/bin/pg_dump",
-            "/usr/lib/postgresql/16/bin/pg_dump",
-            "/usr/pgsql-17/bin/pg_dump",
-            "/Library/PostgreSQL/18/bin/pg_dump",
-            "/Library/PostgreSQL/17/bin/pg_dump"
-    );
-    private static final List<String> PSQL_CANDIDATES = List.of(
-            "psql",
-            "/usr/bin/psql",
-            "/usr/lib/postgresql/17/bin/psql",
-            "/usr/lib/postgresql/16/bin/psql",
-            "/usr/pgsql-17/bin/psql",
-            "/Library/PostgreSQL/18/bin/psql",
-            "/Library/PostgreSQL/17/bin/psql"
-    );
+    private static final Pattern SAFE_NAME = Pattern.compile("[A-Za-z_][A-Za-z0-9_]*");
+    private static final String SCHEMA = "public";
 
     private final DataSource dataSource;
-    private final PostgresTarget target;
-    private final String pgDumpConfigured;
-    private final String psqlConfigured;
-    private volatile String pgDumpPath;
-    private volatile String psqlPath;
+    private final ObjectMapper objectMapper;
 
-    public DatabaseBackupService(
-            DataSource dataSource,
-            @Value("${spring.datasource.url}") String jdbcUrl,
-            @Value("${spring.datasource.username}") String username,
-            @Value("${spring.datasource.password}") String password,
-            @Value("${app.backup.pg-dump:pg_dump}") String pgDumpConfigured,
-            @Value("${app.backup.psql:psql}") String psqlConfigured
-    ) {
+    public DatabaseBackupService(DataSource dataSource, ObjectMapper objectMapper) {
         this.dataSource = dataSource;
-        this.target = parseJdbcUrl(jdbcUrl, username, password);
-        this.pgDumpConfigured = pgDumpConfigured;
-        this.psqlConfigured = psqlConfigured;
+        this.objectMapper = objectMapper;
     }
 
-    public void ensureToolsAvailable() {
-        resolvePgDump();
-        resolvePsql();
-    }
-
-    public void dumpToFile(Path destination) {
-        String pgDump = resolvePgDump();
-        List<String> command = new ArrayList<>();
-        command.add(pgDump);
-        command.addAll(connectionArgs());
-        command.add("--no-owner");
-        command.add("--no-acl");
-        command.add("--clean");
-        command.add("--if-exists");
-        command.add("--format=plain");
-
-        int exit = runToFile(command, destination, DUMP_TIMEOUT, "pg_dump");
-        if (exit != 0) {
+    public void dumpToDirectory(Path destination) {
+        try {
+            Files.createDirectories(destination);
+            try (Connection connection = dataSource.getConnection()) {
+                connection.setAutoCommit(false);
+                try (Statement statement = connection.createStatement()) {
+                    statement.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ");
+                }
+                List<JdbcBackupTable> tables = new ArrayList<>();
+                for (String table : listBaseTables(connection)) {
+                    List<String> columns = listColumns(connection, table);
+                    String file = table + ".csv";
+                    Path csv = destination.resolve(file);
+                    copyOut(connection, table, columns, csv);
+                    tables.add(new JdbcBackupTable(table, columns, file));
+                }
+                List<JdbcBackupSequence> sequences = listSequences(connection);
+                JdbcBackupMeta meta = new JdbcBackupMeta(
+                        JdbcBackupMeta.ENGINE,
+                        JdbcBackupMeta.VERSION,
+                        tables,
+                        sequences
+                );
+                objectMapper.writeValue(destination.resolve("meta.json").toFile(), meta);
+                connection.commit();
+            }
+        } catch (SQLException | IOException ex) {
             throw new ResponseStatusException(
                     HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Database dump failed (pg_dump exit " + exit + ")"
+                    "Database dump failed: " + ex.getMessage(),
+                    ex
             );
         }
-        try {
-            if (Files.size(destination) == 0) {
-                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Database dump was empty");
-            }
-        } catch (IOException ex) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Could not read database dump", ex);
-        }
     }
 
-    public void restoreFromFile(Path sqlFile) {
-        String psql = resolvePsql();
-        terminateOtherBackends();
-        List<String> command = new ArrayList<>();
-        command.add(psql);
-        command.addAll(connectionArgs());
-        command.add("--single-transaction");
-        command.add("-v");
-        command.add("ON_ERROR_STOP=1");
-        command.add("--file");
-        command.add(sqlFile.toAbsolutePath().toString());
+    public void restoreFromDirectory(Path databaseDir) {
+        Path metaFile = databaseDir.resolve("meta.json");
+        if (!Files.isRegularFile(metaFile)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Not a valid LPU attendance backup (missing database/meta.json)"
+            );
+        }
+        JdbcBackupMeta meta;
+        try {
+            meta = objectMapper.readValue(metaFile.toFile(), JdbcBackupMeta.class);
+        } catch (IOException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Backup database/meta.json is not valid", ex);
+        }
+        if (!JdbcBackupMeta.ENGINE.equals(meta.engine()) || meta.version() != JdbcBackupMeta.VERSION) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported database backup format");
+        }
+        if (meta.tables() == null || meta.tables().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Backup contains no tables");
+        }
 
-        int exit = runToFile(command, null, RESTORE_TIMEOUT, "psql");
-        if (exit != 0) {
+        terminateOtherBackends();
+        try (Connection connection = dataSource.getConnection()) {
+            connection.setAutoCommit(false);
+            try (Statement statement = connection.createStatement()) {
+                statement.execute("SET LOCAL session_replication_role = replica");
+                String truncateList = meta.tables().stream()
+                        .map(table -> qualify(table.name()))
+                        .collect(Collectors.joining(", "));
+                statement.execute("TRUNCATE TABLE " + truncateList + " RESTART IDENTITY CASCADE");
+            }
+            for (JdbcBackupTable table : meta.tables()) {
+                validateTable(table);
+                Path csv = databaseDir.resolve(table.file()).normalize();
+                if (!csv.startsWith(databaseDir)) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid backup table file: " + table.file());
+                }
+                if (!Files.isRegularFile(csv)) {
+                    throw new ResponseStatusException(
+                            HttpStatus.BAD_REQUEST,
+                            "Backup is missing data for table " + table.name()
+                    );
+                }
+                copyIn(connection, table.name(), table.columns(), csv);
+            }
+            if (meta.sequences() != null) {
+                restoreSequences(connection, meta.sequences());
+            }
+            connection.commit();
+        } catch (ResponseStatusException ex) {
+            throw ex;
+        } catch (SQLException | IOException ex) {
             throw new ResponseStatusException(
                     HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Database restore failed (psql exit " + exit + ")"
+                    "Database restore failed: " + ex.getMessage(),
+                    ex
             );
         }
         evictPoolConnections();
@@ -155,154 +166,138 @@ public class DatabaseBackupService {
         }
     }
 
-    static PostgresTarget parseJdbcUrl(String jdbcUrl, String username, String password) {
-        if (jdbcUrl == null || jdbcUrl.isBlank()) {
-            throw new IllegalArgumentException("Database URL is required");
-        }
-        Matcher matcher = JDBC_URL.matcher(jdbcUrl.trim());
-        if (!matcher.matches()) {
-            throw new IllegalArgumentException("Unsupported database URL: " + jdbcUrl);
-        }
-        String host = matcher.group(1);
-        String port = matcher.group(2) == null ? "5432" : matcher.group(2);
-        String database = matcher.group(3);
-        return new PostgresTarget(host, port, database, username, password);
-    }
-
-    private List<String> connectionArgs() {
-        return List.of(
-                "--host=" + target.host(),
-                "--port=" + target.port(),
-                "--username=" + target.username(),
-                "--dbname=" + target.database(),
-                "--no-password"
-        );
-    }
-
-    private int runToFile(List<String> command, Path stdoutFile, Duration timeout, String tool) {
-        ProcessBuilder builder = new ProcessBuilder(command);
-        if (target.password() != null) {
-            builder.environment().put("PGPASSWORD", target.password());
-        }
-        builder.redirectErrorStream(false);
-        Process process;
-        try {
-            process = builder.start();
-        } catch (IOException ex) {
-            throw new ResponseStatusException(
-                    HttpStatus.SERVICE_UNAVAILABLE,
-                    tool + " could not be started. Install postgresql-client.",
-                    ex
-            );
-        }
-
-        ByteArrayOutputStream stderr = new ByteArrayOutputStream();
-        Thread errorDrain = Thread.ofVirtual().name(tool + "-stderr").start(() -> drain(process.getErrorStream(), stderr));
-        try {
-            if (stdoutFile != null) {
-                try (OutputStream out = Files.newOutputStream(stdoutFile)) {
-                    process.getInputStream().transferTo(out);
+    private List<String> listBaseTables(Connection connection) throws SQLException {
+        List<String> tables = new ArrayList<>();
+        try (PreparedStatement statement = connection.prepareStatement(
+                """
+                SELECT table_name
+                FROM information_schema.tables
+                WHERE table_schema = ? AND table_type = 'BASE TABLE'
+                ORDER BY table_name
+                """
+        )) {
+            statement.setString(1, SCHEMA);
+            try (ResultSet rows = statement.executeQuery()) {
+                while (rows.next()) {
+                    tables.add(rows.getString(1));
                 }
-            } else {
-                process.getInputStream().transferTo(OutputStream.nullOutputStream());
-            }
-            boolean finished = process.waitFor(timeout.toMillis(), TimeUnit.MILLISECONDS);
-            if (!finished) {
-                process.destroyForcibly();
-                throw new ResponseStatusException(
-                        HttpStatus.INTERNAL_SERVER_ERROR,
-                        tool + " timed out after " + timeout.toMinutes() + " minutes"
-                );
-            }
-            errorDrain.join(2_000);
-            int exit = process.exitValue();
-            if (exit != 0) {
-                String details = stderr.toString(StandardCharsets.UTF_8).strip();
-                log.error("{} failed with exit {}: {}", tool, exit, details);
-            }
-            return exit;
-        } catch (InterruptedException ex) {
-            Thread.currentThread().interrupt();
-            process.destroyForcibly();
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, tool + " was interrupted", ex);
-        } catch (IOException ex) {
-            process.destroyForcibly();
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, tool + " I/O failed", ex);
-        }
-    }
-
-    private static void drain(InputStream stream, ByteArrayOutputStream sink) {
-        try {
-            stream.transferTo(sink);
-        } catch (IOException ignored) {
-            // Process ended.
-        }
-    }
-
-    private String resolvePgDump() {
-        String cached = pgDumpPath;
-        if (cached != null) {
-            return cached;
-        }
-        String found = findTool(pgDumpConfigured, PG_DUMP_CANDIDATES);
-        if (found == null) {
-            throw new ResponseStatusException(
-                    HttpStatus.SERVICE_UNAVAILABLE,
-                    "pg_dump is not available on this server. Install postgresql-client to create backups."
-            );
-        }
-        pgDumpPath = found;
-        log.info("Using pg_dump at {}", found);
-        return found;
-    }
-
-    private String resolvePsql() {
-        String cached = psqlPath;
-        if (cached != null) {
-            return cached;
-        }
-        String found = findTool(psqlConfigured, PSQL_CANDIDATES);
-        if (found == null) {
-            throw new ResponseStatusException(
-                    HttpStatus.SERVICE_UNAVAILABLE,
-                    "psql is not available on this server. Install postgresql-client to restore backups."
-            );
-        }
-        psqlPath = found;
-        log.info("Using psql at {}", found);
-        return found;
-    }
-
-    static String findTool(String configured, List<String> candidates) {
-        List<String> names = new ArrayList<>();
-        if (configured != null && !configured.isBlank()) {
-            names.add(configured.trim());
-        }
-        names.addAll(candidates);
-        for (String name : names) {
-            if (commandWorks(name)) {
-                return name;
             }
         }
-        return null;
+        return tables;
     }
 
-    private static boolean commandWorks(String command) {
-        try {
-            Process process = new ProcessBuilder(command, "--version").start();
-            process.getInputStream().transferTo(OutputStream.nullOutputStream());
-            process.getErrorStream().transferTo(OutputStream.nullOutputStream());
-            boolean finished = process.waitFor(VERSION_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
-            if (!finished) {
-                process.destroyForcibly();
-                return false;
+    private List<String> listColumns(Connection connection, String table) throws SQLException {
+        List<String> columns = new ArrayList<>();
+        try (PreparedStatement statement = connection.prepareStatement(
+                """
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_schema = ? AND table_name = ?
+                ORDER BY ordinal_position
+                """
+        )) {
+            statement.setString(1, SCHEMA);
+            statement.setString(2, table);
+            try (ResultSet rows = statement.executeQuery()) {
+                while (rows.next()) {
+                    columns.add(rows.getString(1));
+                }
             }
-            return process.exitValue() == 0;
-        } catch (Exception ex) {
-            return false;
+        }
+        if (columns.isEmpty()) {
+            throw new SQLException("Table has no columns: " + table);
+        }
+        return columns;
+    }
+
+    private List<JdbcBackupSequence> listSequences(Connection connection) throws SQLException {
+        List<JdbcBackupSequence> sequences = new ArrayList<>();
+        try (PreparedStatement statement = connection.prepareStatement(
+                """
+                SELECT sequencename, COALESCE(last_value, 1), COALESCE(is_called, false)
+                FROM pg_sequences
+                WHERE schemaname = ?
+                ORDER BY sequencename
+                """
+        )) {
+            statement.setString(1, SCHEMA);
+            try (ResultSet rows = statement.executeQuery()) {
+                while (rows.next()) {
+                    sequences.add(new JdbcBackupSequence(
+                            rows.getString(1),
+                            rows.getLong(2),
+                            rows.getBoolean(3)
+                    ));
+                }
+            }
+        }
+        return sequences;
+    }
+
+    private void restoreSequences(Connection connection, List<JdbcBackupSequence> sequences) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("SELECT setval(?::regclass, ?, ?)")) {
+            for (JdbcBackupSequence sequence : sequences) {
+                if (!SAFE_NAME.matcher(sequence.name()).matches()) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid sequence name in backup");
+                }
+                statement.setString(1, SCHEMA + "." + sequence.name());
+                statement.setLong(2, sequence.lastValue());
+                statement.setBoolean(3, sequence.isCalled());
+                statement.execute();
+            }
         }
     }
 
-    record PostgresTarget(String host, String port, String database, String username, String password) {
+    private void copyOut(Connection connection, String table, List<String> columns, Path csv)
+            throws SQLException, IOException {
+        String sql = "COPY " + qualify(table) + " (" + columnList(columns) + ") TO STDOUT WITH (FORMAT csv, ENCODING 'UTF8')";
+        try (Writer writer = Files.newBufferedWriter(csv, StandardCharsets.UTF_8)) {
+            copyManager(connection).copyOut(sql, writer);
+        }
+    }
+
+    private void copyIn(Connection connection, String table, List<String> columns, Path csv)
+            throws SQLException, IOException {
+        String sql = "COPY " + qualify(table) + " (" + columnList(columns) + ") FROM STDIN WITH (FORMAT csv, ENCODING 'UTF8')";
+        try (Reader reader = Files.newBufferedReader(csv, StandardCharsets.UTF_8)) {
+            copyManager(connection).copyIn(sql, reader);
+        }
+    }
+
+    private static CopyManager copyManager(Connection connection) throws SQLException {
+        return connection.unwrap(PGConnection.class).getCopyAPI();
+    }
+
+    private static void validateTable(JdbcBackupTable table) {
+        if (table == null || !SAFE_NAME.matcher(table.name()).matches()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid table name in backup");
+        }
+        if (table.columns() == null || table.columns().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Backup table is missing columns: " + table.name());
+        }
+        for (String column : table.columns()) {
+            if (!SAFE_NAME.matcher(column).matches()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid column name in backup");
+            }
+        }
+        String file = table.file() == null ? "" : table.file();
+        if (!file.equals(table.name() + ".csv") || file.contains("/") || file.contains("\\")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid backup table file: " + file);
+        }
+    }
+
+    static String quoteIdent(String name) {
+        return "\"" + name.replace("\"", "\"\"") + "\"";
+    }
+
+    private static String qualify(String table) {
+        if (!SAFE_NAME.matcher(table).matches()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid table name: " + table);
+        }
+        return quoteIdent(SCHEMA) + "." + quoteIdent(table);
+    }
+
+    private static String columnList(List<String> columns) {
+        return columns.stream().map(DatabaseBackupService::quoteIdent).collect(Collectors.joining(", "));
     }
 }

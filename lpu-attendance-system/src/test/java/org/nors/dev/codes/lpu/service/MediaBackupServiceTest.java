@@ -24,7 +24,8 @@ class MediaBackupServiceTest {
     @Test
     void isAllowedEntry_acceptsBackupLayout() {
         assertTrue(MediaBackupService.isAllowedEntry("manifest.json"));
-        assertTrue(MediaBackupService.isAllowedEntry("database.sql"));
+        assertTrue(MediaBackupService.isAllowedEntry("database/meta.json"));
+        assertTrue(MediaBackupService.isAllowedEntry("database/users.csv"));
         assertTrue(MediaBackupService.isAllowedEntry("pictures/"));
         assertTrue(MediaBackupService.isAllowedEntry("pictures/uuid.jpg"));
         assertTrue(MediaBackupService.isAllowedEntry("videos/clip.mp4"));
@@ -75,8 +76,11 @@ class MediaBackupServiceTest {
             zip.putNextEntry(new ZipEntry("manifest.json"));
             zip.write("{\"formatVersion\":1}".getBytes(StandardCharsets.UTF_8));
             zip.closeEntry();
-            zip.putNextEntry(new ZipEntry("database.sql"));
-            zip.write("SELECT 1;".getBytes(StandardCharsets.UTF_8));
+            zip.putNextEntry(new ZipEntry("database/meta.json"));
+            zip.write("{\"engine\":\"jdbc\",\"version\":1}".getBytes(StandardCharsets.UTF_8));
+            zip.closeEntry();
+            zip.putNextEntry(new ZipEntry("database/users.csv"));
+            zip.write("1,admin\n".getBytes(StandardCharsets.UTF_8));
             zip.closeEntry();
             zip.putNextEntry(new ZipEntry("pictures/photo.jpg"));
             zip.write("img".getBytes(StandardCharsets.UTF_8));
@@ -85,7 +89,7 @@ class MediaBackupServiceTest {
         MediaBackupService service = new MediaBackupService(uploadProperties());
         MediaBackupService.ExtractedBackup extracted = service.extractZip(zipPath, tempDir.resolve("staging"));
         assertEquals(1, extracted.picturesCopied());
-        assertEquals("SELECT 1;", Files.readString(extracted.sqlFile()));
+        assertEquals("{\"engine\":\"jdbc\",\"version\":1}", Files.readString(extracted.databaseDir().resolve("meta.json")));
     }
 
     private UploadProperties uploadProperties() {
