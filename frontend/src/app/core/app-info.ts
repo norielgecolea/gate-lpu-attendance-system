@@ -16,6 +16,16 @@ export interface Release {
  */
 export const RELEASES: Release[] = [
   {
+    version: '2.3.6',
+    notes: [
+      {
+        title: 'Unused pictures',
+        detail:
+          'Replacing a photo deletes the old file. Superadmin can scan and remove leftover pictures from earlier uploads on Backup & Restore.',
+      },
+    ],
+  },
+  {
     version: '2.3.5',
     notes: [
       {

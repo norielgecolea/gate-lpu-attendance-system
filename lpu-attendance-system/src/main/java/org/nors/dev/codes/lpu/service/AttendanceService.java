@@ -64,6 +64,7 @@ public class AttendanceService {
     private final UserRepository userRepository;
     private final TapErrorLogService tapErrorLogService;
     private final NotificationService notificationService;
+    private final PhotoStorageService photoStorageService;
     private final ObjectMapper objectMapper;
 
     public AttendanceService(
@@ -75,6 +76,7 @@ public class AttendanceService {
             UserRepository userRepository,
             TapErrorLogService tapErrorLogService,
             NotificationService notificationService,
+            PhotoStorageService photoStorageService,
             ObjectMapper objectMapper
     ) {
         this.studentRepository = studentRepository;
@@ -85,6 +87,7 @@ public class AttendanceService {
         this.userRepository = userRepository;
         this.tapErrorLogService = tapErrorLogService;
         this.notificationService = notificationService;
+        this.photoStorageService = photoStorageService;
         this.objectMapper = objectMapper;
     }
 
@@ -268,7 +271,9 @@ public class AttendanceService {
             int events = attendanceEventRepository.deleteByPerson("STUDENT", personId);
             int logs = attendanceLogRepository.deleteByPerson("STUDENT", personId);
             persistDeletionTombstone("STUDENT", student.getId(), student.getStudentNo());
+            String photo = student.getPhoto();
             studentRepository.delete(student);
+            photoStorageService.deleteStoredPhoto(photo);
             log.info("Permanently deleted student id={} attendanceEvents={} attendanceLogs={}",
                     personId, events, logs);
             return;
@@ -285,7 +290,9 @@ public class AttendanceService {
         int events = attendanceEventRepository.deleteByPerson("EMPLOYEE", personId);
         int logs = attendanceLogRepository.deleteByPerson("EMPLOYEE", personId);
         persistDeletionTombstone("EMPLOYEE", employee.getId(), employee.getEmployeeNo());
+        String photo = employee.getPhoto();
         employeeRepository.delete(employee);
+        photoStorageService.deleteStoredPhoto(photo);
         log.info("Permanently deleted employee id={} attendanceEvents={} attendanceLogs={}",
                 personId, events, logs);
     }

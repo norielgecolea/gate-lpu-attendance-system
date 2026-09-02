@@ -3,6 +3,8 @@ import { FormsModule } from '@angular/forms';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
   lucideDownload,
+  lucideEraser,
+  lucideSearch,
   lucideTriangleAlert,
   lucideUpload,
 } from '@ng-icons/lucide';
@@ -12,13 +14,14 @@ import {
   BackupApiService,
   backupErrorMessage,
   type BackupRestoreResult,
+  type PhotoCleanupResult,
 } from '../../core/backup/backup-api.service';
 
 @Component({
   selector: 'app-backup',
   imports: [FormsModule, NgIcon, HlmButton, HlmInput],
   viewProviders: [
-    provideIcons({ lucideDownload, lucideUpload, lucideTriangleAlert }),
+    provideIcons({ lucideDownload, lucideUpload, lucideTriangleAlert, lucideSearch, lucideEraser }),
   ],
   templateUrl: './backup.html',
   host: { class: 'flex h-full flex-col' },
@@ -30,11 +33,16 @@ export class Backup {
 
   protected readonly downloading = signal(false);
   protected readonly restoring = signal(false);
+  protected readonly scanningPictures = signal(false);
+  protected readonly cleaningPictures = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly message = signal<string | null>(null);
   protected readonly selectedFile = signal<File | null>(null);
   protected readonly confirmText = signal('');
-  protected readonly busy = computed(() => this.downloading() || this.restoring());
+  protected readonly pictureCleanup = signal<PhotoCleanupResult | null>(null);
+  protected readonly busy = computed(
+    () => this.downloading() || this.restoring() || this.scanningPictures() || this.cleaningPictures(),
+  );
   protected readonly canRestore = computed(
     () =>
       !!this.selectedFile() &&
@@ -105,6 +113,65 @@ export class Backup {
         void backupErrorMessage(err, 'Failed to restore backup').then((text) => {
           this.error.set(text);
           this.restoring.set(false);
+        });
+      },
+    });
+  }
+
+  protected scanUnusedPictures(): void {
+    if (this.busy()) {
+      return;
+    }
+    this.scanningPictures.set(true);
+    this.error.set(null);
+    this.message.set(null);
+    this.api.unusedPictures().subscribe({
+      next: (result) => {
+        this.scanningPictures.set(false);
+        this.pictureCleanup.set(result);
+        this.message.set(
+          result.unused === 0
+            ? 'No unused picture files. Every file on disk is still assigned to a student or employee.'
+            : `Found ${result.unused} unused picture file(s) (${result.onDisk} on disk, ${result.referenced} still assigned).`,
+        );
+      },
+      error: (err: unknown) => {
+        void backupErrorMessage(err, 'Failed to scan unused pictures').then((text) => {
+          this.error.set(text);
+          this.scanningPictures.set(false);
+        });
+      },
+    });
+  }
+
+  protected cleanupUnusedPictures(): void {
+    const preview = this.pictureCleanup();
+    if (this.busy() || !preview || preview.unused === 0) {
+      return;
+    }
+    if (
+      !confirm(
+        `Delete ${preview.unused} unused picture file(s)? Photos still assigned to students or employees (including inactive records) are kept.`,
+      )
+    ) {
+      return;
+    }
+    this.cleaningPictures.set(true);
+    this.error.set(null);
+    this.message.set(null);
+    this.api.cleanupUnusedPictures().subscribe({
+      next: (result) => {
+        this.cleaningPictures.set(false);
+        this.pictureCleanup.set(result);
+        this.message.set(
+          `Deleted ${result.deleted} unused picture file(s)` +
+            (result.failed > 0 ? `. ${result.failed} could not be removed.` : '.'),
+        );
+      },
+      error: (err: unknown) => {
+        void backupErrorMessage(err, 'Failed to delete unused pictures').then((text) => {
+          this.error.set(text);
+          this.cleaningPictures.set(false);
         });
       },
     });

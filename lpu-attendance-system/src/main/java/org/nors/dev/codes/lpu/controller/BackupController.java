@@ -1,7 +1,9 @@
 package org.nors.dev.codes.lpu.controller;
 
 import org.nors.dev.codes.lpu.dto.BackupRestoreResponse;
+import org.nors.dev.codes.lpu.dto.PhotoCleanupResponse;
 import org.nors.dev.codes.lpu.service.BackupService;
+import org.nors.dev.codes.lpu.service.PhotoCleanupService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -20,9 +22,11 @@ public class BackupController {
     private static final MediaType ZIP = MediaType.parseMediaType("application/zip");
 
     private final BackupService backupService;
+    private final PhotoCleanupService photoCleanupService;
 
-    public BackupController(BackupService backupService) {
+    public BackupController(BackupService backupService, PhotoCleanupService photoCleanupService) {
         this.backupService = backupService;
+        this.photoCleanupService = photoCleanupService;
     }
 
     @GetMapping
@@ -38,5 +42,15 @@ public class BackupController {
     @PostMapping("/restore")
     public ResponseEntity<BackupRestoreResponse> restore(@RequestParam("file") MultipartFile file) {
         return ResponseEntity.ok(backupService.restore(file));
+    }
+
+    @GetMapping("/pictures/unused")
+    public ResponseEntity<PhotoCleanupResponse> unusedPictures() {
+        return ResponseEntity.ok(photoCleanupService.preview());
+    }
+
+    @PostMapping("/pictures/cleanup")
+    public ResponseEntity<PhotoCleanupResponse> cleanupUnusedPictures() {
+        return ResponseEntity.ok(photoCleanupService.deleteUnused());
     }
 }

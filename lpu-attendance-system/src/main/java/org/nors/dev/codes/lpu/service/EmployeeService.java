@@ -135,7 +135,9 @@ public class EmployeeService {
                     continue;
                 }
                 String previousRfid = existing.getRfid();
+                String previousPhoto = existing.getPhoto();
                 applyImportUpdate(existing, request, employeeNo);
+                photoStorageService.deleteIfReplaced(previousPhoto, existing.getPhoto());
                 existing.setUpdatedAt(now);
                 if (existing.getId() != null) {
                     employeeRepository.save(existing);
@@ -199,7 +201,9 @@ public class EmployeeService {
                 id
         );
 
+        String previousPhoto = employee.getPhoto();
         applyRequest(employee, request, employeeNo);
+        photoStorageService.deleteIfReplaced(previousPhoto, employee.getPhoto());
         employee.setUpdatedAt(Instant.now());
         employeeRepository.save(employee);
         persistAuditEvent(employee, "UPDATED", actorUserId, actorUsername);
@@ -279,8 +283,10 @@ public class EmployeeService {
                 notFound++;
                 continue;
             }
+            String previousPhoto = employee.getPhoto();
             String photoPath = photoStorageService.store(file);
             employee.setPhoto(photoPath);
+            photoStorageService.deleteIfReplaced(previousPhoto, photoPath);
             employee.setUpdatedAt(now);
             employeeRepository.save(employee);
             persistAuditEvent(employee, "PHOTO_UPDATED", actorUserId, actorUsername);

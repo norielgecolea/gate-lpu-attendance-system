@@ -10,6 +10,14 @@ export interface BackupRestoreResult {
   tonesCopied: number;
 }
 
+export interface PhotoCleanupResult {
+  referenced: number;
+  onDisk: number;
+  unused: number;
+  deleted: number;
+  failed: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class BackupApiService {
   private readonly http = inject(HttpClient);
@@ -23,6 +31,14 @@ export class BackupApiService {
     const form = new FormData();
     form.append('file', file, file.name);
     return this.http.post<BackupRestoreResult>(`${this.baseUrl}/restore`, form);
+  }
+
+  unusedPictures(): Observable<PhotoCleanupResult> {
+    return this.http.get<PhotoCleanupResult>(`${this.baseUrl}/pictures/unused`);
+  }
+
+  cleanupUnusedPictures(): Observable<PhotoCleanupResult> {
+    return this.http.post<PhotoCleanupResult>(`${this.baseUrl}/pictures/cleanup`, {});
   }
 }
 

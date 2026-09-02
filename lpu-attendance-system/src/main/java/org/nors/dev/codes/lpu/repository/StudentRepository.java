@@ -230,6 +230,18 @@ public class StudentRepository {
         session.flush();
     }
 
+    @Transactional(readOnly = true)
+    public Set<String> findAllPhotoPaths() {
+        return currentSession()
+                .createQuery(
+                        "SELECT s.photo FROM Student s WHERE s.photo IS NOT NULL AND s.photo <> ''",
+                        String.class
+                )
+                .getResultList()
+                .stream()
+                .collect(Collectors.toSet());
+    }
+
     @Transactional
     public void delete(Student student) {
         currentSession().remove(student);

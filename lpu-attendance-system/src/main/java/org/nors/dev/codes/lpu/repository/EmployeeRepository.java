@@ -187,6 +187,18 @@ public class EmployeeRepository {
         session.flush();
     }
 
+    @Transactional(readOnly = true)
+    public Set<String> findAllPhotoPaths() {
+        return currentSession()
+                .createQuery(
+                        "SELECT e.photo FROM Employee e WHERE e.photo IS NOT NULL AND e.photo <> ''",
+                        String.class
+                )
+                .getResultList()
+                .stream()
+                .collect(Collectors.toSet());
+    }
+
     @Transactional
     public void delete(Employee employee) {
         currentSession().remove(employee);
