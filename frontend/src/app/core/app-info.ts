@@ -16,6 +16,16 @@ export interface Release {
  */
 export const RELEASES: Release[] = [
   {
+    version: '2.3.5',
+    notes: [
+      {
+        title: 'Bulk picture upload',
+        detail:
+          'Student and employee pictures upload in batches with a progress bar, so large folders no longer fail.',
+      },
+    ],
+  },
+  {
     version: '2.3.0',
     notes: [
       {

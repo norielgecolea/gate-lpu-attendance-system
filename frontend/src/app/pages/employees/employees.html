@@ -61,7 +61,7 @@
       title="Filename must match employee number (e.g. EMP-001.jpg)"
     >
       <ng-icon name="lucideImages" class="text-base" />
-      {{ uploadingPhotos() ? 'Uploading…' : 'Upload Pictures' }}
+      {{ uploadingPhotos() ? 'Uploading… ' + photoUploadProgress().percent + '%' : 'Upload Pictures' }}
     </button>
     <input
       #photoInput
@@ -80,6 +80,9 @@
 
   @if (error() || actionError()) {
     <p class="text-destructive text-sm" role="alert">{{ actionError() ?? error() }}</p>
+  }
+  @if (uploadingPhotos()) {
+    <app-photo-upload-progress [progress]="photoUploadProgress()" />
   }
   @if (importMessage()) {
     <p

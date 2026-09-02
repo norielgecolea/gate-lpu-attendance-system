@@ -34,6 +34,10 @@ import {
 } from '@tanstack/angular-table';
 import { Subject, catchError, debounceTime, distinctUntilChanged, filter, of, take } from 'rxjs';
 import {
+  emptyPhotoBulkUploadProgress,
+  type PhotoBulkUploadProgress,
+} from '../../core/media/bulk-photo-upload';
+import {
   StudentsApiService,
   type StudentAuditEvent,
   type StudentImportPayload,
@@ -41,6 +45,7 @@ import {
 import { studentPhotoUrl } from '../../core/students/student-photo.util';
 import { infiniteScroll } from '../../shared/infinite-scroll';
 import { PhotoPreview } from '../../shared/photo-preview/photo-preview.directive';
+import { PhotoUploadProgressBar } from '../../shared/photo-upload-progress/photo-upload-progress';
 import {
   StudentFormDialog,
   type StudentFormResult,
@@ -62,6 +67,7 @@ import { type Student, StudentsStore } from './students.store';
     HlmTableImports,
     HlmAvatarImports,
     PhotoPreview,
+    PhotoUploadProgressBar,
   ],
   viewProviders: [
     provideIcons({
@@ -97,6 +103,9 @@ export class Students {
   protected readonly importing = signal(false);
   protected readonly exporting = signal(false);
   protected readonly uploadingPhotos = signal(false);
+  protected readonly photoUploadProgress = signal<PhotoBulkUploadProgress>(
+    emptyPhotoBulkUploadProgress(),
+  );
 
   protected readonly sorting = signal<SortingState>([]);
   protected readonly search = signal('');
@@ -281,8 +290,9 @@ export class Students {
 
     this.actionError.set(null);
     this.importMessage.set(null);
+    this.photoUploadProgress.set(emptyPhotoBulkUploadProgress(files.length));
     this.uploadingPhotos.set(true);
-    this.api.bulkUploadPhotos(files).subscribe({
+    this.api.bulkUploadPhotos(files, (progress) => this.photoUploadProgress.set(progress)).subscribe({
       next: (result) => {
         this.uploadingPhotos.set(false);
         this.importMessage.set(
@@ -292,7 +302,15 @@ export class Students {
       },
       error: (err: { error?: { message?: string } }) => {
         this.uploadingPhotos.set(false);
-        this.actionError.set(err?.error?.message ?? 'Failed to upload photos.');
+        const partial = this.photoUploadProgress();
+        const prefix =
+          partial.processed > 0
+            ? `Uploaded ${partial.processed} of ${partial.total} file(s) before failing. Photos updated: ${partial.result.updated}. Not found: ${partial.result.notFound}. Skipped invalid: ${partial.result.skippedInvalid}. `
+            : '';
+        this.actionError.set(prefix + (err?.error?.message ?? 'Failed to upload photos.'));
+        if (partial.result.updated > 0) {
+          this.reload();
+        }
       },
     });
   }

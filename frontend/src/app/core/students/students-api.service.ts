@@ -2,8 +2,16 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, from, switchMap } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { compressImageFile, compressImageFiles } from '../media/compress-image';
+import {
+  postPhotoChunk,
+  uploadPhotosInChunks,
+  type PhotoBulkUploadProgress,
+  type PhotoBulkUploadResult,
+} from '../media/bulk-photo-upload';
+import { compressImageFile } from '../media/compress-image';
 import type { Student } from '../../pages/students/students.store';
+
+export type { PhotoBulkUploadProgress, PhotoBulkUploadResult } from '../media/bulk-photo-upload';
 
 export type StudentPayload = Omit<Student, 'id' | 'financeTagged'>;
 export interface StudentImportPayload {
@@ -22,11 +30,6 @@ export interface StudentImportResult {
   updated: number;
   skippedDuplicates: number;
   skippedIncomplete: number;
-}
-export interface PhotoBulkUploadResult {
-  updated: number;
-  notFound: number;
-  skippedInvalid: number;
 }
 export interface StudentFinanceTagImportResult {
   tagged: number;
@@ -95,15 +98,15 @@ export class StudentsApiService {
     return this.http.get(`${this.baseUrl}/export`, { responseType: 'blob' });
   }
 
-  bulkUploadPhotos(files: File[]): Observable<PhotoBulkUploadResult> {
-    return from(compressImageFiles(files)).pipe(
-      switchMap((compressed) => {
-        const formData = new FormData();
-        for (const file of compressed) {
-          formData.append('files', file, file.name);
-        }
-        return this.http.post<PhotoBulkUploadResult>(`${this.baseUrl}/photos/bulk`, formData);
-      }),
+  bulkUploadPhotos(
+    files: File[],
+    onProgress?: (progress: PhotoBulkUploadProgress) => void,
+  ): Observable<PhotoBulkUploadResult> {
+    return uploadPhotosInChunks(
+      files,
+      (chunk, onHttpProgress) =>
+        postPhotoChunk(this.http, `${this.baseUrl}/photos/bulk`, chunk, onHttpProgress),
+      onProgress,
     );
   }
 
