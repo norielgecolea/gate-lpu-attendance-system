@@ -121,12 +121,7 @@ export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
   protected readonly clockTz = this.serverClock.datePipeTimezone;
   protected readonly guardName = this.auth.user;
   protected readonly kioskGroup: KioskGroup = kioskGroupFromRole(this.auth.user()?.role);
-  protected readonly venueBrand =
-    this.kioskGroup === 'LIBRARY'
-      ? 'LPU Library'
-      : this.kioskGroup === 'OLIVE_HOTEL'
-        ? 'Olive Hotel'
-        : 'LPU Laguna';
+  protected readonly venueBrand = 'LPU Laguna';
   protected readonly venueTitle =
     this.kioskGroup === 'LIBRARY'
       ? 'Library Attendance'
