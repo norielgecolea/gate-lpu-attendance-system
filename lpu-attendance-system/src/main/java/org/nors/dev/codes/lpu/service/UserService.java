@@ -7,6 +7,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.nors.dev.codes.lpu.dto.UserRequest;
 import org.nors.dev.codes.lpu.dto.UserResponse;
+import org.nors.dev.codes.lpu.model.KioskGroups;
 import org.nors.dev.codes.lpu.model.Role;
 import org.nors.dev.codes.lpu.model.User;
 import org.nors.dev.codes.lpu.repository.UserRepository;
@@ -68,6 +69,7 @@ public class UserService {
 
         Role newRole = parseRole(request.role());
         UserRoleAccess.ensureCanManage(actingRole, newRole);
+        requireKioskLocation(newRole, request.location());
 
         User user = new User();
         user.setUsername(username);
@@ -94,6 +96,7 @@ public class UserService {
 
         Role newRole = parseRole(request.role());
         UserRoleAccess.ensureCanManage(actingRole, newRole);
+        requireKioskLocation(newRole, request.location());
         if (user.getRole() == Role.SUPERADMIN && newRole != Role.SUPERADMIN
                 && userRepository.countActiveSuperadminsExcluding(id) == 0) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "At least one active Superadmin is required");
@@ -188,6 +191,15 @@ public class UserService {
             return Role.valueOf(role.trim().toUpperCase(java.util.Locale.ROOT));
         } catch (IllegalArgumentException | NullPointerException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid role");
+        }
+    }
+
+    private static void requireKioskLocation(Role role, String location) {
+        if (KioskGroups.isKioskRole(role) && (location == null || location.isBlank())) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Location is required for kiosk accounts"
+            );
         }
     }
 

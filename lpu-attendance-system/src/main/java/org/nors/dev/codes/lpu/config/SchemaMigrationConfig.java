@@ -174,9 +174,74 @@ public class SchemaMigrationConfig {
                     """);
         }
 
+        Boolean attendanceLogsExist = jdbc.queryForObject(
+                """
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM information_schema.tables
+                    WHERE table_schema = current_schema()
+                      AND table_name = 'attendance_logs'
+                )
+                """,
+                Boolean.class
+        );
+        if (Boolean.TRUE.equals(attendanceLogsExist)) {
+            jdbc.execute("""
+                    ALTER TABLE attendance_logs
+                        ADD COLUMN IF NOT EXISTS kiosk_group VARCHAR(20) NOT NULL DEFAULT 'MAIN_GATES'
+                    """);
+            jdbc.execute(
+                    "ALTER TABLE attendance_logs DROP CONSTRAINT IF EXISTS attendance_logs_student_id_attendance_date_key"
+            );
+            jdbc.execute("DROP INDEX IF EXISTS uq_attendance_employee_date");
+            jdbc.execute("""
+                    CREATE UNIQUE INDEX IF NOT EXISTS uq_attendance_student_date_group
+                        ON attendance_logs (student_id, attendance_date, kiosk_group)
+                        WHERE student_id IS NOT NULL
+                    """);
+            jdbc.execute("""
+                    CREATE UNIQUE INDEX IF NOT EXISTS uq_attendance_employee_date_group
+                        ON attendance_logs (employee_id, attendance_date, kiosk_group)
+                        WHERE employee_id IS NOT NULL
+                    """);
+            jdbc.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_attendance_logs_kiosk_date
+                        ON attendance_logs (kiosk_group, attendance_date DESC)
+                    """);
+        }
+        Boolean attendanceEventsExist = jdbc.queryForObject(
+                """
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM information_schema.tables
+                    WHERE table_schema = current_schema()
+                      AND table_name = 'attendance_events'
+                )
+                """,
+                Boolean.class
+        );
+        if (Boolean.TRUE.equals(attendanceEventsExist)) {
+            jdbc.execute("""
+                    ALTER TABLE attendance_events
+                        ADD COLUMN IF NOT EXISTS kiosk_group VARCHAR(20) NOT NULL DEFAULT 'MAIN_GATES'
+                    """);
+            jdbc.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_attendance_events_kiosk_date
+                        ON attendance_events (kiosk_group, attendance_date DESC, tapped_at DESC)
+                    """);
+        }
+        jdbc.execute("""
+                ALTER TABLE tap_error_logs
+                    ADD COLUMN IF NOT EXISTS kiosk_group VARCHAR(20) NOT NULL DEFAULT 'MAIN_GATES'
+                """);
+        jdbc.execute("""
+                CREATE INDEX IF NOT EXISTS idx_tap_error_logs_kiosk_tapped
+                    ON tap_error_logs (kiosk_group, tapped_at DESC, id DESC)
+                """);
+
         log.info(
                 "Schema migration applied (app_settings, guard_videos, tap_error_logs, gate_tones,"
-                        + " student_audit_events, employee_audit_events, sync_deletion_tombstones)"
+                        + " student_audit_events, employee_audit_events, sync_deletion_tombstones, kiosk_groups)"
         );
         return new SchemaMigrator();
     }

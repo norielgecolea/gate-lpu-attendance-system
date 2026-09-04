@@ -50,6 +50,10 @@ export class UserFormDialog {
   protected role = this.context.user?.role ?? this.context.roles[0] ?? 'OSAS';
   protected location = this.context.user?.location ?? '';
 
+  protected get needsLocation(): boolean {
+    return this.role === 'GUARD' || this.role === 'LIBRARY_KIOSK' || this.role === 'OLIVE_KIOSK';
+  }
+
   protected cancel(): void {
     this.dialogRef.close(null);
   }
@@ -66,6 +70,10 @@ export class UserFormDialog {
     }
     if (this.mode === 'edit' && this.password.length > 0 && this.password.length < 8) {
       this.error.set('New password must be at least 8 characters (leave blank to keep current).');
+      return;
+    }
+    if (this.needsLocation && !this.location.trim()) {
+      this.error.set('Location / Gate is required for kiosk accounts.');
       return;
     }
 

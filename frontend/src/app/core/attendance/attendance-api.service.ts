@@ -6,6 +6,8 @@ import type { Employee } from '../../pages/employees/employees.store';
 import type { Student } from '../../pages/students/students.store';
 
 export type PersonType = 'STUDENT' | 'EMPLOYEE';
+export type AttendancePersonFilter = PersonType | 'ALL';
+export type KioskGroup = 'MAIN_GATES' | 'LIBRARY' | 'OLIVE_HOTEL';
 
 export interface TapResponse {
   action: 'TIME_IN' | 'TIME_OUT' | string;
@@ -21,6 +23,7 @@ export interface TapResponse {
   financeTagged?: boolean;
   warningMessage?: string | null;
   personType?: PersonType | string;
+  kioskGroup?: KioskGroup | string;
   student?: Student | null;
   employee?: Employee | null;
 }
@@ -100,7 +103,7 @@ export interface PersonAttendanceSummary {
 }
 
 export interface AttendanceQuery {
-  personType: PersonType;
+  personType?: AttendancePersonFilter;
   personId?: string;
   startDate?: string;
   endDate?: string;
@@ -109,6 +112,7 @@ export interface AttendanceQuery {
   location?: string;
   status?: string;
   action?: string;
+  kioskGroup?: KioskGroup;
   sortBy?: string;
   sortDir?: string;
   offset?: number;
@@ -151,13 +155,15 @@ export class AttendanceApiService {
   }
 
   byDepartment(
-    personType: PersonType,
+    personType: AttendancePersonFilter,
     startDate?: string,
     endDate?: string,
+    kioskGroup?: KioskGroup,
   ): Observable<AttendanceDepartmentCount[]> {
     let params = new HttpParams().set('personType', personType);
     if (startDate) params = params.set('startDate', startDate);
     if (endDate) params = params.set('endDate', endDate);
+    if (kioskGroup) params = params.set('kioskGroup', kioskGroup);
     return this.http.get<AttendanceDepartmentCount[]>(`${this.baseUrl}/by-department`, { params });
   }
 
@@ -231,7 +237,10 @@ export class AttendanceApiService {
   }
 
   private toParams(query: AttendanceQuery): HttpParams {
-    let params = new HttpParams().set('personType', query.personType);
+    let params = new HttpParams();
+    if (query.personType) {
+      params = params.set('personType', query.personType);
+    }
     const entries: [string, string | number | undefined][] = [
       ['personId', query.personId],
       ['startDate', query.startDate],
@@ -241,6 +250,7 @@ export class AttendanceApiService {
       ['location', query.location],
       ['status', query.status],
       ['action', query.action],
+      ['kioskGroup', query.kioskGroup],
       ['sortBy', query.sortBy],
       ['sortDir', query.sortDir],
       ['offset', query.offset],

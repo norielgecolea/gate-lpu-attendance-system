@@ -28,6 +28,9 @@ import org.nors.dev.codes.lpu.dto.TapResponse;
 import org.nors.dev.codes.lpu.model.AttendanceEvent;
 import org.nors.dev.codes.lpu.model.AttendanceLog;
 import org.nors.dev.codes.lpu.model.Employee;
+import org.nors.dev.codes.lpu.model.KioskGroup;
+import org.nors.dev.codes.lpu.model.KioskGroups;
+import org.nors.dev.codes.lpu.model.Role;
 import org.nors.dev.codes.lpu.model.Student;
 import org.nors.dev.codes.lpu.model.SyncDeletionTombstone;
 import org.nors.dev.codes.lpu.model.User;
@@ -52,7 +55,7 @@ public class AttendanceService {
     /** Repeat taps inside this window don't toggle state — they just re-show the last tap. */
     private static final java.time.Duration TAP_COOLDOWN = java.time.Duration.ofSeconds(10);
     private static final int MAX_PAGE = 200;
-    private static final int MAX_EXPORT = 10_000;
+    private static final int EXPORT_PAGE = 500;
     private static final DateTimeFormatter CSV_TIME =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(CAMPUS_ZONE);
 
@@ -97,18 +100,19 @@ public class AttendanceService {
      * Every accepted tap is also stored as an immutable attendance event.
      */
     @Transactional
-    public TapResponse tap(String rawIdentifier, Long tappedByUserId, String location) {
+    public TapResponse tap(String rawIdentifier, Long tappedByUserId, String location, Role role) {
         String identifier = rawIdentifier == null ? "" : rawIdentifier.trim();
         if (identifier.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "ID or RFID is required");
         }
+        KioskGroup kioskGroup = KioskGroups.fromRole(role);
 
         Student student = studentRepository.findByRfidOrStudentNo(identifier).orElse(null);
         Employee employee = student == null
                 ? employeeRepository.findByRfidOrEmployeeNo(identifier).orElse(null)
                 : null;
         if (student == null && employee == null) {
-            broadcastTapError(identifier, blankToNull(location));
+            broadcastTapError(identifier, blankToNull(location), kioskGroup);
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Record Not Found");
         }
         String personRef = student != null
@@ -120,8 +124,8 @@ public class AttendanceService {
         String gate = blankToNull(location);
 
         AttendanceLog existing = student != null
-                ? attendanceLogRepository.findByStudentAndDateForUpdate(student.getId(), today).orElse(null)
-                : attendanceLogRepository.findByEmployeeAndDateForUpdate(employee.getId(), today).orElse(null);
+                ? attendanceLogRepository.findByStudentAndDateForUpdate(student.getId(), today, kioskGroup).orElse(null)
+                : attendanceLogRepository.findByEmployeeAndDateForUpdate(employee.getId(), today, kioskGroup).orElse(null);
         TapResponse response;
 
         if (existing != null
@@ -129,7 +133,7 @@ public class AttendanceService {
                 && now.isBefore(existing.getUpdatedAt().plus(TAP_COOLDOWN))) {
             String action = existing.getLastAction() != null ? existing.getLastAction() : ACTION_IN;
             String message = ACTION_OUT.equals(action) ? "Time out recorded" : "Time in recorded";
-            log.info("TAP cooldown {} lastAction={}", personRef, action);
+            log.info("TAP cooldown {} lastAction={} kioskGroup={}", personRef, action, kioskGroup);
             return TapResponse.from(existing, action, message);
         }
 
@@ -144,22 +148,23 @@ public class AttendanceService {
             created.setTappedByUserId(tappedByUserId);
             created.setTimeInLocation(gate);
             created.setTapCount(1);
+            created.setKioskGroup(kioskGroup);
             created.setCreatedAt(now);
             created.setUpdatedAt(now);
             attendanceLogRepository.persist(created);
-            persistEvent(student, employee, today, ACTION_IN, now, gate, tappedByUserId);
+            persistEvent(student, employee, today, ACTION_IN, now, gate, tappedByUserId, kioskGroup);
             response = TapResponse.from(created, ACTION_IN, "Time in recorded");
-            log.info("TIME_IN (first) {} location={}", personRef, gate);
+            log.info("TIME_IN (first) {} location={} kioskGroup={}", personRef, gate, kioskGroup);
         } else if (ACTION_OUT.equals(existing.getLastAction())) {
             existing.setLastAction(ACTION_IN);
             existing.setTappedByUserId(tappedByUserId);
             existing.setTapCount(existing.getTapCount() + 1);
             existing.setUpdatedAt(now);
             attendanceLogRepository.save(existing);
-            persistEvent(student, employee, today, ACTION_IN, now, gate, tappedByUserId);
+            persistEvent(student, employee, today, ACTION_IN, now, gate, tappedByUserId, kioskGroup);
             response = TapResponse.from(existing, ACTION_IN, "Time in recorded");
-            log.info("TIME_IN (again) {} firstIn={} location={}",
-                    personRef, existing.getTimeIn(), existing.getTimeInLocation());
+            log.info("TIME_IN (again) {} firstIn={} location={} kioskGroup={}",
+                    personRef, existing.getTimeIn(), existing.getTimeInLocation(), kioskGroup);
         } else {
             existing.setTimeOut(now);
             existing.setLastAction(ACTION_OUT);
@@ -168,10 +173,10 @@ public class AttendanceService {
             existing.setTapCount(existing.getTapCount() + 1);
             existing.setUpdatedAt(now);
             attendanceLogRepository.save(existing);
-            persistEvent(student, employee, today, ACTION_OUT, now, gate, tappedByUserId);
+            persistEvent(student, employee, today, ACTION_OUT, now, gate, tappedByUserId, kioskGroup);
             response = TapResponse.from(existing, ACTION_OUT, "Time out recorded");
-            log.info("TIME_OUT {} firstIn={} lastOut={} location={}",
-                    personRef, existing.getTimeIn(), existing.getTimeOut(), gate);
+            log.info("TIME_OUT {} firstIn={} lastOut={} location={} kioskGroup={}",
+                    personRef, existing.getTimeIn(), existing.getTimeOut(), gate, kioskGroup);
         }
 
         broadcastTap(response);
@@ -179,11 +184,11 @@ public class AttendanceService {
     }
 
     @Transactional(readOnly = true)
-    public List<TapResponse> recent(int limit, int offset) {
+    public List<TapResponse> recent(int limit, int offset, KioskGroup kioskGroup) {
         int size = Math.min(Math.max(limit, 1), 50);
         int from = Math.max(offset, 0);
         LocalDate today = LocalDate.now(CAMPUS_ZONE);
-        return attendanceLogRepository.findRecentByDate(today, from, size).stream()
+        return attendanceLogRepository.findRecentByDate(today, kioskGroup, from, size).stream()
                 .map(logEntry -> {
                     String action = logEntry.getLastAction() != null
                             ? logEntry.getLastAction()
@@ -204,25 +209,26 @@ public class AttendanceService {
             String department,
             String location,
             String status,
+            KioskGroup kioskGroup,
             String sortBy,
             String sortDir,
             int offset,
             int limit
     ) {
         requirePersonType(personType);
-        DateRange range = normalizeRange(startDate, endDate);
+        DateRange range = normalizeRange(startDate, endDate, false);
         int size = Math.min(Math.max(limit, 1), MAX_PAGE);
         int from = Math.max(offset, 0);
         List<AttendanceDailyResponse> items = attendanceLogRepository
                 .searchDaily(
                         personType, personId, range.start(), range.end(), search, department, location, status,
-                        sortBy, sortDir, from, size
+                        kioskGroup, sortBy, sortDir, from, size
                 )
                 .stream()
                 .map(AttendanceDailyResponse::from)
                 .toList();
         long total = attendanceLogRepository.countDaily(
-                personType, personId, range.start(), range.end(), search, department, location, status
+                personType, personId, range.start(), range.end(), search, department, location, status, kioskGroup
         );
         return new AttendancePageResponse(items, total);
     }
@@ -236,12 +242,13 @@ public class AttendanceService {
             String search,
             String department,
             String location,
-            String status
+            String status,
+            KioskGroup kioskGroup
     ) {
         requirePersonType(personType);
-        DateRange range = normalizeRange(startDate, endDate);
+        DateRange range = normalizeRange(startDate, endDate, false);
         Object[] row = attendanceLogRepository.summarizeDaily(
-                personType, personId, range.start(), range.end(), search, department, location, status
+                personType, personId, range.start(), range.end(), search, department, location, status, kioskGroup
         );
         return new AttendanceSummaryResponse(
                 toLong(row[0]),
@@ -308,10 +315,10 @@ public class AttendanceService {
 
     /** Tap volume per hour (campus timezone) for a given day — defaults to today. */
     @Transactional(readOnly = true)
-    public List<AttendanceHourCountResponse> byHour(LocalDate date) {
+    public List<AttendanceHourCountResponse> byHour(LocalDate date, KioskGroup kioskGroup) {
         LocalDate day = date != null ? date : LocalDate.now(CAMPUS_ZONE);
         Map<Integer, long[]> byHour = new HashMap<>();
-        for (Object[] row : attendanceEventRepository.countByHour(day)) {
+        for (Object[] row : attendanceEventRepository.countByHour(day, kioskGroup)) {
             int hour = ((Number) row[0]).intValue();
             long count = ((Number) row[2]).longValue();
             long[] slot = byHour.computeIfAbsent(hour, h -> new long[2]);
@@ -331,11 +338,12 @@ public class AttendanceService {
     public List<AttendanceDepartmentCountResponse> byDepartment(
             String personType,
             LocalDate startDate,
-            LocalDate endDate
+            LocalDate endDate,
+            KioskGroup kioskGroup
     ) {
         requirePersonType(personType);
-        DateRange range = normalizeRange(startDate, endDate);
-        return attendanceLogRepository.countByDepartment(personType, range.start(), range.end()).stream()
+        DateRange range = normalizeRange(startDate, endDate, false);
+        return attendanceLogRepository.countByDepartment(personType, range.start(), range.end(), kioskGroup).stream()
                 .map(row -> new AttendanceDepartmentCountResponse(
                         row[0] != null ? row[0].toString() : "Unassigned",
                         toLong(row[1])
@@ -348,12 +356,15 @@ public class AttendanceService {
             String personType,
             Long personId,
             LocalDate startDate,
-            LocalDate endDate
+            LocalDate endDate,
+            KioskGroup kioskGroup
     ) {
         requirePersonType(personType);
         requirePerson(personType, personId);
-        DateRange range = normalizeRange(startDate, endDate);
-        Object[] row = attendanceLogRepository.summarizePerson(personType, personId, range.start(), range.end());
+        DateRange range = normalizeRange(startDate, endDate, false);
+        Object[] row = attendanceLogRepository.summarizePerson(
+                personType, personId, range.start(), range.end(), kioskGroup
+        );
         return new PersonAttendanceSummaryResponse(
                 toLong(row[0]),
                 toLong(row[1]),
@@ -373,16 +384,18 @@ public class AttendanceService {
             String search,
             String location,
             String action,
+            KioskGroup kioskGroup,
             String sortDir,
             int offset,
             int limit
     ) {
         requirePersonType(personType);
-        DateRange range = normalizeRange(startDate, endDate);
+        DateRange range = normalizeRange(startDate, endDate, false);
         int size = Math.min(Math.max(limit, 1), MAX_PAGE);
         int from = Math.max(offset, 0);
         List<AttendanceEvent> events = attendanceEventRepository.search(
-                personType, personId, range.start(), range.end(), search, location, action, sortDir, from, size
+                personType, personId, range.start(), range.end(), search, location, action, kioskGroup,
+                sortDir, from, size
         );
         Map<Long, String> usernames = usernamesFor(events);
         List<AttendanceEventResponse> items = events.stream()
@@ -392,16 +405,16 @@ public class AttendanceService {
                 ))
                 .toList();
         long total = attendanceEventRepository.count(
-                personType, personId, range.start(), range.end(), search, location, action
+                personType, personId, range.start(), range.end(), search, location, action, kioskGroup
         );
         return new AttendanceEventPageResponse(items, total);
     }
 
     @Transactional(readOnly = true)
-    public List<String> locations(String personType, LocalDate startDate, LocalDate endDate) {
+    public List<String> locations(String personType, LocalDate startDate, LocalDate endDate, KioskGroup kioskGroup) {
         requirePersonType(personType);
-        DateRange range = normalizeRange(startDate, endDate);
-        return attendanceLogRepository.distinctLocations(personType, range.start(), range.end());
+        DateRange range = normalizeRange(startDate, endDate, false);
+        return attendanceLogRepository.distinctLocations(personType, range.start(), range.end(), kioskGroup);
     }
 
     @Transactional(readOnly = true)
@@ -413,53 +426,97 @@ public class AttendanceService {
             String search,
             String department,
             String location,
-            String status
+            String status,
+            KioskGroup kioskGroup
     ) {
-        AttendancePageResponse page = pageDaily(
-                personType, personId, startDate, endDate, search, department, location, status,
-                "date", "desc", 0, MAX_EXPORT
-        );
+        requirePersonType(personType);
+        DateRange range = normalizeRange(startDate, endDate, true);
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try (PrintWriter writer = new PrintWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8))) {
+            boolean combined = isAllPeople(personType);
             boolean student = "STUDENT".equalsIgnoreCase(personType);
-            if (student) {
-                writer.println("Name,Student No,Department,Course,School,Date,Time In,Time Out,Tap Count,Status,Time In Gate,Time Out Gate");
+            if (combined) {
+                writer.println(
+                        "Type,Name,Person No,Department,Course,School,Position,Date,Time In,Time Out,"
+                                + "Tap Count,Status,Time In Gate,Time Out Gate"
+                );
+            } else if (student) {
+                writer.println(
+                        "Name,Student No,Department,Course,School,Date,Time In,Time Out,Tap Count,Status,"
+                                + "Time In Gate,Time Out Gate"
+                );
             } else {
-                writer.println("Name,Employee No,Department,Position,Date,Time In,Time Out,Tap Count,Status,Time In Gate,Time Out Gate");
+                writer.println(
+                        "Name,Employee No,Department,Position,Date,Time In,Time Out,Tap Count,Status,"
+                                + "Time In Gate,Time Out Gate"
+                );
             }
-            for (AttendanceDailyResponse row : page.items()) {
-                if (student) {
-                    writer.printf(
-                            "%s,%s,%s,%s,%s,%s,%s,%s,%d,%s,%s,%s%n",
-                            csv(row.name()),
-                            csv(row.personNo()),
-                            csv(row.department()),
-                            csv(row.course()),
-                            csv(row.school()),
-                            row.attendanceDate(),
-                            csvTime(row.timeIn()),
-                            csvTime(row.timeOut()),
-                            row.tapCount(),
-                            row.status(),
-                            csv(row.timeInLocation()),
-                            csv(row.timeOutLocation())
-                    );
-                } else {
-                    writer.printf(
-                            "%s,%s,%s,%s,%s,%s,%s,%d,%s,%s,%s%n",
-                            csv(row.name()),
-                            csv(row.personNo()),
-                            csv(row.department()),
-                            csv(row.position()),
-                            row.attendanceDate(),
-                            csvTime(row.timeIn()),
-                            csvTime(row.timeOut()),
-                            row.tapCount(),
-                            row.status(),
-                            csv(row.timeInLocation()),
-                            csv(row.timeOutLocation())
-                    );
+            int offset = 0;
+            while (true) {
+                List<AttendanceDailyResponse> items = attendanceLogRepository
+                        .searchDaily(
+                                personType, personId, range.start(), range.end(), search, department, location, status,
+                                kioskGroup, "date", "desc", offset, EXPORT_PAGE
+                        )
+                        .stream()
+                        .map(AttendanceDailyResponse::from)
+                        .toList();
+                for (AttendanceDailyResponse row : items) {
+                    if (combined) {
+                        writer.printf(
+                                "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%d,%s,%s,%s%n",
+                                csv(row.personType()),
+                                csv(row.name()),
+                                csv(row.personNo()),
+                                csv(row.department()),
+                                csv(row.course()),
+                                csv(row.school()),
+                                csv(row.position()),
+                                row.attendanceDate(),
+                                csvTime(row.timeIn()),
+                                csvTime(row.timeOut()),
+                                row.tapCount(),
+                                row.status(),
+                                csv(row.timeInLocation()),
+                                csv(row.timeOutLocation())
+                        );
+                    } else if (student) {
+                        writer.printf(
+                                "%s,%s,%s,%s,%s,%s,%s,%s,%d,%s,%s,%s%n",
+                                csv(row.name()),
+                                csv(row.personNo()),
+                                csv(row.department()),
+                                csv(row.course()),
+                                csv(row.school()),
+                                row.attendanceDate(),
+                                csvTime(row.timeIn()),
+                                csvTime(row.timeOut()),
+                                row.tapCount(),
+                                row.status(),
+                                csv(row.timeInLocation()),
+                                csv(row.timeOutLocation())
+                        );
+                    } else {
+                        writer.printf(
+                                "%s,%s,%s,%s,%s,%s,%s,%d,%s,%s,%s%n",
+                                csv(row.name()),
+                                csv(row.personNo()),
+                                csv(row.department()),
+                                csv(row.position()),
+                                row.attendanceDate(),
+                                csvTime(row.timeIn()),
+                                csvTime(row.timeOut()),
+                                row.tapCount(),
+                                row.status(),
+                                csv(row.timeInLocation()),
+                                csv(row.timeOutLocation())
+                        );
+                    }
                 }
+                if (items.size() < EXPORT_PAGE) {
+                    break;
+                }
+                offset += items.size();
             }
         }
         return baos.toByteArray();
@@ -472,10 +529,11 @@ public class AttendanceService {
             LocalDate startDate,
             LocalDate endDate,
             String location,
-            String action
+            String action,
+            KioskGroup kioskGroup
     ) {
         AttendanceEventPageResponse page = pageEvents(
-                personType, personId, startDate, endDate, null, location, action, "desc", 0, MAX_EXPORT
+                personType, personId, startDate, endDate, null, location, action, kioskGroup, "desc", 0, MAX_PAGE
         );
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try (PrintWriter writer = new PrintWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8))) {
@@ -501,7 +559,8 @@ public class AttendanceService {
             String action,
             Instant tappedAt,
             String location,
-            Long tappedByUserId
+            Long tappedByUserId,
+            KioskGroup kioskGroup
     ) {
         AttendanceEvent event = new AttendanceEvent();
         event.setStudent(student);
@@ -511,6 +570,7 @@ public class AttendanceService {
         event.setTappedAt(tappedAt);
         event.setLocation(location);
         event.setTappedByUserId(tappedByUserId);
+        event.setKioskGroup(kioskGroup);
         event.setCreatedAt(tappedAt);
         attendanceEventRepository.persist(event);
     }
@@ -543,12 +603,22 @@ public class AttendanceService {
     }
 
     private static void requirePersonType(String personType) {
+        if (isAllPeople(personType)) {
+            return;
+        }
         if (!"STUDENT".equalsIgnoreCase(personType) && !"EMPLOYEE".equalsIgnoreCase(personType)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "personType must be STUDENT or EMPLOYEE");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "personType must be STUDENT, EMPLOYEE, or ALL");
         }
     }
 
-    private static DateRange normalizeRange(LocalDate startDate, LocalDate endDate) {
+    private static boolean isAllPeople(String personType) {
+        return personType == null || personType.isBlank() || "ALL".equalsIgnoreCase(personType);
+    }
+
+    private static DateRange normalizeRange(LocalDate startDate, LocalDate endDate, boolean allowUnbounded) {
+        if (allowUnbounded && startDate == null && endDate == null) {
+            return new DateRange(null, null);
+        }
         LocalDate end = endDate != null ? endDate : LocalDate.now(CAMPUS_ZONE);
         LocalDate start = startDate != null ? startDate : end.minusDays(30);
         if (start.isAfter(end)) {
@@ -574,10 +644,10 @@ public class AttendanceService {
     }
 
     /** Persists and broadcasts when a tapped ID/RFID matches no record at a gate. */
-    private void broadcastTapError(String identifier, String location) {
+    private void broadcastTapError(String identifier, String location, KioskGroup kioskGroup) {
         Instant tappedAt = Instant.now();
         try {
-            tapErrorLogService.record(identifier, location);
+            tapErrorLogService.record(identifier, location, kioskGroup);
         } catch (Exception ex) {
             log.warn("Failed to persist attendance tap error", ex);
         }
@@ -588,6 +658,7 @@ public class AttendanceService {
             java.util.Map<String, Object> payload = new java.util.LinkedHashMap<>();
             payload.put("identifier", identifier);
             payload.put("location", location);
+            payload.put("kioskGroup", kioskGroup != null ? kioskGroup.name() : KioskGroup.MAIN_GATES.name());
             payload.put("tappedAt", tappedAt.toString());
             event.put("payload", payload);
             notificationService.broadcastRaw(objectMapper.writeValueAsString(event));

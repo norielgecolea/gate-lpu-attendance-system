@@ -8,9 +8,18 @@ export class GuardPresenceApiService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiBaseUrl}/guards`;
 
-  onlineLocations(): Observable<string[]> {
+  online(): Observable<{ locations: string[]; kiosks: Record<string, string[]> }> {
     return this.http
-      .get<{ locations: string[] }>(`${this.baseUrl}/online`)
-      .pipe(map((res) => res.locations ?? []));
+      .get<{ locations: string[]; kiosks?: Record<string, string[]> }>(`${this.baseUrl}/online`)
+      .pipe(
+        map((res) => ({
+          locations: res.locations ?? [],
+          kiosks: res.kiosks ?? {},
+        })),
+      );
+  }
+
+  onlineLocations(): Observable<string[]> {
+    return this.online().pipe(map((res) => res.locations));
   }
 }

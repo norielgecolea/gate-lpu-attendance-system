@@ -23,6 +23,18 @@ export class NotificationService {
   readonly connected = signal(false);
   /** Gate locations with at least one connected guard kiosk. */
   readonly onlineGuardLocations = signal<string[]>([]);
+  readonly onlineKiosks = signal<Record<string, string[]>>({});
+
+  onlineLocationsFor(group: string): string[] {
+    const grouped = this.onlineKiosks()[group];
+    if (Array.isArray(grouped)) {
+      return grouped;
+    }
+    if (group === 'MAIN_GATES') {
+      return this.onlineGuardLocations();
+    }
+    return [];
+  }
 
   connect(token: string): void {
     if (!isPlatformBrowser(this.platformId) || !token) {
@@ -55,6 +67,7 @@ export class NotificationService {
     this.connected.set(false);
     this.presenceFromSocket = false;
     this.onlineGuardLocations.set([]);
+    this.onlineKiosks.set({});
   }
 
   dismissLatest(): void {
@@ -86,10 +99,13 @@ export class NotificationService {
         return;
       }
       // HTTP snapshot for admin/monitor; guards are not allowed on this endpoint.
-      this.presenceApi.onlineLocations().subscribe({
-        next: (locations) => {
+      this.presenceApi.online().subscribe({
+        next: (presence) => {
           if (!this.presenceFromSocket) {
-            this.onlineGuardLocations.set(locations);
+            this.onlineGuardLocations.set(presence.locations);
+            if (presence.kiosks) {
+              this.onlineKiosks.set(presence.kiosks);
+            }
           }
         },
         error: () => undefined,
@@ -108,6 +124,9 @@ export class NotificationService {
               .map((loc) => String(loc).trim())
               .filter((loc) => loc.length > 0),
           );
+          if (payload.kiosks && typeof payload.kiosks === 'object') {
+            this.onlineKiosks.set(payload.kiosks);
+          }
         }
       } catch {
         // ignore malformed payloads
@@ -151,7 +170,14 @@ export class NotificationService {
         role?: string;
       };
       const role = payload.role ?? '';
-      return role === 'SUPERADMIN' || role === 'MONITORING' || role === 'OSAS' || role === 'HR';
+      return (
+        role === 'SUPERADMIN' ||
+        role === 'MONITORING' ||
+        role === 'OSAS' ||
+        role === 'HR' ||
+        role === 'LIBRARIAN' ||
+        role === 'OLIVE'
+      );
     } catch {
       return false;
     }

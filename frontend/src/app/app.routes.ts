@@ -31,11 +31,15 @@ import {
 } from './core/auth/auth.guards';
 
 const ADMIN_ROLES = ['SUPERADMIN', 'OSAS', 'HR'] as const;
+const PORTAL_ROLES = ['SUPERADMIN', 'OSAS', 'HR', 'LIBRARIAN', 'OLIVE'] as const;
 const SUPERADMIN_ROLES = ['SUPERADMIN'] as const;
 const OSAS_ROLES = ['SUPERADMIN', 'OSAS'] as const;
 const HR_ROLES = ['SUPERADMIN', 'HR'] as const;
 const OSAS_ADMIN_ROLES = ['SUPERADMIN', 'OSAS'] as const;
-const HR_ADMIN_ROLES = ['SUPERADMIN', 'OSAS', 'HR'] as const;
+const TAP_ERROR_ROLES = ['SUPERADMIN', 'OSAS', 'HR', 'LIBRARIAN', 'OLIVE'] as const;
+const STUDENT_DIRECTORY_ROLES = ['SUPERADMIN', 'OSAS', 'LIBRARIAN', 'OLIVE'] as const;
+const EMPLOYEE_DIRECTORY_ROLES = ['SUPERADMIN', 'HR', 'LIBRARIAN', 'OLIVE'] as const;
+const VENUE_ADMIN_ROLES = ['LIBRARIAN', 'OLIVE'] as const;
 
 export const routes: Routes = [
   { path: '', component: Login, canActivate: [guestGuard], pathMatch: 'full' },
@@ -59,7 +63,7 @@ export const routes: Routes = [
       {
         path: 'dashboard',
         component: Dashboard,
-        canActivate: [allowRoles(...ADMIN_ROLES)],
+        canActivate: [allowRoles(...PORTAL_ROLES)],
       },
       {
         path: 'rfid-checker',
@@ -93,15 +97,21 @@ export const routes: Routes = [
         canActivate: [allowRoles(...OSAS_ROLES)],
       },
       {
+        path: 'attendance',
+        component: AttendancePage,
+        data: { personType: 'ALL' },
+        canActivate: [allowRoles(...VENUE_ADMIN_ROLES)],
+      },
+      {
         path: 'students',
         component: Students,
-        canActivate: [allowRoles(...OSAS_ROLES)],
+        canActivate: [allowRoles(...STUDENT_DIRECTORY_ROLES)],
         children: [
           {
             path: ':id/attendance',
             component: PersonAttendance,
             data: { personType: 'STUDENT' },
-            canActivate: [allowRoles(...OSAS_ROLES)],
+            canActivate: [allowRoles(...STUDENT_DIRECTORY_ROLES)],
           },
           { path: ':id/logs', redirectTo: ':id/attendance' },
         ],
@@ -125,13 +135,13 @@ export const routes: Routes = [
       {
         path: 'employees',
         component: Employees,
-        canActivate: [allowRoles(...HR_ROLES)],
+        canActivate: [allowRoles(...EMPLOYEE_DIRECTORY_ROLES)],
         children: [
           {
             path: ':id/attendance',
             component: PersonAttendance,
             data: { personType: 'EMPLOYEE' },
-            canActivate: [allowRoles(...HR_ROLES)],
+            canActivate: [allowRoles(...EMPLOYEE_DIRECTORY_ROLES)],
           },
         ],
       },
@@ -153,7 +163,7 @@ export const routes: Routes = [
       {
         path: 'tap-errors',
         component: TapErrorLogs,
-        canActivate: [allowRoles(...HR_ADMIN_ROLES)],
+        canActivate: [allowRoles(...TAP_ERROR_ROLES)],
       },
       {
         path: 'audit-logs',
@@ -165,7 +175,6 @@ export const routes: Routes = [
         component: Backup,
         canActivate: [allowRoles(...SUPERADMIN_ROLES)],
       },
-      { path: 'attendance', redirectTo: 'students/attendance' },
       { path: 'deleted-students', redirectTo: 'students/inactive' },
     ],
   },

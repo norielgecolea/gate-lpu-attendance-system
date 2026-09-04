@@ -2,6 +2,8 @@ package org.nors.dev.codes.lpu.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -9,15 +11,11 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 import java.time.Instant;
 import java.time.LocalDate;
 
 @Entity
-@Table(
-        name = "attendance_logs",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"student_id", "attendance_date"})
-)
+@Table(name = "attendance_logs")
 public class AttendanceLog {
 
     @Id
@@ -58,6 +56,10 @@ public class AttendanceLog {
     /** Number of accepted taps recorded for this person on this date. */
     @Column(name = "tap_count", nullable = false)
     private int tapCount = 1;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "kiosk_group", nullable = false, length = 20)
+    private KioskGroup kioskGroup = KioskGroup.MAIN_GATES;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
@@ -151,6 +153,14 @@ public class AttendanceLog {
 
     public void setTapCount(int tapCount) {
         this.tapCount = tapCount;
+    }
+
+    public KioskGroup getKioskGroup() {
+        return kioskGroup;
+    }
+
+    public void setKioskGroup(KioskGroup kioskGroup) {
+        this.kioskGroup = kioskGroup;
     }
 
     public Instant getCreatedAt() {

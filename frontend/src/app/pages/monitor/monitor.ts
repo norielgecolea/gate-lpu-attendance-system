@@ -58,6 +58,7 @@ interface TapErrorPayload {
   identifier?: string | null;
   location?: string | null;
   tappedAt?: string | null;
+  kioskGroup?: string | null;
 }
 
 interface TapErrorAlert {
@@ -284,6 +285,9 @@ export class Monitor implements OnDestroy {
           if (!tap?.attendanceId) {
             return;
           }
+          if (tap.kioskGroup && tap.kioskGroup !== 'MAIN_GATES') {
+            return;
+          }
           this.taps.update((list) =>
             [tap, ...list.filter((t) => t.attendanceId !== tap.attendanceId)].slice(
               0,
@@ -299,6 +303,9 @@ export class Monitor implements OnDestroy {
         .pipe(filter((e) => e.type === 'ATTENDANCE_TAP_ERROR'))
         .subscribe((event) => {
           const payload = (event.payload ?? {}) as TapErrorPayload;
+          if (payload.kioskGroup && payload.kioskGroup !== 'MAIN_GATES') {
+            return;
+          }
           this.pushTapError(payload);
           this.rfidErrorCount.update((n) => n + 1);
         }),

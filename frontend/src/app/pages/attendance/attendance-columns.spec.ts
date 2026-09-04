@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest';
 import type { ColumnDef } from '@tanstack/angular-table';
 import type { AttendanceDailyRecord } from '../../core/attendance/attendance-api.service';
 
-function visibleColumns(isStudent: boolean): string[] {
+function visibleColumns(mode: 'student' | 'employee' | 'combined'): string[] {
   const columns: ColumnDef<AttendanceDailyRecord>[] = [
+    { id: 'personType' },
     { id: 'name' },
     { id: 'department' },
     { id: 'course' },
@@ -14,8 +15,10 @@ function visibleColumns(isStudent: boolean): string[] {
   ];
   return columns
     .filter((col) => {
-      if (col.id === 'course' || col.id === 'school') return isStudent;
-      if (col.id === 'position') return !isStudent;
+      if (col.id === 'personType') return mode === 'combined';
+      if (col.id === 'course') return mode === 'student' || mode === 'combined';
+      if (col.id === 'school') return mode === 'student';
+      if (col.id === 'position') return mode === 'employee' || mode === 'combined';
       return true;
     })
     .map((col) => col.id!);
@@ -23,16 +26,26 @@ function visibleColumns(isStudent: boolean): string[] {
 
 describe('attendance page column mode', () => {
   it('shows course/school for students', () => {
-    const ids = visibleColumns(true);
+    const ids = visibleColumns('student');
     expect(ids).toContain('course');
     expect(ids).toContain('school');
     expect(ids).not.toContain('position');
+    expect(ids).not.toContain('personType');
   });
 
   it('shows position for employees', () => {
-    const ids = visibleColumns(false);
+    const ids = visibleColumns('employee');
     expect(ids).toContain('position');
     expect(ids).not.toContain('course');
+    expect(ids).not.toContain('school');
+    expect(ids).not.toContain('personType');
+  });
+
+  it('shows type, course, and position when combined', () => {
+    const ids = visibleColumns('combined');
+    expect(ids).toContain('personType');
+    expect(ids).toContain('course');
+    expect(ids).toContain('position');
     expect(ids).not.toContain('school');
   });
 });

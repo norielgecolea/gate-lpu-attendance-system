@@ -7,7 +7,6 @@ import {
   lucideChevronDown,
   lucideChevronsUpDown,
   lucideChevronUp,
-  lucideEraser,
   lucideFileUp,
   lucideHistory,
   lucideSearch,
@@ -15,6 +14,7 @@ import {
 import { HlmAvatarImports } from '@spartan-ng/helm/avatar';
 import { HlmBadge } from '@spartan-ng/helm/badge';
 import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmDialogService } from '@spartan-ng/helm/dialog';
 import { HlmInput } from '@spartan-ng/helm/input';
 import { HlmLabel } from '@spartan-ng/helm/label';
 import { HlmSeparator } from '@spartan-ng/helm/separator';
@@ -25,16 +25,27 @@ import {
   createAngularTable,
   getCoreRowModel,
 } from '@tanstack/angular-table';
-import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
+import { Subject, debounceTime, distinctUntilChanged, filter } from 'rxjs';
+import { AuthService } from '../../core/auth/auth.service';
 import {
   AttendanceApiService,
   type AttendanceDailyRecord,
+  type AttendancePersonFilter,
   type AttendanceSummary,
-  type PersonType,
 } from '../../core/attendance/attendance-api.service';
+import {
+  canPickExportKiosk,
+  kioskGroupFromRole,
+  kioskGroupSlug,
+  type KioskGroup,
+} from '../../core/kiosk/kiosk-group';
 import { studentPhotoUrl } from '../../core/students/student-photo.util';
 import { infiniteScroll } from '../../shared/infinite-scroll';
 import { PhotoPreview } from '../../shared/photo-preview/photo-preview.directive';
+import {
+  AttendanceExportDialog,
+  type AttendanceExportResult,
+} from './attendance-export-dialog';
 
 type DatePreset = 'today' | 'week' | 'month' | 'custom';
 
@@ -55,7 +66,6 @@ type DatePreset = 'today' | 'week' | 'month' | 'custom';
   ],
   viewProviders: [
     provideIcons({
-      lucideEraser,
       lucideFileUp,
       lucideSearch,
       lucideHistory,
@@ -70,12 +80,17 @@ type DatePreset = 'today' | 'week' | 'month' | 'custom';
 export class AttendancePage {
   private readonly api = inject(AttendanceApiService);
   private readonly route = inject(ActivatedRoute);
+  private readonly auth = inject(AuthService);
+  private readonly dialog = inject(HlmDialogService);
   private readonly searchChanges = new Subject<string>();
 
-  protected readonly personType = signal<PersonType>(
-    (this.route.snapshot.data['personType'] as PersonType) ?? 'STUDENT',
+  protected readonly personType = signal<AttendancePersonFilter>(
+    (this.route.snapshot.data['personType'] as AttendancePersonFilter) ?? 'STUDENT',
   );
+  protected readonly isCombined = () => this.personType() === 'ALL';
   protected readonly isStudent = () => this.personType() === 'STUDENT';
+  protected readonly canPickKiosk = canPickExportKiosk(this.auth.user()?.role);
+  protected readonly listKioskGroup: KioskGroup = kioskGroupFromRole(this.auth.user()?.role);
 
   protected readonly rows = signal<AttendanceDailyRecord[]>([]);
   protected readonly total = signal(0);
@@ -92,7 +107,6 @@ export class AttendancePage {
     currentlyIn: 0,
   });
   protected readonly search = signal('');
-  protected readonly department = signal('');
   protected readonly preset = signal<DatePreset>('today');
   protected readonly startDate = signal(todayIso());
   protected readonly endDate = signal(todayIso());
@@ -100,6 +114,7 @@ export class AttendancePage {
   protected readonly scroll = infiniteScroll();
 
   private readonly columns: ColumnDef<AttendanceDailyRecord>[] = [
+    { accessorKey: 'personType', header: 'Type', id: 'personType' },
     { accessorKey: 'name', header: 'Name', id: 'name' },
     { accessorKey: 'department', header: 'Department', id: 'department' },
     { accessorKey: 'course', header: 'Course', id: 'course' },
@@ -138,11 +153,20 @@ export class AttendancePage {
   }
 
   protected visibleColumns(): ColumnDef<AttendanceDailyRecord>[] {
+    const combined = this.isCombined();
+    const student = this.isStudent();
     return this.columns.filter((col) => {
-      if (col.id === 'course' || col.id === 'school') return this.isStudent();
-      if (col.id === 'position') return !this.isStudent();
+      if (col.id === 'personType') return combined;
+      if (col.id === 'course') return student || combined;
+      if (col.id === 'school') return student;
+      if (col.id === 'position') return !student || combined;
       return true;
     });
+  }
+
+  protected searchPlaceholder(): string {
+    if (this.isCombined()) return 'Search students and employees';
+    return this.isStudent() ? 'Search students' : 'Search employees';
   }
 
   protected onSearchChange(term: string): void {
@@ -170,12 +194,6 @@ export class AttendancePage {
   protected onCustomDateChange(): void {
     this.preset.set('custom');
     this.reload();
-  }
-
-  protected clearFilters(): void {
-    this.search.set('');
-    this.department.set('');
-    this.applyPreset('today');
   }
 
   protected reload(): void {
@@ -229,11 +247,30 @@ export class AttendancePage {
     });
   }
 
-  protected exportCsv(): void {
+  protected openExport(): void {
+    const ref = AttendanceExportDialog.open(this.dialog, {
+      startDate: this.startDate(),
+      endDate: this.endDate(),
+      canPickKiosk: this.canPickKiosk,
+      lockedKioskGroup: this.listKioskGroup,
+    });
+    ref.closed$
+      .pipe(filter((result): result is AttendanceExportResult => !!result))
+      .subscribe((result) => this.exportCsv(result));
+  }
+
+  protected exportCsv(result: AttendanceExportResult): void {
     this.exporting.set(true);
-    this.api.exportCsv(this.currentQuery(0)).subscribe({
+    this.error.set(null);
+    const query = {
+      ...this.currentQuery(0),
+      startDate: result.allTime ? undefined : result.startDate,
+      endDate: result.allTime ? undefined : result.endDate,
+      kioskGroup: result.kioskGroup,
+    };
+    this.api.exportCsv(query).subscribe({
       next: (blob) => {
-        downloadBlob(blob, `${this.personType().toLowerCase()}-attendance.csv`);
+        downloadBlob(blob, this.exportFilename(result));
         this.exporting.set(false);
       },
       error: (err: { error?: { message?: string } }) => {
@@ -244,9 +281,14 @@ export class AttendancePage {
   }
 
   protected detailLink(row: AttendanceDailyRecord): string[] {
-    return this.isStudent()
+    const student = row.personType === 'STUDENT' || this.isStudent();
+    return student
       ? ['/students', row.personId, 'attendance']
       : ['/employees', row.personId, 'attendance'];
+  }
+
+  protected personTypeLabel(value: string | undefined): string {
+    return value === 'EMPLOYEE' ? 'Employee' : 'Student';
   }
 
   protected sortIcon(state: false | 'asc' | 'desc'): string {
@@ -284,12 +326,21 @@ export class AttendancePage {
       startDate: this.startDate() || undefined,
       endDate: this.endDate() || undefined,
       search: this.search() || undefined,
-      department: this.department() || undefined,
+      kioskGroup: this.listKioskGroup,
       sortBy: sort?.id ?? 'date',
       sortDir: sort ? (sort.desc ? 'desc' : 'asc') : 'desc',
       offset,
       limit: 50,
     };
+  }
+
+  private exportFilename(result: AttendanceExportResult): string {
+    const type = this.personType().toLowerCase();
+    const group = kioskGroupSlug(result.kioskGroup);
+    const range = result.allTime
+      ? 'all-time'
+      : `${result.startDate ?? 'start'}-to-${result.endDate ?? 'end'}`;
+    return `${type}-attendance-${group}-${range}.csv`;
   }
 }
 

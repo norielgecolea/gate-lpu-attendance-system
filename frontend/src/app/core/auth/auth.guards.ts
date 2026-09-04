@@ -3,7 +3,7 @@ import { CanActivateFn, Router } from '@angular/router';
 import { AuthService } from './auth.service';
 
 function redirectAuthenticated(auth: AuthService, router: Router) {
-  if (auth.isGuard()) {
+  if (auth.isKiosk()) {
     return router.createUrlTree(['/guard']);
   }
   if (auth.isMonitoring()) {
@@ -62,7 +62,7 @@ export const guardRoleGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
   const router = inject(Router);
 
-  if (auth.isAuthenticated() && auth.isGuard()) {
+  if (auth.isAuthenticated() && auth.isKiosk()) {
     return true;
   }
   if (auth.isAuthenticated()) {

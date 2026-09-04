@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.List;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
+import org.nors.dev.codes.lpu.model.KioskGroup;
 import org.nors.dev.codes.lpu.model.TapErrorLog;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,45 +23,62 @@ public class TapErrorLogRepository {
     }
 
     @Transactional(readOnly = true)
-    public List<TapErrorLog> findAllNewestFirst(int limit) {
+    public List<TapErrorLog> findAllNewestFirst(int limit, KioskGroup kioskGroup) {
         return currentSession()
-                .createQuery("FROM TapErrorLog t ORDER BY t.tappedAt DESC, t.id DESC", TapErrorLog.class)
+                .createQuery(
+                        "FROM TapErrorLog t WHERE t.kioskGroup = :kioskGroup ORDER BY t.tappedAt DESC, t.id DESC",
+                        TapErrorLog.class
+                )
+                .setParameter("kioskGroup", kioskGroup)
                 .setMaxResults(clampLimit(limit))
                 .getResultList();
     }
 
     @Transactional(readOnly = true)
-    public List<TapErrorLog> findByRangeNewestFirst(Instant startInclusive, Instant endExclusive, int limit) {
+    public List<TapErrorLog> findByRangeNewestFirst(
+            Instant startInclusive,
+            Instant endExclusive,
+            int limit,
+            KioskGroup kioskGroup
+    ) {
         return currentSession()
                 .createQuery(
                         "FROM TapErrorLog t WHERE t.tappedAt >= :start AND t.tappedAt < :end "
+                                + "AND t.kioskGroup = :kioskGroup "
                                 + "ORDER BY t.tappedAt DESC, t.id DESC",
                         TapErrorLog.class
                 )
                 .setParameter("start", startInclusive)
                 .setParameter("end", endExclusive)
+                .setParameter("kioskGroup", kioskGroup)
                 .setMaxResults(clampLimit(limit))
                 .getResultList();
     }
 
     @Transactional(readOnly = true)
-    public long countAll() {
+    public long countAll(KioskGroup kioskGroup) {
         Long count = currentSession()
-                .createQuery("SELECT COUNT(t.id) FROM TapErrorLog t", Long.class)
+                .createQuery(
+                        "SELECT COUNT(t.id) FROM TapErrorLog t WHERE t.kioskGroup = :kioskGroup",
+                        Long.class
+                )
+                .setParameter("kioskGroup", kioskGroup)
                 .uniqueResult();
         return count != null ? count : 0;
     }
 
     @Transactional(readOnly = true)
-    public long countByRange(Instant startInclusive, Instant endExclusive) {
+    public long countByRange(Instant startInclusive, Instant endExclusive, KioskGroup kioskGroup) {
         Long count = currentSession()
                 .createQuery(
                         "SELECT COUNT(t.id) FROM TapErrorLog t "
-                                + "WHERE t.tappedAt >= :start AND t.tappedAt < :end",
+                                + "WHERE t.tappedAt >= :start AND t.tappedAt < :end "
+                                + "AND t.kioskGroup = :kioskGroup",
                         Long.class
                 )
                 .setParameter("start", startInclusive)
                 .setParameter("end", endExclusive)
+                .setParameter("kioskGroup", kioskGroup)
                 .uniqueResult();
         return count != null ? count : 0;
     }
@@ -73,20 +91,23 @@ public class TapErrorLogRepository {
     }
 
     @Transactional
-    public int deleteAll() {
+    public int deleteAll(KioskGroup kioskGroup) {
         return currentSession()
-                .createMutationQuery("DELETE FROM TapErrorLog")
+                .createMutationQuery("DELETE FROM TapErrorLog t WHERE t.kioskGroup = :kioskGroup")
+                .setParameter("kioskGroup", kioskGroup)
                 .executeUpdate();
     }
 
     @Transactional
-    public int deleteByRange(Instant startInclusive, Instant endExclusive) {
+    public int deleteByRange(Instant startInclusive, Instant endExclusive, KioskGroup kioskGroup) {
         return currentSession()
                 .createMutationQuery(
-                        "DELETE FROM TapErrorLog t WHERE t.tappedAt >= :start AND t.tappedAt < :end"
+                        "DELETE FROM TapErrorLog t WHERE t.tappedAt >= :start AND t.tappedAt < :end "
+                                + "AND t.kioskGroup = :kioskGroup"
                 )
                 .setParameter("start", startInclusive)
                 .setParameter("end", endExclusive)
+                .setParameter("kioskGroup", kioskGroup)
                 .executeUpdate();
     }
 

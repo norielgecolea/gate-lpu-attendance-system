@@ -1,0 +1,55 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: lpu-attendance-system
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/postgres}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:Lpu-1234}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+  servlet:
+    multipart:
+      # Large limits accommodate full-system backup restore (database + media).
+      # Individual video/photo endpoints still enforce their own type and size checks.
+      max-file-size: 2GB
+      max-request-size: 2GB
+      enabled: true
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+app:
+  jwt:
+    # Base64-encoded 256-bit secret (override via APP_JWT_SECRET in production)
+    secret: ${APP_JWT_SECRET:bHB1LWdhdGUtYXR0ZW5kYW5jZS1qd3Qtc2VjcmV0LWtleS0zMmJ5dGVzIQ==}
+    expiration-ms: ${APP_JWT_EXPIRATION_MS:28800000}
+    # ~10 years — "Remember me" sessions last until explicit logout
+    remember-expiration-ms: ${APP_JWT_REMEMBER_EXPIRATION_MS:315360000000}
+  sync:
+    # Required for /api/sync/**. Leave unset to disable machine sync access.
+    api-key: ${APP_SYNC_API_KEY:}
+  upload:
+    pictures-dir: ${APP_PICTURES_DIR:pictures}
+    videos-dir: ${APP_VIDEOS_DIR:videos}
+    tones-dir: ${APP_TONES_DIR:tones}
+    photo-optimization-enabled: ${APP_PHOTO_OPTIMIZATION_ENABLED:true}
+    photo-max-dimension: ${APP_PHOTO_MAX_DIMENSION:960}
+    photo-jpeg-quality: ${APP_PHOTO_JPEG_QUALITY:0.84}
+    video-optimization-enabled: ${APP_VIDEO_OPTIMIZATION_ENABLED:true}
+    video-max-width: ${APP_VIDEO_MAX_WIDTH:1280}
+    video-crf: ${APP_VIDEO_CRF:28}
+    ffmpeg-path: ${APP_FFMPEG_PATH:ffmpeg}
+
+logging:
+  config: classpath:log4j2.xml

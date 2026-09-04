@@ -5,5 +5,9 @@ public enum Role {
     OSAS,
     HR,
     MONITORING,
-    GUARD
+    GUARD,
+    LIBRARIAN,
+    LIBRARY_KIOSK,
+    OLIVE,
+    OLIVE_KIOSK
 }

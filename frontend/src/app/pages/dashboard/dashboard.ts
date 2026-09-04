@@ -22,6 +22,12 @@ import {
   type PersonType,
   type TapResponse,
 } from '../../core/attendance/attendance-api.service';
+import { AuthService } from '../../core/auth/auth.service';
+import {
+  kioskGroupFromRole,
+  KIOSK_GROUP_LABELS,
+  isVenueAdmin,
+} from '../../core/kiosk/kiosk-group';
 import { NotificationService } from '../../core/notifications/notification.service';
 import { studentPhotoUrl } from '../../core/students/student-photo.util';
 import { PhotoPreview } from '../../shared/photo-preview/photo-preview.directive';
@@ -124,7 +130,23 @@ export class Dashboard implements OnDestroy {
 
   private readonly attendanceApi = inject(AttendanceApiService);
   private readonly studentsApi = inject(StudentsApiService);
+  private readonly auth = inject(AuthService);
   protected readonly notifications = inject(NotificationService);
+  protected readonly kioskGroup = kioskGroupFromRole(this.auth.user()?.role);
+  protected readonly venueTitle =
+    this.kioskGroup === 'LIBRARY'
+      ? 'Library Overview'
+      : this.kioskGroup === 'OLIVE_HOTEL'
+        ? 'Olive Hotel Overview'
+        : 'Campus Overview';
+  protected readonly venueSubtitle =
+    this.kioskGroup === 'MAIN_GATES'
+      ? 'Realtime gate activity across LPU-Laguna'
+      : `Realtime ${KIOSK_GROUP_LABELS[this.kioskGroup]} attendance`;
+  protected readonly showDirectoryStats = !isVenueAdmin(this.auth.user()?.role);
+  protected readonly onlineKioskLocations = computed(() =>
+    this.notifications.onlineLocationsFor(this.kioskGroup),
+  );
 
   protected readonly recentTaps = signal<TapResponse[]>([]);
   protected readonly tapsLoading = signal(true);
@@ -233,17 +255,19 @@ export class Dashboard implements OnDestroy {
       error: () => this.tapsLoading.set(false),
     });
 
-    this.studentsApi.list().subscribe({
-      next: (students) => {
-        this.activeCount.set(students.length);
-        this.rfidCount.set(students.filter((s) => !!s.rfid).length);
-      },
-      error: () => undefined,
-    });
-    this.studentsApi.listInactive().subscribe({
-      next: (students) => this.inactiveCount.set(students.length),
-      error: () => undefined,
-    });
+    if (this.showDirectoryStats) {
+      this.studentsApi.list().subscribe({
+        next: (students) => {
+          this.activeCount.set(students.length);
+          this.rfidCount.set(students.filter((s) => !!s.rfid).length);
+        },
+        error: () => undefined,
+      });
+      this.studentsApi.listInactive().subscribe({
+        next: (students) => this.inactiveCount.set(students.length),
+        error: () => undefined,
+      });
+    }
 
     this.loadTodayPresence();
 
@@ -254,6 +278,9 @@ export class Dashboard implements OnDestroy {
       .subscribe((event) => {
         const tap = event.payload as TapResponse | undefined;
         if (!tap?.attendanceId) {
+          return;
+        }
+        if (tap.kioskGroup && tap.kioskGroup !== this.kioskGroup) {
           return;
         }
         this.recentTaps.update((list) =>

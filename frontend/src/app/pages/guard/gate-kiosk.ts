@@ -29,6 +29,7 @@ import {
   type TapResponse,
 } from '../../core/attendance/attendance-api.service';
 import { AuthService } from '../../core/auth/auth.service';
+import { kioskGroupFromRole } from '../../core/kiosk/kiosk-group';
 import { FullscreenService } from '../../core/fullscreen.service';
 import { NotificationService } from '../../core/notifications/notification.service';
 import { applyScanInput } from '../../core/rfid/wedge-scan-buffer';
@@ -155,6 +156,10 @@ export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
       .pipe(filter((e) => e.type === 'ATTENDANCE_TAP'))
       .subscribe((event) => {
         const payload = event.payload as TapResponse | undefined;
+        const myGroup = kioskGroupFromRole(this.auth.user()?.role);
+        if (payload?.kioskGroup && payload.kioskGroup !== myGroup) {
+          return;
+        }
         // Other kiosks share the recent list only — do not takeover this screen's hero.
         if (payload?.attendanceId) {
           this.mergeRecent(payload);
@@ -170,8 +175,12 @@ export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
         if (Date.now() < this.ignoreTapErrorEchoUntil) {
           return;
         }
-        const payload = (event.payload ?? {}) as { location?: string | null };
+        const payload = (event.payload ?? {}) as { location?: string | null; kioskGroup?: string | null };
         const myGate = this.auth.user()?.location ?? null;
+        const myGroup = kioskGroupFromRole(this.auth.user()?.role);
+        if (payload.kioskGroup && payload.kioskGroup !== myGroup) {
+          return;
+        }
         // Only react to errors from this kiosk's gate (or when gates are unknown).
         if (!myGate || !payload.location || payload.location === myGate) {
           this.showError('Record Not Found', true);

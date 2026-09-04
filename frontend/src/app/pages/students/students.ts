@@ -24,6 +24,8 @@ import { HlmDialogService } from '@spartan-ng/helm/dialog';
 import { HlmInput } from '@spartan-ng/helm/input';
 import { HlmSeparator } from '@spartan-ng/helm/separator';
 import { HlmTableImports } from '@spartan-ng/helm/table';
+import { AuthService } from '../../core/auth/auth.service';
+import { isVenueAdmin } from '../../core/kiosk/kiosk-group';
 import {
   type ColumnDef,
   type RowSelectionState,
@@ -91,6 +93,8 @@ export class Students {
   private readonly store = inject(StudentsStore);
   private readonly api = inject(StudentsApiService);
   private readonly dialog = inject(HlmDialogService);
+  private readonly auth = inject(AuthService);
+  protected readonly canManageDirectory = !isVenueAdmin(this.auth.user()?.role);
 
   protected readonly data = this.store.students;
   protected readonly total = this.store.total;
@@ -125,12 +129,12 @@ export class Students {
 
   protected readonly table = createAngularTable<Student>(() => ({
     data: this.data(),
-    columns: this.columns,
+    columns: this.columns.filter((col) => this.canManageDirectory || col.id !== 'select'),
     state: {
       sorting: this.sorting(),
       rowSelection: this.rowSelection(),
     },
-    enableRowSelection: true,
+    enableRowSelection: this.canManageDirectory,
     getRowId: (row) => row.id,
     onSortingChange: (updater) =>
       this.sorting.set(typeof updater === 'function' ? updater(this.sorting()) : updater),

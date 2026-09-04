@@ -11,6 +11,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.nors.dev.codes.lpu.dto.AuthEventMessage;
+import org.nors.dev.codes.lpu.model.KioskGroup;
+import org.nors.dev.codes.lpu.model.KioskGroups;
 import org.nors.dev.codes.lpu.model.Role;
 import org.springframework.stereotype.Service;
 import org.springframework.web.socket.TextMessage;
@@ -25,8 +27,8 @@ public class NotificationService {
     private static final int SEND_BUFFER_LIMIT = 512 * 1024;
 
     private final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
-    /** sessionId → display label for connected GUARD kiosks (location, else username). */
-    private final Map<String, String> onlineGuards = new ConcurrentHashMap<>();
+    /** sessionId → connected kiosk (location label + venue). */
+    private final Map<String, OnlineKiosk> onlineKiosks = new ConcurrentHashMap<>();
     private final ObjectMapper objectMapper;
 
     public NotificationService(ObjectMapper objectMapper) {
@@ -48,33 +50,59 @@ public class NotificationService {
                 location,
                 sessions.size()
         );
-        if (role == Role.GUARD) {
-            String label = resolveGuardLabel(location, username);
-            onlineGuards.put(session.getId(), label);
-            log.info("Guard online: session={} label={} (guards={})", session.getId(), label, onlineGuards.size());
+        if (KioskGroups.isKioskRole(role)) {
+            OnlineKiosk kiosk = new OnlineKiosk(
+                    resolveGuardLabel(location, username),
+                    KioskGroups.fromRole(role)
+            );
+            onlineKiosks.put(session.getId(), kiosk);
+            log.info(
+                    "Kiosk online: session={} label={} group={} (kiosks={})",
+                    session.getId(),
+                    kiosk.label(),
+                    kiosk.group(),
+                    onlineKiosks.size()
+            );
             broadcastGuardPresence();
         }
     }
 
     public void unregister(WebSocketSession session) {
         sessions.remove(session.getId());
-        String removedGuard = onlineGuards.remove(session.getId());
+        OnlineKiosk removed = onlineKiosks.remove(session.getId());
         log.info(
-                "WebSocket session unregistered: {} (active={}, wasGuard={})",
+                "WebSocket session unregistered: {} (active={}, wasKiosk={})",
                 session.getId(),
                 sessions.size(),
-                removedGuard != null
+                removed != null
         );
-        if (removedGuard != null) {
+        if (removed != null) {
             broadcastGuardPresence();
         }
     }
 
-    /** Distinct gate labels that currently have at least one connected GUARD kiosk. */
+    /** Distinct gate labels that currently have at least one connected Main Gates kiosk. */
     public List<String> onlineGuardLocations() {
+        return onlineKioskLocations(KioskGroup.MAIN_GATES);
+    }
+
+    public List<String> onlineKioskLocations(KioskGroup group) {
         TreeSet<String> locations = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-        locations.addAll(onlineGuards.values());
+        KioskGroup target = group != null ? group : KioskGroup.MAIN_GATES;
+        for (OnlineKiosk kiosk : onlineKiosks.values()) {
+            if (kiosk.group() == target) {
+                locations.add(kiosk.label());
+            }
+        }
         return List.copyOf(locations);
+    }
+
+    public Map<String, List<String>> onlineKiosksByGroup() {
+        Map<String, List<String>> byGroup = new LinkedHashMap<>();
+        for (KioskGroup group : KioskGroup.values()) {
+            byGroup.put(group.name(), onlineKioskLocations(group));
+        }
+        return byGroup;
     }
 
     public void sendGuardPresence(WebSocketSession session) {
@@ -114,7 +142,7 @@ public class NotificationService {
         }
         for (String id : dead) {
             sessions.remove(id);
-            onlineGuards.remove(id);
+            onlineKiosks.remove(id);
         }
     }
 
@@ -135,6 +163,7 @@ public class NotificationService {
             Map<String, Object> event = new LinkedHashMap<>();
             event.put("type", "GUARD_PRESENCE");
             event.put("locations", onlineGuardLocations());
+            event.put("kiosks", onlineKiosksByGroup());
             event.put("message", "Online guard locations updated");
             return objectMapper.writeValueAsString(event);
         } catch (IOException ex) {
@@ -151,5 +180,8 @@ public class NotificationService {
             return username.trim();
         }
         return "Unknown gate";
+    }
+
+    private record OnlineKiosk(String label, KioskGroup group) {
     }
 }

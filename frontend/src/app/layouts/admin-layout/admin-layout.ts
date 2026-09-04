@@ -45,6 +45,7 @@ import {
 import { AlertSoundService } from '../../core/alert-sound.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { canAccessAdminRoute } from '../../core/auth/role-access';
+import { isVenueAdmin, kioskGroupFromRole } from '../../core/kiosk/kiosk-group';
 import { NotificationService } from '../../core/notifications/notification.service';
 import { ChangePasswordDialog } from '../../shared/change-password/change-password-dialog';
 
@@ -63,6 +64,7 @@ interface TapErrorPayload {
   identifier?: string | null;
   location?: string | null;
   tappedAt?: string | null;
+  kioskGroup?: string | null;
 }
 
 interface TapErrorAlert {
@@ -165,6 +167,7 @@ export class AdminLayout implements OnDestroy {
       label: null,
       items: [
         { label: 'Dashboard', icon: 'lucideLayoutDashboard', route: '/dashboard' },
+        { label: 'Attendance', icon: 'lucideClock', route: '/attendance' },
         { label: 'RFID Checker', icon: 'lucideIdCard', route: '/rfid-checker' },
         { label: 'Daily Recap', icon: 'lucideChartColumn', route: '/daily-recap' },
       ],
@@ -172,7 +175,7 @@ export class AdminLayout implements OnDestroy {
     {
       label: 'Students',
       items: [
-        { label: 'Student Management', icon: 'lucideUsers', route: '/students' },
+        { label: 'Students', icon: 'lucideUsers', route: '/students' },
         { label: 'Student Attendance', icon: 'lucideClock', route: '/students/attendance' },
         { label: 'RFID Registration', icon: 'lucideScanBarcode', route: '/students/rfid' },
         { label: 'Inactive Students', icon: 'lucideUserX', route: '/students/inactive' },
@@ -182,7 +185,7 @@ export class AdminLayout implements OnDestroy {
     {
       label: 'Employees',
       items: [
-        { label: 'Employee Management', icon: 'lucideBriefcase', route: '/employees' },
+        { label: 'Employees', icon: 'lucideBriefcase', route: '/employees' },
         { label: 'Employee Attendance', icon: 'lucideClock', route: '/employees/attendance' },
         { label: 'RFID Registration', icon: 'lucideScanBarcode', route: '/employees/rfid' },
         { label: 'Inactive Employees', icon: 'lucideUserMinus', route: '/employees/inactive' },
@@ -215,12 +218,32 @@ export class AdminLayout implements OnDestroy {
 
   protected readonly visibleNavSections = computed(() => {
     const role = this.auth.user()?.role;
-    return this.navSections
+    const sections = this.navSections
       .map((section) => ({
         ...section,
         items: section.items.filter((item) => canAccessAdminRoute(role, item.route)),
       }))
       .filter((section) => section.items.length > 0);
+
+    if (!isVenueAdmin(role)) {
+      return sections;
+    }
+
+    const directoryItems = sections
+      .filter((section) => section.label === 'Students' || section.label === 'Employees')
+      .flatMap((section) => section.items);
+    const rest = sections.filter(
+      (section) => section.label !== 'Students' && section.label !== 'Employees',
+    );
+    if (directoryItems.length === 0) {
+      return rest;
+    }
+    const directory: NavSection = { label: 'Directory', items: directoryItems };
+    const insertAt = rest.findIndex((section) => section.label === 'Administration');
+    if (insertAt < 0) {
+      return [...rest, directory];
+    }
+    return [...rest.slice(0, insertAt), directory, ...rest.slice(insertAt)];
   });
 
   private readonly router = inject(Router);
@@ -328,7 +351,11 @@ export class AdminLayout implements OnDestroy {
     this.tapErrors.update((list) => list.filter((a) => a.id !== id));
   }
 
-  private pushTapError(payload: TapErrorPayload): void {
+  private pushTapError(payload: TapErrorPayload & { kioskGroup?: string | null }): void {
+    const myGroup = kioskGroupFromRole(this.auth.user()?.role);
+    if (payload.kioskGroup && payload.kioskGroup !== myGroup) {
+      return;
+    }
     const alert: TapErrorAlert = {
       id: this.nextAlertId++,
       identifier: payload.identifier?.trim() || 'Unknown ID',

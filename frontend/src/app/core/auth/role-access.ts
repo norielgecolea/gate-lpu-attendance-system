@@ -26,17 +26,31 @@ export function canAccessAdminRoute(role: string | null | undefined, route: stri
   if (!role) {
     return false;
   }
-  if (route === '/dashboard' || route === '/rfid-checker') {
+  if (route === '/dashboard') {
+    return role === 'SUPERADMIN' || role === 'OSAS' || role === 'HR' || role === 'LIBRARIAN' || role === 'OLIVE';
+  }
+  if (route === '/rfid-checker' || route === '/daily-recap') {
     return role === 'SUPERADMIN' || role === 'OSAS' || role === 'HR';
   }
-  if (route === '/daily-recap') {
-    return role === 'SUPERADMIN' || role === 'OSAS' || role === 'HR';
+  if (route === '/attendance') {
+    return role === 'LIBRARIAN' || role === 'OLIVE';
   }
-  if (route.startsWith('/students')) {
+  if (
+    route === '/students/inactive' ||
+    route === '/students/finance-tagged' ||
+    route === '/students/rfid' ||
+    route === '/students/attendance'
+  ) {
     return role === 'SUPERADMIN' || role === 'OSAS';
   }
-  if (route.startsWith('/employees')) {
+  if (route.startsWith('/students')) {
+    return role === 'SUPERADMIN' || role === 'OSAS' || role === 'LIBRARIAN' || role === 'OLIVE';
+  }
+  if (route === '/employees/inactive' || route === '/employees/rfid' || route === '/employees/attendance') {
     return role === 'SUPERADMIN' || role === 'HR';
+  }
+  if (route.startsWith('/employees')) {
+    return role === 'SUPERADMIN' || role === 'HR' || role === 'LIBRARIAN' || role === 'OLIVE';
   }
   if (route === '/users') {
     return role === 'SUPERADMIN' || role === 'OSAS' || role === 'HR';
@@ -48,7 +62,7 @@ export function canAccessAdminRoute(role: string | null | undefined, route: stri
     return role === 'SUPERADMIN' || role === 'OSAS';
   }
   if (route === '/tap-errors') {
-    return role === 'SUPERADMIN' || role === 'OSAS' || role === 'HR';
+    return role === 'SUPERADMIN' || role === 'OSAS' || role === 'HR' || role === 'LIBRARIAN' || role === 'OLIVE';
   }
   if (route === '/audit-logs') {
     return role === 'SUPERADMIN';

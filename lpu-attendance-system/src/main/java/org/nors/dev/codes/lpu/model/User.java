@@ -28,7 +28,7 @@ public class User {
     @Column(nullable = false, length = 50)
     private Role role;
 
-    /** Physical gate / station label for GUARD accounts (e.g. "Gate 1"). */
+    /** Physical gate / station label for kiosk accounts (e.g. "Gate 1"). */
     @Column(length = 100)
     private String location;
 

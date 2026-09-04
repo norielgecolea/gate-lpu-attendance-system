@@ -7,6 +7,7 @@ import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.query.Query;
 import org.nors.dev.codes.lpu.model.AttendanceLog;
+import org.nors.dev.codes.lpu.model.KioskGroup;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,63 +25,81 @@ public class AttendanceLogRepository {
     }
 
     @Transactional(readOnly = true)
-    public Optional<AttendanceLog> findByStudentAndDate(Long studentId, LocalDate date) {
+    public Optional<AttendanceLog> findByStudentAndDate(Long studentId, LocalDate date, KioskGroup kioskGroup) {
         return currentSession()
                 .createQuery(
-                        "FROM AttendanceLog a WHERE a.student.id = :studentId AND a.attendanceDate = :date",
+                        "FROM AttendanceLog a WHERE a.student.id = :studentId AND a.attendanceDate = :date"
+                                + " AND a.kioskGroup = :kioskGroup",
                         AttendanceLog.class
                 )
                 .setParameter("studentId", studentId)
                 .setParameter("date", date)
+                .setParameter("kioskGroup", kioskGroup)
                 .uniqueResultOptional();
     }
 
     @Transactional
-    public Optional<AttendanceLog> findByStudentAndDateForUpdate(Long studentId, LocalDate date) {
+    public Optional<AttendanceLog> findByStudentAndDateForUpdate(
+            Long studentId,
+            LocalDate date,
+            KioskGroup kioskGroup
+    ) {
         return currentSession()
                 .createQuery(
-                        "FROM AttendanceLog a WHERE a.student.id = :studentId AND a.attendanceDate = :date",
+                        "FROM AttendanceLog a WHERE a.student.id = :studentId AND a.attendanceDate = :date"
+                                + " AND a.kioskGroup = :kioskGroup",
                         AttendanceLog.class
                 )
                 .setParameter("studentId", studentId)
                 .setParameter("date", date)
+                .setParameter("kioskGroup", kioskGroup)
                 .setLockMode(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
                 .uniqueResultOptional();
     }
 
     @Transactional(readOnly = true)
-    public Optional<AttendanceLog> findByEmployeeAndDate(Long employeeId, LocalDate date) {
+    public Optional<AttendanceLog> findByEmployeeAndDate(Long employeeId, LocalDate date, KioskGroup kioskGroup) {
         return currentSession()
                 .createQuery(
-                        "FROM AttendanceLog a WHERE a.employee.id = :employeeId AND a.attendanceDate = :date",
+                        "FROM AttendanceLog a WHERE a.employee.id = :employeeId AND a.attendanceDate = :date"
+                                + " AND a.kioskGroup = :kioskGroup",
                         AttendanceLog.class
                 )
                 .setParameter("employeeId", employeeId)
                 .setParameter("date", date)
+                .setParameter("kioskGroup", kioskGroup)
                 .uniqueResultOptional();
     }
 
     @Transactional
-    public Optional<AttendanceLog> findByEmployeeAndDateForUpdate(Long employeeId, LocalDate date) {
+    public Optional<AttendanceLog> findByEmployeeAndDateForUpdate(
+            Long employeeId,
+            LocalDate date,
+            KioskGroup kioskGroup
+    ) {
         return currentSession()
                 .createQuery(
-                        "FROM AttendanceLog a WHERE a.employee.id = :employeeId AND a.attendanceDate = :date",
+                        "FROM AttendanceLog a WHERE a.employee.id = :employeeId AND a.attendanceDate = :date"
+                                + " AND a.kioskGroup = :kioskGroup",
                         AttendanceLog.class
                 )
                 .setParameter("employeeId", employeeId)
                 .setParameter("date", date)
+                .setParameter("kioskGroup", kioskGroup)
                 .setLockMode(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
                 .uniqueResultOptional();
     }
 
     @Transactional(readOnly = true)
-    public List<AttendanceLog> findRecentByDate(LocalDate date, int offset, int limit) {
+    public List<AttendanceLog> findRecentByDate(LocalDate date, KioskGroup kioskGroup, int offset, int limit) {
         return currentSession()
                 .createQuery(
-                        "FROM AttendanceLog a WHERE a.attendanceDate = :date ORDER BY a.updatedAt DESC",
+                        "FROM AttendanceLog a WHERE a.attendanceDate = :date AND a.kioskGroup = :kioskGroup"
+                                + " ORDER BY a.updatedAt DESC",
                         AttendanceLog.class
                 )
                 .setParameter("date", date)
+                .setParameter("kioskGroup", kioskGroup)
                 .setFirstResult(offset)
                 .setMaxResults(limit)
                 .getResultList();
@@ -96,6 +115,7 @@ public class AttendanceLogRepository {
             String department,
             String location,
             String status,
+            KioskGroup kioskGroup,
             String sortBy,
             String sortDir,
             int offset,
@@ -104,11 +124,15 @@ public class AttendanceLogRepository {
         StringBuilder hql = new StringBuilder(
                 "SELECT a FROM AttendanceLog a LEFT JOIN FETCH a.student s LEFT JOIN FETCH a.employee e WHERE 1=1"
         );
-        appendDailyFilters(hql, personType, personId, startDate, endDate, search, department, location, status);
+        appendDailyFilters(
+                hql, personType, personId, startDate, endDate, search, department, location, status, kioskGroup
+        );
         hql.append(orderByClause(sortBy, sortDir));
 
         Query<AttendanceLog> query = currentSession().createQuery(hql.toString(), AttendanceLog.class);
-        bindDailyFilters(query, personType, personId, startDate, endDate, search, department, location, status);
+        bindDailyFilters(
+                query, personType, personId, startDate, endDate, search, department, location, status, kioskGroup
+        );
         return query.setFirstResult(Math.max(offset, 0)).setMaxResults(Math.max(limit, 1)).getResultList();
     }
 
@@ -121,14 +145,19 @@ public class AttendanceLogRepository {
             String search,
             String department,
             String location,
-            String status
+            String status,
+            KioskGroup kioskGroup
     ) {
         StringBuilder hql = new StringBuilder(
                 "SELECT COUNT(a.id) FROM AttendanceLog a LEFT JOIN a.student s LEFT JOIN a.employee e WHERE 1=1"
         );
-        appendDailyFilters(hql, personType, personId, startDate, endDate, search, department, location, status);
+        appendDailyFilters(
+                hql, personType, personId, startDate, endDate, search, department, location, status, kioskGroup
+        );
         Query<Long> query = currentSession().createQuery(hql.toString(), Long.class);
-        bindDailyFilters(query, personType, personId, startDate, endDate, search, department, location, status);
+        bindDailyFilters(
+                query, personType, personId, startDate, endDate, search, department, location, status, kioskGroup
+        );
         Long count = query.uniqueResult();
         return count != null ? count : 0;
     }
@@ -142,7 +171,8 @@ public class AttendanceLogRepository {
             String search,
             String department,
             String location,
-            String status
+            String status,
+            KioskGroup kioskGroup
     ) {
         StringBuilder hql = new StringBuilder(
                 "SELECT"
@@ -154,9 +184,13 @@ public class AttendanceLogRepository {
                         + " SUM(CASE WHEN a.lastAction = 'TIME_IN' THEN 1 ELSE 0 END)"
                         + " FROM AttendanceLog a LEFT JOIN a.student s LEFT JOIN a.employee e WHERE 1=1"
         );
-        appendDailyFilters(hql, personType, personId, startDate, endDate, search, department, location, status);
+        appendDailyFilters(
+                hql, personType, personId, startDate, endDate, search, department, location, status, kioskGroup
+        );
         Query<Object[]> query = currentSession().createQuery(hql.toString(), Object[].class);
-        bindDailyFilters(query, personType, personId, startDate, endDate, search, department, location, status);
+        bindDailyFilters(
+                query, personType, personId, startDate, endDate, search, department, location, status, kioskGroup
+        );
         Object[] row = query.uniqueResult();
         return row != null ? row : new Object[]{0L, 0L, 0L, 0L, 0L};
     }
@@ -165,24 +199,35 @@ public class AttendanceLogRepository {
      * Unique people present, grouped by department, ordered by count descending.
      */
     @Transactional(readOnly = true)
-    public List<Object[]> countByDepartment(String personType, LocalDate startDate, LocalDate endDate) {
+    public List<Object[]> countByDepartment(
+            String personType,
+            LocalDate startDate,
+            LocalDate endDate,
+            KioskGroup kioskGroup
+    ) {
         StringBuilder hql = new StringBuilder(
                 "SELECT coalesce(nullif(trim(coalesce(s.department, e.department, '')), ''), 'Unassigned'),"
                         + " COUNT(DISTINCT COALESCE(s.id, e.id))"
                         + " FROM AttendanceLog a LEFT JOIN a.student s LEFT JOIN a.employee e WHERE 1=1"
         );
-        appendDailyFilters(hql, personType, null, startDate, endDate, null, null, null, null);
+        appendDailyFilters(hql, personType, null, startDate, endDate, null, null, null, null, kioskGroup);
         hql.append(
                 " GROUP BY coalesce(nullif(trim(coalesce(s.department, e.department, '')), ''), 'Unassigned')"
                         + " ORDER BY COUNT(DISTINCT COALESCE(s.id, e.id)) DESC"
         );
         Query<Object[]> query = currentSession().createQuery(hql.toString(), Object[].class);
-        bindDailyFilters(query, personType, null, startDate, endDate, null, null, null, null);
+        bindDailyFilters(query, personType, null, startDate, endDate, null, null, null, null, kioskGroup);
         return query.list();
     }
 
     @Transactional(readOnly = true)
-    public Object[] summarizePerson(String personType, Long personId, LocalDate startDate, LocalDate endDate) {
+    public Object[] summarizePerson(
+            String personType,
+            Long personId,
+            LocalDate startDate,
+            LocalDate endDate,
+            KioskGroup kioskGroup
+    ) {
         String personClause = "EMPLOYEE".equalsIgnoreCase(personType)
                 ? " a.employee.id = :personId"
                 : " a.student.id = :personId";
@@ -196,6 +241,7 @@ public class AttendanceLogRepository {
                         + " MAX(a.attendanceDate)"
                         + " FROM AttendanceLog a WHERE"
                         + personClause
+                        + " AND a.kioskGroup = :kioskGroup"
         );
         if (startDate != null) {
             hql.append(" AND a.attendanceDate >= :startDate");
@@ -205,6 +251,7 @@ public class AttendanceLogRepository {
         }
         Query<Object[]> query = currentSession().createQuery(hql.toString(), Object[].class);
         query.setParameter("personId", personId);
+        query.setParameter("kioskGroup", kioskGroup);
         if (startDate != null) {
             query.setParameter("startDate", startDate);
         }
@@ -216,10 +263,11 @@ public class AttendanceLogRepository {
     }
 
     @Transactional(readOnly = true)
-    public List<String> distinctLocations(String personType, LocalDate startDate, LocalDate endDate) {
+    public List<String> distinctLocations(String personType, LocalDate startDate, LocalDate endDate, KioskGroup kioskGroup) {
         StringBuilder sql = new StringBuilder(
                 "SELECT DISTINCT loc FROM ("
                         + " SELECT time_in_location AS loc FROM attendance_logs WHERE time_in_location IS NOT NULL"
+                        + " AND kiosk_group = :kioskGroup"
         );
         if ("STUDENT".equalsIgnoreCase(personType)) {
             sql.append(" AND student_id IS NOT NULL");
@@ -232,7 +280,8 @@ public class AttendanceLogRepository {
         if (endDate != null) {
             sql.append(" AND attendance_date <= :endDate");
         }
-        sql.append(" UNION SELECT time_out_location AS loc FROM attendance_logs WHERE time_out_location IS NOT NULL");
+        sql.append(" UNION SELECT time_out_location AS loc FROM attendance_logs WHERE time_out_location IS NOT NULL"
+                + " AND kiosk_group = :kioskGroup");
         if ("STUDENT".equalsIgnoreCase(personType)) {
             sql.append(" AND student_id IS NOT NULL");
         } else if ("EMPLOYEE".equalsIgnoreCase(personType)) {
@@ -247,6 +296,7 @@ public class AttendanceLogRepository {
         sql.append(") t WHERE loc IS NOT NULL AND btrim(loc) <> '' ORDER BY loc ASC");
 
         var query = currentSession().createNativeQuery(sql.toString(), String.class);
+        query.setParameter("kioskGroup", kioskGroup.name());
         if (startDate != null) {
             query.setParameter("startDate", startDate);
         }
@@ -286,8 +336,12 @@ public class AttendanceLogRepository {
             String search,
             String department,
             String location,
-            String status
+            String status,
+            KioskGroup kioskGroup
     ) {
+        if (kioskGroup != null) {
+            hql.append(" AND a.kioskGroup = :kioskGroup");
+        }
         if ("STUDENT".equalsIgnoreCase(personType)) {
             hql.append(" AND a.student IS NOT NULL");
         } else if ("EMPLOYEE".equalsIgnoreCase(personType)) {
@@ -296,7 +350,7 @@ public class AttendanceLogRepository {
         if (personId != null) {
             if ("EMPLOYEE".equalsIgnoreCase(personType)) {
                 hql.append(" AND a.employee.id = :personId");
-            } else {
+            } else if ("STUDENT".equalsIgnoreCase(personType)) {
                 hql.append(" AND a.student.id = :personId");
             }
         }
@@ -342,8 +396,12 @@ public class AttendanceLogRepository {
             String search,
             String department,
             String location,
-            String status
+            String status,
+            KioskGroup kioskGroup
     ) {
+        if (kioskGroup != null) {
+            query.setParameter("kioskGroup", kioskGroup);
+        }
         if (personId != null) {
             query.setParameter("personId", personId);
         }
