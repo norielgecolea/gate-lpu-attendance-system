@@ -11,12 +11,15 @@ import {
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
   lucideActivity,
+  lucideBookOpen,
   lucideBriefcase,
+  lucideBuilding2,
   lucideDoorOpen,
   lucideExpand,
   lucideGraduationCap,
   lucideKeyRound,
   lucideLogOut,
+  lucideScanBarcode,
   lucideTriangleAlert,
   lucideX,
 } from '@ng-icons/lucide';
@@ -34,6 +37,10 @@ import {
 import { AlertSoundService } from '../../core/alert-sound.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { FullscreenService } from '../../core/fullscreen.service';
+import {
+  KIOSK_GROUP_LABELS,
+  type KioskGroup,
+} from '../../core/kiosk/kiosk-group';
 import { NotificationService } from '../../core/notifications/notification.service';
 import { studentPhotoUrl } from '../../core/students/student-photo.util';
 import { TapErrorLogsApiService } from '../../core/tap-errors/tap-error-logs-api.service';
@@ -46,6 +53,24 @@ const EMPTY_SUMMARY: AttendanceSummary = {
   openDays: 0,
   totalTaps: 0,
   currentlyIn: 0,
+};
+
+interface MonitorVenue {
+  id: KioskGroup;
+  label: string;
+  icon: string;
+}
+
+const MONITOR_VENUES: readonly MonitorVenue[] = [
+  { id: 'MAIN_GATES', label: 'Main Gates', icon: 'lucideScanBarcode' },
+  { id: 'LIBRARY', label: 'Library', icon: 'lucideBookOpen' },
+  { id: 'OLIVE_HOTEL', label: 'Olive Hotel', icon: 'lucideBuilding2' },
+];
+
+const EMPTY_VENUE_TAPS: Record<KioskGroup, TapResponse[]> = {
+  MAIN_GATES: [],
+  LIBRARY: [],
+  OLIVE_HOTEL: [],
 };
 
 interface HourBar {
@@ -74,12 +99,15 @@ interface TapErrorAlert {
   viewProviders: [
     provideIcons({
       lucideActivity,
+      lucideBookOpen,
       lucideBriefcase,
+      lucideBuilding2,
       lucideDoorOpen,
       lucideExpand,
       lucideGraduationCap,
       lucideKeyRound,
       lucideLogOut,
+      lucideScanBarcode,
       lucideTriangleAlert,
       lucideX,
     }),
@@ -171,6 +199,59 @@ interface TapErrorAlert {
       color: rgb(248 113 113);
     }
 
+    .monitor-venues {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0.75rem;
+    }
+
+    @media (min-width: 1024px) {
+      .monitor-venues {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+
+    :host.monitor-fs .monitor-venues {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      min-height: 0;
+      flex: 1;
+    }
+
+    @media (max-width: 899px) {
+      .monitor-venues,
+      :host.monitor-fs .monitor-venues {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .monitor-venue-pane {
+      min-height: 0;
+      border-top: 3px solid rgb(56 189 248);
+    }
+
+    .monitor-venue-pane[data-venue='LIBRARY'] {
+      border-top-color: rgb(45 212 191);
+    }
+
+    .monitor-venue-pane[data-venue='OLIVE_HOTEL'] {
+      border-top-color: rgb(163 230 53);
+    }
+
+    .monitor-venue-icon {
+      background: rgb(14 165 233 / 0.15);
+      color: rgb(125 211 252);
+    }
+
+    .monitor-venue-pane[data-venue='LIBRARY'] .monitor-venue-icon {
+      background: rgb(20 184 166 / 0.15);
+      color: rgb(94 234 212);
+    }
+
+    .monitor-venue-pane[data-venue='OLIVE_HOTEL'] .monitor-venue-icon {
+      background: rgb(132 204 22 / 0.15);
+      color: rgb(190 242 100);
+    }
+
     .recent-tappers-scroll {
       scrollbar-width: thin;
       scrollbar-color: transparent transparent;
@@ -201,7 +282,10 @@ interface TapErrorAlert {
       background-color: rgb(71 85 105 / 0.9);
     }
   `,
-  host: { class: 'block h-dvh w-full overflow-hidden' },
+  host: {
+    class: 'block h-dvh w-full overflow-hidden',
+    '[class.monitor-fs]': 'isFullscreen()',
+  },
 })
 export class Monitor implements OnDestroy {
   private static readonly FEED_LIMIT = 8;
@@ -221,8 +305,11 @@ export class Monitor implements OnDestroy {
   protected readonly clockTz = this.serverClock.datePipeTimezone;
   protected readonly isFullscreen = signal(false);
   protected readonly loggingOut = signal(false);
-
-  protected readonly taps = signal<TapResponse[]>([]);
+  protected readonly venues = MONITOR_VENUES;
+  protected readonly kioskLabels = KIOSK_GROUP_LABELS;
+  protected readonly venueTaps = signal<Record<KioskGroup, TapResponse[]>>({
+    ...EMPTY_VENUE_TAPS,
+  });
   protected readonly tapErrors = signal<TapErrorAlert[]>([]);
   private nextAlertId = 1;
   private readonly alertTimers = new Set<ReturnType<typeof setTimeout>>();
@@ -232,15 +319,15 @@ export class Monitor implements OnDestroy {
   protected readonly employeeDepts = signal<AttendanceDepartmentCount[]>([]);
   protected readonly hours = signal<AttendanceHourCount[]>([]);
 
-  protected readonly spotlight = computed(() => this.taps()[0] ?? null);
-  protected readonly feed = computed(() => this.taps().slice(1, Monitor.FEED_LIMIT));
-
   protected readonly totalTaps = computed(
     () => this.studentSummary().totalTaps + this.employeeSummary().totalTaps,
   );
   protected readonly studentsInside = computed(() => this.studentSummary().currentlyIn);
   protected readonly employeesInside = computed(() => this.employeeSummary().currentlyIn);
   protected readonly rfidErrorCount = signal(0);
+  protected readonly anyKioskOnline = computed(() =>
+    MONITOR_VENUES.some((v) => this.notifications.onlineLocationsFor(v.id).length > 0),
+  );
 
   /** Continuous hour range from first to last activity, minimum 06:00–18:00. */
   protected readonly hourBars = computed<HourBar[]>(() => {
@@ -285,15 +372,14 @@ export class Monitor implements OnDestroy {
           if (!tap?.attendanceId) {
             return;
           }
-          if (tap.kioskGroup && tap.kioskGroup !== 'MAIN_GATES') {
-            return;
-          }
-          this.taps.update((list) =>
-            [tap, ...list.filter((t) => t.attendanceId !== tap.attendanceId)].slice(
-              0,
-              Monitor.FEED_LIMIT + 1,
-            ),
-          );
+          const group = this.venueOf(tap.kioskGroup);
+          this.venueTaps.update((map) => ({
+            ...map,
+            [group]: [
+              tap,
+              ...(map[group] ?? []).filter((t) => t.attendanceId !== tap.attendanceId),
+            ].slice(0, Monitor.FEED_LIMIT + 1),
+          }));
           this.refresh.next();
         }),
     );
@@ -303,9 +389,6 @@ export class Monitor implements OnDestroy {
         .pipe(filter((e) => e.type === 'ATTENDANCE_TAP_ERROR'))
         .subscribe((event) => {
           const payload = (event.payload ?? {}) as TapErrorPayload;
-          if (payload.kioskGroup && payload.kioskGroup !== 'MAIN_GATES') {
-            return;
-          }
           this.pushTapError(payload);
           this.rfidErrorCount.update((n) => n + 1);
         }),
@@ -345,7 +428,9 @@ export class Monitor implements OnDestroy {
     const alert: TapErrorAlert = {
       id: this.nextAlertId++,
       identifier: payload.identifier?.trim() || 'Unknown ID',
-      location: payload.location?.trim() || 'Unknown gate',
+      location: [payload.location?.trim(), this.kioskLabels[this.venueOf(payload.kioskGroup)]]
+        .filter(Boolean)
+        .join(' · ') || 'Unknown gate',
       time: payload.tappedAt ? new Date(payload.tappedAt) : this.serverClock.now(),
     };
     // Keep at most 4 stacked alerts; each dismisses itself after 12s.
@@ -373,6 +458,25 @@ export class Monitor implements OnDestroy {
       next: () => this.loggingOut.set(false),
       error: () => this.loggingOut.set(false),
     });
+  }
+
+  protected spotlightFor(group: KioskGroup): TapResponse | null {
+    return this.venueTaps()[group]?.[0] ?? null;
+  }
+
+  protected feedFor(group: KioskGroup): TapResponse[] {
+    return (this.venueTaps()[group] ?? []).slice(1, Monitor.FEED_LIMIT);
+  }
+
+  protected onlineFor(group: KioskGroup): string[] {
+    return this.notifications.onlineLocationsFor(group);
+  }
+
+  private venueOf(raw: string | null | undefined): KioskGroup {
+    if (raw === 'LIBRARY' || raw === 'OLIVE_HOTEL' || raw === 'MAIN_GATES') {
+      return raw;
+    }
+    return 'MAIN_GATES';
   }
 
   protected tapTime(tap: TapResponse): string {
@@ -413,8 +517,18 @@ export class Monitor implements OnDestroy {
   }
 
   private loadAll(): void {
-    this.attendanceApi.recent(Monitor.FEED_LIMIT + 1).subscribe({
-      next: (taps) => this.taps.set(taps),
+    forkJoin({
+      MAIN_GATES: this.attendanceApi
+        .recent(Monitor.FEED_LIMIT + 1, 0, 'MAIN_GATES')
+        .pipe(catchError(() => of([] as TapResponse[]))),
+      LIBRARY: this.attendanceApi
+        .recent(Monitor.FEED_LIMIT + 1, 0, 'LIBRARY')
+        .pipe(catchError(() => of([] as TapResponse[]))),
+      OLIVE_HOTEL: this.attendanceApi
+        .recent(Monitor.FEED_LIMIT + 1, 0, 'OLIVE_HOTEL')
+        .pipe(catchError(() => of([] as TapResponse[]))),
+    }).subscribe({
+      next: (taps) => this.venueTaps.set(taps),
       error: () => undefined,
     });
     this.loadStats();

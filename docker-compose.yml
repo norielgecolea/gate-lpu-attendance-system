@@ -61,15 +61,20 @@ services:
       BACKEND_URL: http://tomcat:8080
       BACKEND_CONTEXT_PATH: /attendance-system
       HUSKY: "0"
+      # production = SSR without API proxy (nginx on :80 does that).
+      # development = ng serve with proxy.conf.js so localhost:4200 can log in.
+      FRONTEND_MODE: ${FRONTEND_MODE:-development}
       NG_ALLOWED_HOSTS: "attendance.norielgecolea.com,attendance.lpulaguna.com,attendancev2.lpu-laguna.edu.ph,localhost,127.0.0.1,angular"
       NG_TRUST_PROXY_HEADERS: "X-FORWARDED-FOR,X-FORWARDED-PROTO,X-FORWARDED-HOST"
       PORT: "4200"
       HOST: "0.0.0.0"
-    # Serve the production SSR build. Set FRONTEND_MODE=development to use ng serve.
+    # Serve the production SSR build. Set FRONTEND_MODE=production for SSR.
+    # Default development uses ng serve so localhost:4200 proxies /attendance-system to Tomcat.
     command: >
       sh -c "test -f package.json || { echo 'Missing package.json — mount ./frontend to /app'; exit 1; };
       if [ \"$${FRONTEND_MODE:-production}\" = development ]; then
-        npm install && npx ng serve --host 0.0.0.0 --port 4200 --proxy-config proxy.conf.js;
+        test -x node_modules/.bin/ng || npm install;
+        npx ng serve --host 0.0.0.0 --port 4200 --proxy-config proxy.conf.js;
       else
         test -f dist/lpu-gate-attendance/server/server.mjs || { npm install && npx ng build; };
         PORT=4200 HOST=0.0.0.0 node dist/lpu-gate-attendance/server/server.mjs;

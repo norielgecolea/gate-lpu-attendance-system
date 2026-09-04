@@ -52,9 +52,10 @@ public class AttendanceController {
     public ResponseEntity<List<TapResponse>> recent(
             @RequestParam(defaultValue = "20") int limit,
             @RequestParam(defaultValue = "0") int offset,
+            @RequestParam(required = false) String kioskGroup,
             @AuthenticationPrincipal AuthenticatedUser user
     ) {
-        return ResponseEntity.ok(attendanceService.recent(limit, offset, viewGroup(user, null)));
+        return ResponseEntity.ok(attendanceService.recent(limit, offset, viewGroup(user, kioskGroup)));
     }
 
     @GetMapping

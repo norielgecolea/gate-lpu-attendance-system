@@ -130,10 +130,14 @@ export class AttendanceApiService {
     return this.http.post<TapResponse>(`${this.baseUrl}/tap`, { identifier });
   }
 
-  recent(limit = 20, offset = 0): Observable<TapResponse[]> {
-    return this.http.get<TapResponse[]>(`${this.baseUrl}/recent`, {
-      params: { limit: String(limit), offset: String(offset) },
-    });
+  recent(limit = 20, offset = 0, kioskGroup?: KioskGroup): Observable<TapResponse[]> {
+    let params = new HttpParams()
+      .set('limit', String(limit))
+      .set('offset', String(offset));
+    if (kioskGroup) {
+      params = params.set('kioskGroup', kioskGroup);
+    }
+    return this.http.get<TapResponse[]>(`${this.baseUrl}/recent`, { params });
   }
 
   page(query: AttendanceQuery): Observable<AttendancePage> {

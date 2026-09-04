@@ -30,12 +30,15 @@ public final class KioskGroups {
 
     /**
      * List, dashboard, recap, and recent feeds. Librarian/Olive are locked to their
-     * venue; everyone else (including Superadmin) sees Main Gates.
+     * venue. Superadmin/OSAS/HR/Monitoring may pick a group; omitted defaults to Main Gates.
      */
     public static KioskGroup resolveForView(Role role, String requested) {
         KioskGroup locked = lockedGroup(role);
         if (locked != null) {
             return locked;
+        }
+        if (role == Role.SUPERADMIN || role == Role.OSAS || role == Role.HR || role == Role.MONITORING) {
+            return parseOrDefault(requested, KioskGroup.MAIN_GATES);
         }
         return KioskGroup.MAIN_GATES;
     }

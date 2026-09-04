@@ -34,6 +34,8 @@ import {
   type AttendanceSummary,
 } from '../../core/attendance/attendance-api.service';
 import {
+  KIOSK_GROUPS,
+  KIOSK_GROUP_LABELS,
   canPickExportKiosk,
   kioskGroupFromRole,
   kioskGroupSlug,
@@ -90,7 +92,11 @@ export class AttendancePage {
   protected readonly isCombined = () => this.personType() === 'ALL';
   protected readonly isStudent = () => this.personType() === 'STUDENT';
   protected readonly canPickKiosk = canPickExportKiosk(this.auth.user()?.role);
-  protected readonly listKioskGroup: KioskGroup = kioskGroupFromRole(this.auth.user()?.role);
+  protected readonly kioskGroups = KIOSK_GROUPS;
+  protected readonly kioskLabels = KIOSK_GROUP_LABELS;
+  protected readonly listKioskGroup = signal<KioskGroup>(
+    kioskGroupFromRole(this.auth.user()?.role),
+  );
 
   protected readonly rows = signal<AttendanceDailyRecord[]>([]);
   protected readonly total = signal(0);
@@ -196,6 +202,11 @@ export class AttendancePage {
     this.reload();
   }
 
+  protected setListKiosk(group: KioskGroup): void {
+    this.listKioskGroup.set(group);
+    this.reload();
+  }
+
   protected reload(): void {
     this.loading.set(true);
     this.error.set(null);
@@ -252,7 +263,7 @@ export class AttendancePage {
       startDate: this.startDate(),
       endDate: this.endDate(),
       canPickKiosk: this.canPickKiosk,
-      lockedKioskGroup: this.listKioskGroup,
+      lockedKioskGroup: this.listKioskGroup(),
     });
     ref.closed$
       .pipe(filter((result): result is AttendanceExportResult => !!result))
@@ -326,7 +337,7 @@ export class AttendancePage {
       startDate: this.startDate() || undefined,
       endDate: this.endDate() || undefined,
       search: this.search() || undefined,
-      kioskGroup: this.listKioskGroup,
+      kioskGroup: this.listKioskGroup(),
       sortBy: sort?.id ?? 'date',
       sortDir: sort ? (sort.desc ? 'desc' : 'asc') : 'desc',
       offset,

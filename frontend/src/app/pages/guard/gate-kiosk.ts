@@ -14,6 +14,8 @@ import {
 import { FormsModule } from '@angular/forms';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
+  lucideBookOpen,
+  lucideBuilding2,
   lucideCircleAlert,
   lucideClock,
   lucideKeyRound,
@@ -21,6 +23,7 @@ import {
   lucideScanBarcode,
   lucideUserRound,
 } from '@ng-icons/lucide';
+import { kioskGroupFromRole, type KioskGroup } from '../../core/kiosk/kiosk-group';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmDialogService } from '@spartan-ng/helm/dialog';
 import { Subscription, filter, take } from 'rxjs';
@@ -29,7 +32,6 @@ import {
   type TapResponse,
 } from '../../core/attendance/attendance-api.service';
 import { AuthService } from '../../core/auth/auth.service';
-import { kioskGroupFromRole } from '../../core/kiosk/kiosk-group';
 import { FullscreenService } from '../../core/fullscreen.service';
 import { NotificationService } from '../../core/notifications/notification.service';
 import { applyScanInput } from '../../core/rfid/wedge-scan-buffer';
@@ -69,6 +71,8 @@ interface BalloonPiece {
   viewProviders: [
     provideIcons({
       lucideScanBarcode,
+      lucideBookOpen,
+      lucideBuilding2,
       lucideClock,
       lucideKeyRound,
       lucideLogOut,
@@ -78,7 +82,10 @@ interface BalloonPiece {
   ],
   templateUrl: './gate-kiosk.html',
   styleUrl: './gate-kiosk.css',
-  host: { class: 'gate-kiosk-host' },
+  host: {
+    class: 'gate-kiosk-host',
+    '[attr.data-kiosk]': 'kioskGroup',
+  },
 })
 export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('idInput') private readonly idInput?: ElementRef<HTMLInputElement>;
@@ -113,6 +120,37 @@ export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
   protected readonly clock = this.serverClock.now;
   protected readonly clockTz = this.serverClock.datePipeTimezone;
   protected readonly guardName = this.auth.user;
+  protected readonly kioskGroup: KioskGroup = kioskGroupFromRole(this.auth.user()?.role);
+  protected readonly venueBrand =
+    this.kioskGroup === 'LIBRARY'
+      ? 'LPU Library'
+      : this.kioskGroup === 'OLIVE_HOTEL'
+        ? 'Olive Hotel'
+        : 'LPU Laguna';
+  protected readonly venueTitle =
+    this.kioskGroup === 'LIBRARY'
+      ? 'Library Attendance'
+      : this.kioskGroup === 'OLIVE_HOTEL'
+        ? 'Olive Hotel Attendance'
+        : 'Gate Attendance';
+  protected readonly idleHint =
+    this.kioskGroup === 'LIBRARY'
+      ? 'Ready to scan at the Library'
+      : this.kioskGroup === 'OLIVE_HOTEL'
+        ? 'Ready to scan at Olive Hotel'
+        : 'Ready to scan';
+  protected readonly notFoundHint =
+    this.kioskGroup === 'LIBRARY'
+      ? 'Please go to the Library desk'
+      : this.kioskGroup === 'OLIVE_HOTEL'
+        ? 'Please go to Olive Hotel reception'
+        : 'Please go to OSAS';
+  protected readonly idleIcon =
+    this.kioskGroup === 'LIBRARY'
+      ? 'lucideBookOpen'
+      : this.kioskGroup === 'OLIVE_HOTEL'
+        ? 'lucideBuilding2'
+        : 'lucideScanBarcode';
   protected readonly accountDialogOpen = signal(false);
   protected readonly animKey = signal(0);
   protected readonly confetti = signal<ConfettiPiece[]>([]);

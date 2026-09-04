@@ -75,6 +75,25 @@
       />
     </div>
 
+    @if (canPickKiosk) {
+      <div class="flex flex-col gap-1">
+        <span hlmLabel>Kiosk</span>
+        <div class="flex flex-wrap gap-1">
+          @for (group of kioskGroups; track group) {
+            <button
+              hlmBtn
+              type="button"
+              size="sm"
+              [variant]="listKioskGroup() === group ? 'default' : 'outline'"
+              (click)="setListKiosk(group)"
+            >
+              {{ kioskLabels[group] }}
+            </button>
+          }
+        </div>
+      </div>
+    }
+
     <hlm-separator orientation="vertical" class="mx-1 h-6" />
     <button
       hlmBtn

@@ -8,7 +8,7 @@
         <img src="/logo.svg" alt="LPU-Laguna logo" class="size-9 shrink-0 object-contain sm:size-10" />
         <div class="min-w-0 leading-tight">
           <p class="truncate text-xs font-bold tracking-wide text-white uppercase sm:text-sm">LPU-Laguna</p>
-          <p class="truncate text-[11px] text-slate-400 sm:text-xs">Gate Monitoring</p>
+          <p class="truncate text-[11px] text-slate-400 sm:text-xs">Campus Monitoring</p>
         </div>
       </div>
 
@@ -68,18 +68,20 @@
           {{ notifications.connected() ? 'LIVE' : 'OFFLINE' }}
         </span>
 
-        @if (notifications.onlineGuardLocations().length > 0) {
-          @for (gate of notifications.onlineGuardLocations(); track gate) {
-            <span
-              class="flex items-center gap-1.5 rounded-full bg-slate-800/90 px-2.5 py-1 text-[11px] font-semibold text-slate-200 sm:px-3 sm:text-xs"
-              [title]="'Guard online at ' + gate"
-            >
-              <span class="size-1.5 shrink-0 rounded-full bg-emerald-400"></span>
-              {{ gate }}
-            </span>
+        @if (anyKioskOnline()) {
+          @for (venue of venues; track venue.id) {
+            @for (loc of onlineFor(venue.id); track loc) {
+              <span
+                class="flex items-center gap-1.5 rounded-full bg-slate-800/90 px-2.5 py-1 text-[11px] font-semibold text-slate-200 sm:px-3 sm:text-xs"
+                [title]="venue.label + ' online at ' + loc"
+              >
+                <span class="size-1.5 shrink-0 rounded-full bg-emerald-400"></span>
+                {{ venue.label }} · {{ loc }}
+              </span>
+            }
           }
         } @else if (notifications.connected()) {
-          <span class="text-[11px] font-medium text-slate-500 sm:text-xs">No guards online</span>
+          <span class="text-[11px] font-medium text-slate-500 sm:text-xs">No kiosks online</span>
         }
       </div>
 
@@ -206,97 +208,122 @@
         </div>
       </div>
 
-      <!-- Live activity -->
-      <section class="flex flex-col gap-2.5 rounded-2xl bg-slate-900 p-3 ring-1 ring-slate-800 sm:gap-3 sm:p-4 md:p-5">
+      <!-- Live kiosk activity: 3×1 on wide/fullscreen, 1×3 on small screens -->
+      <section class="flex min-h-0 flex-col gap-2.5">
         <h2 class="text-xs font-semibold tracking-wider text-slate-400 uppercase sm:text-sm">
-          Live Gate Activity
+          Live Kiosk Monitoring
         </h2>
 
-        @if (spotlight(); as tap) {
-          <article
-            class="spotlight-card flex flex-col gap-3 rounded-2xl p-3 ring-1 sm:flex-row sm:items-center sm:gap-4 sm:p-4"
-            [class]="
-              tap.action === 'TIME_IN'
-                ? 'bg-emerald-500/10 ring-emerald-500/30'
-                : 'bg-amber-500/10 ring-amber-500/30'
-            "
-          >
-            <div class="flex min-w-0 items-center gap-3">
-              <hlm-avatar
-                class="size-14 shrink-0 text-lg ring-4 sm:size-20 sm:text-xl md:size-24"
-                [class]="tap.action === 'TIME_IN' ? 'ring-emerald-500/60' : 'ring-amber-500/60'"
-              >
-                @if (personPhoto(tap); as src) {
-                  <img [src]="src" [alt]="personName(tap)" hlmAvatarImage />
-                }
-                <span hlmAvatarFallback class="bg-slate-800 text-slate-200">
-                  {{ initials(personName(tap)) }}
-                </span>
-              </hlm-avatar>
-              <div class="min-w-0 flex-1 leading-tight">
-                <p class="truncate text-base font-bold text-white sm:text-xl md:text-2xl">
-                  {{ personName(tap) }}
-                </p>
-                <p class="mt-0.5 truncate text-xs text-slate-300 sm:text-sm">{{ personSub(tap) }}</p>
-                <p class="mt-0.5 truncate text-[11px] font-medium tracking-wide text-slate-400 uppercase sm:text-xs">
-                  {{ personKind(tap) }}
-                  @if (tap.location) {
-                    · {{ tap.location }}
-                  }
-                </p>
+        <div class="monitor-venues">
+          @for (venue of venues; track venue.id) {
+            <article
+              class="monitor-venue-pane flex min-h-0 flex-col gap-2.5 rounded-2xl bg-slate-900 p-3 ring-1 ring-slate-800 sm:p-4"
+              [attr.data-venue]="venue.id"
+            >
+              <div class="flex items-center gap-2">
+                <div
+                  class="monitor-venue-icon grid size-8 shrink-0 place-items-center rounded-lg sm:size-9"
+                >
+                  <ng-icon [name]="venue.icon" class="text-base sm:text-lg" />
+                </div>
+                <div class="min-w-0 flex-1 leading-tight">
+                  <h3 class="truncate text-sm font-bold text-white sm:text-base">{{ venue.label }}</h3>
+                  <p class="truncate text-[11px] text-slate-500">
+                    @if (onlineFor(venue.id).length > 0) {
+                      {{ onlineFor(venue.id).join(', ') }}
+                    } @else {
+                      No kiosk online
+                    }
+                  </p>
+                </div>
               </div>
-            </div>
-            <div class="flex items-center justify-between gap-3 sm:ml-auto sm:flex-col sm:items-end sm:justify-center">
-              <span
-                class="rounded-full px-3 py-1 text-sm font-black tracking-wider"
-                [class]="
-                  tap.action === 'TIME_IN'
-                    ? 'bg-emerald-500/20 text-emerald-300'
-                    : 'bg-amber-500/20 text-amber-300'
-                "
-              >
-                {{ tap.action === 'TIME_IN' ? 'IN' : 'OUT' }}
-              </span>
-              <p class="text-sm font-semibold tabular-nums sm:text-base">
-                {{ tapTime(tap) | date: 'h:mm:ss a' : clockTz() }}
-              </p>
-            </div>
-          </article>
-        } @else {
-          <div class="rounded-2xl bg-slate-800/40 px-4 py-8 text-center text-sm text-slate-500 sm:py-10">
-            Waiting for the first tap of the day…
-          </div>
-        }
 
-        <div class="recent-tappers-scroll flex max-h-56 flex-col gap-2 overflow-y-auto sm:max-h-64 md:max-h-72">
-          @for (tap of feed(); track tap.attendanceId + tap.action) {
-            <article class="feed-row flex items-center gap-2 rounded-xl bg-slate-800/50 px-3 py-2.5 sm:gap-3 sm:px-4">
-              <hlm-avatar class="size-9 shrink-0 sm:size-10">
-                @if (personPhoto(tap); as src) {
-                  <img [src]="src" [alt]="personName(tap)" hlmAvatarImage />
-                }
-                <span hlmAvatarFallback class="bg-slate-700 text-slate-200">
-                  {{ initials(personName(tap)) }}
-                </span>
-              </hlm-avatar>
-              <div class="min-w-0 flex-1 leading-tight">
-                <p class="truncate text-sm font-semibold text-slate-100">{{ personName(tap) }}</p>
-                <p class="truncate text-xs text-slate-400">{{ personSub(tap) }}</p>
-              </div>
-              <div class="flex shrink-0 flex-col items-end gap-0.5 sm:flex-row sm:items-center sm:gap-2">
-                <span
-                  class="rounded-full px-2 py-0.5 text-[10px] font-bold sm:text-[11px]"
+              @if (spotlightFor(venue.id); as tap) {
+                <article
+                  class="spotlight-card flex min-w-0 items-center gap-2.5 rounded-xl p-2.5 ring-1 sm:gap-3 sm:p-3"
                   [class]="
                     tap.action === 'TIME_IN'
-                      ? 'bg-emerald-500/15 text-emerald-300'
-                      : 'bg-amber-500/15 text-amber-300'
+                      ? 'bg-emerald-500/10 ring-emerald-500/30'
+                      : 'bg-amber-500/10 ring-amber-500/30'
                   "
                 >
-                  {{ tap.action === 'TIME_IN' ? 'IN' : 'OUT' }}
-                </span>
-                <span class="text-[11px] font-medium text-slate-300 tabular-nums sm:text-xs">
-                  {{ tapTime(tap) | date: 'h:mm:ss a' : clockTz() }}
-                </span>
+                  <hlm-avatar
+                    class="size-12 shrink-0 text-sm ring-4 sm:size-14"
+                    [class]="tap.action === 'TIME_IN' ? 'ring-emerald-500/60' : 'ring-amber-500/60'"
+                  >
+                    @if (personPhoto(tap); as src) {
+                      <img [src]="src" [alt]="personName(tap)" hlmAvatarImage />
+                    }
+                    <span hlmAvatarFallback class="bg-slate-800 text-slate-200">
+                      {{ initials(personName(tap)) }}
+                    </span>
+                  </hlm-avatar>
+                  <div class="min-w-0 flex-1 leading-tight">
+                    <p class="truncate text-sm font-bold text-white sm:text-base">
+                      {{ personName(tap) }}
+                    </p>
+                    <p class="mt-0.5 truncate text-[11px] text-slate-300 sm:text-xs">{{ personSub(tap) }}</p>
+                    <p class="mt-0.5 truncate text-[10px] font-medium tracking-wide text-slate-400 uppercase">
+                      {{ personKind(tap) }}
+                      @if (tap.location) {
+                        · {{ tap.location }}
+                      }
+                    </p>
+                  </div>
+                  <div class="flex shrink-0 flex-col items-end gap-0.5">
+                    <span
+                      class="rounded-full px-2 py-0.5 text-[11px] font-black tracking-wider"
+                      [class]="
+                        tap.action === 'TIME_IN'
+                          ? 'bg-emerald-500/20 text-emerald-300'
+                          : 'bg-amber-500/20 text-amber-300'
+                      "
+                    >
+                      {{ tap.action === 'TIME_IN' ? 'IN' : 'OUT' }}
+                    </span>
+                    <p class="text-[11px] font-semibold tabular-nums sm:text-xs">
+                      {{ tapTime(tap) | date: 'h:mm:ss a' : clockTz() }}
+                    </p>
+                  </div>
+                </article>
+              } @else {
+                <div class="rounded-xl bg-slate-800/40 px-3 py-6 text-center text-xs text-slate-500 sm:py-8">
+                  Waiting for taps…
+                </div>
+              }
+
+              <div class="recent-tappers-scroll flex max-h-44 min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto sm:max-h-56">
+                @for (tap of feedFor(venue.id); track tap.attendanceId + tap.action) {
+                  <article class="feed-row flex items-center gap-2 rounded-lg bg-slate-800/50 px-2.5 py-2">
+                    <hlm-avatar class="size-8 shrink-0">
+                      @if (personPhoto(tap); as src) {
+                        <img [src]="src" [alt]="personName(tap)" hlmAvatarImage />
+                      }
+                      <span hlmAvatarFallback class="bg-slate-700 text-xs text-slate-200">
+                        {{ initials(personName(tap)) }}
+                      </span>
+                    </hlm-avatar>
+                    <div class="min-w-0 flex-1 leading-tight">
+                      <p class="truncate text-xs font-semibold text-slate-100">{{ personName(tap) }}</p>
+                      <p class="truncate text-[10px] text-slate-400">{{ personSub(tap) }}</p>
+                    </div>
+                    <div class="flex shrink-0 flex-col items-end gap-0.5">
+                      <span
+                        class="rounded-full px-1.5 py-0.5 text-[10px] font-bold"
+                        [class]="
+                          tap.action === 'TIME_IN'
+                            ? 'bg-emerald-500/15 text-emerald-300'
+                            : 'bg-amber-500/15 text-amber-300'
+                        "
+                      >
+                        {{ tap.action === 'TIME_IN' ? 'IN' : 'OUT' }}
+                      </span>
+                      <span class="text-[10px] font-medium text-slate-300 tabular-nums">
+                        {{ tapTime(tap) | date: 'h:mm:ss a' : clockTz() }}
+                      </span>
+                    </div>
+                  </article>
+                }
               </div>
             </article>
           }
