@@ -1,8 +1,8 @@
 <div class="flex min-h-0 flex-1 flex-col gap-4">
   <!-- Toolbar -->
-  <div class="flex flex-wrap items-center gap-2">
+  <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
     <!-- Search -->
-    <div class="relative min-w-0 flex-1">
+    <div class="relative w-full min-w-0 sm:min-w-[16rem] sm:flex-1">
       <ng-icon
         name="lucideSearch"
         class="text-muted-foreground pointer-events-none absolute inset-y-0 left-3 my-auto text-base"
@@ -17,9 +17,8 @@
       />
     </div>
 
-    <hlm-separator orientation="vertical" class="mx-1 h-6" />
-
     @if (canManageDirectory) {
+    <div class="flex flex-wrap items-center gap-2">
     <button hlmBtn class="gap-1.5" type="button" (click)="openCreate()">
       <ng-icon name="lucidePlus" class="text-base" />
       New
@@ -77,6 +76,7 @@
       <ng-icon name="lucideUserX" class="text-base" />
       Deactivate
     </button>
+    </div>
     }
   </div>
 

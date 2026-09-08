@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { NgIcon, provideIcons } from '@ng-icons/core';
@@ -29,23 +29,9 @@ export class AlarmEmployees {
   protected readonly loading = signal(false);
   protected readonly searching = signal(false);
   protected readonly error = signal<string | null>(null);
-  protected readonly filter = signal('');
   protected readonly query = signal('');
   protected readonly addingId = signal<string | null>(null);
   protected readonly removingId = signal<string | null>(null);
-
-  protected readonly filtered = computed(() => {
-    const term = this.filter().trim().toLowerCase();
-    if (!term) {
-      return this.employees();
-    }
-    return this.employees().filter((e) =>
-      [e.name, e.employeeNo, e.rfid ?? '', e.department, e.position]
-        .join(' ')
-        .toLowerCase()
-        .includes(term),
-    );
-  });
 
   constructor() {
     this.reload();

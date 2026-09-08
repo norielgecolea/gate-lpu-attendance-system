@@ -4,7 +4,7 @@
     the directory and can still time in and out.
   </p>
 
-  <div class="relative">
+  <div class="relative z-30">
     <ng-icon
       name="lucideSearch"
       class="text-muted-foreground pointer-events-none absolute inset-y-0 left-3 my-auto text-base"
@@ -19,7 +19,7 @@
     />
     @if (searching() || suggestions().length > 0 || query().trim().length >= 2) {
       <div
-        class="bg-card absolute z-20 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border shadow-lg"
+        class="bg-card absolute z-50 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border shadow-lg"
       >
         @if (searching() && suggestions().length === 0) {
           <p class="text-muted-foreground px-3 py-3 text-sm">Searching…</p>
@@ -67,26 +67,11 @@
     }
   </div>
 
-  <div class="relative min-w-0">
-    <ng-icon
-      name="lucideSearch"
-      class="text-muted-foreground pointer-events-none absolute inset-y-0 left-3 my-auto text-base"
-    />
-    <input
-      hlmInput
-      class="bg-card w-full pl-9"
-      type="search"
-      placeholder="Filter alarm-marked students"
-      [ngModel]="filter()"
-      (ngModelChange)="filter.set($event)"
-    />
-  </div>
-
   @if (error()) {
     <p class="text-destructive text-sm" role="alert">{{ error() }}</p>
   }
 
-  <div hlmTableContainer class="bg-card min-h-0 flex-1 overflow-y-auto rounded-lg border shadow-sm">
+  <div hlmTableContainer class="bg-card relative z-0 min-h-0 flex-1 overflow-y-auto rounded-lg border shadow-sm">
     <table hlmTable class="text-sm">
       <thead hlmTHead class="sticky top-0 z-10">
         <tr hlmTr class="bg-primary hover:bg-primary [&>th]:text-primary-foreground">
@@ -106,7 +91,7 @@
             </td>
           </tr>
         } @else {
-          @for (student of filtered(); track student.id) {
+          @for (student of students(); track student.id) {
             <tr hlmTr>
               <td hlmTd>
                 <div class="flex items-center gap-3">
