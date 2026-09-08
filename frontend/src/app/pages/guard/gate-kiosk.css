@@ -1585,3 +1585,75 @@
     animation: none !important;
   }
 }
+
+/* Library kiosk — teal / scholarly, distinct from the maroon gate wall. */
+:host([data-kiosk='LIBRARY']) {
+  --gate-accent: #0f766e;
+  --gate-in: #047857;
+  --gate-out: #0369a1;
+  background: #dce8ea;
+}
+
+:host([data-kiosk='LIBRARY']) .gate-stage {
+  background:
+    radial-gradient(1200px 600px at 12% -10%, rgba(15, 118, 110, 0.1), transparent 55%),
+    radial-gradient(900px 500px at 100% 0%, rgba(14, 116, 144, 0.08), transparent 50%),
+    linear-gradient(180deg, #f4fbfb 0%, #e4eef0 100%);
+}
+
+:host([data-kiosk='LIBRARY']) .gate-brand-bar {
+  background: linear-gradient(90deg, #0f766e, #0e7490, #155e75, #0e7490, #0f766e);
+  background-size: 200% 100%;
+}
+
+:host([data-kiosk='LIBRARY']) .gate-flow-blob.b1 {
+  background: radial-gradient(circle, rgba(13, 148, 136, 0.32), transparent 68%);
+}
+
+:host([data-kiosk='LIBRARY']) .gate-flow-blob.b2 {
+  background: radial-gradient(circle, rgba(14, 116, 144, 0.26), transparent 68%);
+}
+
+:host([data-kiosk='LIBRARY']) .gate-flow-blob.b3 {
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.2), transparent 68%);
+}
+
+:host([data-kiosk='LIBRARY']) .gate-flow-blob.b4 {
+  background: radial-gradient(circle, rgba(15, 118, 110, 0.18), transparent 68%);
+}
+
+/* Olive Hotel kiosk — warm olive / gold hospitality wall. */
+:host([data-kiosk='OLIVE_HOTEL']) {
+  --gate-accent: #4d7c0f;
+  --gate-in: #3f6212;
+  --gate-out: #b45309;
+  background: #ebe6d8;
+}
+
+:host([data-kiosk='OLIVE_HOTEL']) .gate-stage {
+  background:
+    radial-gradient(1200px 600px at 12% -10%, rgba(77, 124, 15, 0.12), transparent 55%),
+    radial-gradient(900px 500px at 100% 0%, rgba(180, 83, 9, 0.08), transparent 50%),
+    linear-gradient(180deg, #faf7ef 0%, #efe8d6 100%);
+}
+
+:host([data-kiosk='OLIVE_HOTEL']) .gate-brand-bar {
+  background: linear-gradient(90deg, #4d7c0f, #ca8a04, #854d0e, #ca8a04, #4d7c0f);
+  background-size: 200% 100%;
+}
+
+:host([data-kiosk='OLIVE_HOTEL']) .gate-flow-blob.b1 {
+  background: radial-gradient(circle, rgba(132, 204, 22, 0.28), transparent 68%);
+}
+
+:host([data-kiosk='OLIVE_HOTEL']) .gate-flow-blob.b2 {
+  background: radial-gradient(circle, rgba(202, 138, 4, 0.26), transparent 68%);
+}
+
+:host([data-kiosk='OLIVE_HOTEL']) .gate-flow-blob.b3 {
+  background: radial-gradient(circle, rgba(180, 83, 9, 0.18), transparent 68%);
+}
+
+:host([data-kiosk='OLIVE_HOTEL']) .gate-flow-blob.b4 {
+  background: radial-gradient(circle, rgba(77, 124, 15, 0.2), transparent 68%);
+}

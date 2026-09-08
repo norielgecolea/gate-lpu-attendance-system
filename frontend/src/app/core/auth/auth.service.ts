@@ -27,13 +27,26 @@ export class AuthService {
   readonly isOsas = computed(() => this.userSignal()?.role === 'OSAS');
   readonly isHr = computed(() => this.userSignal()?.role === 'HR');
   readonly isGuard = computed(() => this.userSignal()?.role === 'GUARD');
+  readonly isKiosk = computed(
+    () =>
+      this.userSignal()?.role === 'GUARD' ||
+      this.userSignal()?.role === 'LIBRARY_KIOSK' ||
+      this.userSignal()?.role === 'OLIVE_KIOSK',
+  );
   readonly isMonitoring = computed(() => this.userSignal()?.role === 'MONITORING');
+  readonly isLibrarian = computed(() => this.userSignal()?.role === 'LIBRARIAN');
+  readonly isOlive = computed(() => this.userSignal()?.role === 'OLIVE');
   readonly isAdminPortal = computed(
-    () => this.isSuperAdmin() || this.isOsas() || this.isHr(),
+    () =>
+      this.isSuperAdmin() ||
+      this.isOsas() ||
+      this.isHr() ||
+      this.isLibrarian() ||
+      this.isOlive(),
   );
 
   homeRoute(): string {
-    if (this.isGuard()) {
+    if (this.isKiosk()) {
       return '/guard';
     }
     if (this.isMonitoring()) {
@@ -100,7 +113,7 @@ export class AuthService {
 
   restoreSession(): void {
     const token = this.tokenSignal();
-    if (token && (this.isAdminPortal() || this.isGuard() || this.isMonitoring())) {
+    if (token && (this.isAdminPortal() || this.isKiosk() || this.isMonitoring())) {
       this.notifications.connect(token);
     }
   }

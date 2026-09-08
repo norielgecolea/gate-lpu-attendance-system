@@ -32,9 +32,13 @@ public class AuthWebSocketHandler extends TextWebSocketHandler {
         Role role = jwtService.extractRole(token);
         if (role != Role.SUPERADMIN
                 && role != Role.GUARD
+                && role != Role.LIBRARY_KIOSK
+                && role != Role.OLIVE_KIOSK
                 && role != Role.MONITORING
                 && role != Role.OSAS
-                && role != Role.HR) {
+                && role != Role.HR
+                && role != Role.LIBRARIAN
+                && role != Role.OLIVE) {
             session.close(CloseStatus.NOT_ACCEPTABLE.withReason("Unauthorized"));
             return;
         }

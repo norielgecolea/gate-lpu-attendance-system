@@ -135,9 +135,9 @@ CREATE TABLE IF NOT EXISTS attendance_logs (
     time_in_location    VARCHAR(100),
     time_out_location   VARCHAR(100),
     tap_count           INTEGER NOT NULL DEFAULT 1,
+    kiosk_group         VARCHAR(20) NOT NULL DEFAULT 'MAIN_GATES',
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE (student_id, attendance_date)
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 ALTER TABLE attendance_logs DROP CONSTRAINT IF EXISTS chk_attendance_logs_person;
@@ -148,8 +148,12 @@ ALTER TABLE attendance_logs
         OR (student_id IS NULL AND employee_id IS NOT NULL)
     );
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_attendance_employee_date
-    ON attendance_logs (employee_id, attendance_date)
+CREATE UNIQUE INDEX IF NOT EXISTS uq_attendance_student_date_group
+    ON attendance_logs (student_id, attendance_date, kiosk_group)
+    WHERE student_id IS NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_attendance_employee_date_group
+    ON attendance_logs (employee_id, attendance_date, kiosk_group)
     WHERE employee_id IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_attendance_logs_updated
@@ -169,6 +173,9 @@ CREATE INDEX IF NOT EXISTS idx_attendance_logs_employee_date
     ON attendance_logs (employee_id, attendance_date DESC)
     WHERE employee_id IS NOT NULL;
 
+CREATE INDEX IF NOT EXISTS idx_attendance_logs_kiosk_date
+    ON attendance_logs (kiosk_group, attendance_date DESC);
+
 -- ---------------------------------------------------------------------------
 -- attendance_events (immutable tap history)
 -- ---------------------------------------------------------------------------
@@ -181,6 +188,7 @@ CREATE TABLE IF NOT EXISTS attendance_events (
     tapped_at         TIMESTAMPTZ NOT NULL,
     location          VARCHAR(100),
     tapped_by_user_id BIGINT REFERENCES users(id),
+    kiosk_group       VARCHAR(20) NOT NULL DEFAULT 'MAIN_GATES',
     created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT chk_attendance_events_person CHECK (
         (student_id IS NOT NULL AND employee_id IS NULL)
@@ -199,6 +207,9 @@ CREATE INDEX IF NOT EXISTS idx_attendance_events_student_date
 CREATE INDEX IF NOT EXISTS idx_attendance_events_employee_date
     ON attendance_events (employee_id, attendance_date DESC, tapped_at DESC)
     WHERE employee_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_attendance_events_kiosk_date
+    ON attendance_events (kiosk_group, attendance_date DESC, tapped_at DESC);
 
 -- ---------------------------------------------------------------------------
 -- app_settings
@@ -246,11 +257,15 @@ CREATE TABLE IF NOT EXISTS tap_error_logs (
     id          BIGSERIAL PRIMARY KEY,
     identifier  VARCHAR(100) NOT NULL,
     location    VARCHAR(100),
+    kiosk_group VARCHAR(20) NOT NULL DEFAULT 'MAIN_GATES',
     tapped_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_tap_error_logs_tapped
     ON tap_error_logs (tapped_at DESC, id DESC);
+
+CREATE INDEX IF NOT EXISTS idx_tap_error_logs_kiosk_tapped
+    ON tap_error_logs (kiosk_group, tapped_at DESC, id DESC);
 
 -- ---------------------------------------------------------------------------
 -- student_audit_events (student lifecycle audit)

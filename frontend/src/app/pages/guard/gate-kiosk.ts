@@ -14,6 +14,8 @@ import {
 import { FormsModule } from '@angular/forms';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
+  lucideBookOpen,
+  lucideBuilding2,
   lucideCircleAlert,
   lucideClock,
   lucideKeyRound,
@@ -21,6 +23,7 @@ import {
   lucideScanBarcode,
   lucideUserRound,
 } from '@ng-icons/lucide';
+import { kioskGroupFromRole, type KioskGroup } from '../../core/kiosk/kiosk-group';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmDialogService } from '@spartan-ng/helm/dialog';
 import { Subscription, filter, take } from 'rxjs';
@@ -68,6 +71,8 @@ interface BalloonPiece {
   viewProviders: [
     provideIcons({
       lucideScanBarcode,
+      lucideBookOpen,
+      lucideBuilding2,
       lucideClock,
       lucideKeyRound,
       lucideLogOut,
@@ -77,7 +82,10 @@ interface BalloonPiece {
   ],
   templateUrl: './gate-kiosk.html',
   styleUrl: './gate-kiosk.css',
-  host: { class: 'gate-kiosk-host' },
+  host: {
+    class: 'gate-kiosk-host',
+    '[attr.data-kiosk]': 'kioskGroup',
+  },
 })
 export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('idInput') private readonly idInput?: ElementRef<HTMLInputElement>;
@@ -112,6 +120,32 @@ export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
   protected readonly clock = this.serverClock.now;
   protected readonly clockTz = this.serverClock.datePipeTimezone;
   protected readonly guardName = this.auth.user;
+  protected readonly kioskGroup: KioskGroup = kioskGroupFromRole(this.auth.user()?.role);
+  protected readonly venueBrand = 'LPU Laguna';
+  protected readonly venueTitle =
+    this.kioskGroup === 'LIBRARY'
+      ? 'Library Attendance'
+      : this.kioskGroup === 'OLIVE_HOTEL'
+        ? 'Olive Hotel Attendance'
+        : 'Gate Attendance';
+  protected readonly idleHint =
+    this.kioskGroup === 'LIBRARY'
+      ? 'Ready to scan at the Library'
+      : this.kioskGroup === 'OLIVE_HOTEL'
+        ? 'Ready to scan at Olive Hotel'
+        : 'Ready to scan';
+  protected readonly notFoundHint =
+    this.kioskGroup === 'LIBRARY'
+      ? 'Please go to the Library desk'
+      : this.kioskGroup === 'OLIVE_HOTEL'
+        ? 'Please go to Olive Hotel reception'
+        : 'Please go to OSAS';
+  protected readonly idleIcon =
+    this.kioskGroup === 'LIBRARY'
+      ? 'lucideBookOpen'
+      : this.kioskGroup === 'OLIVE_HOTEL'
+        ? 'lucideBuilding2'
+        : 'lucideScanBarcode';
   protected readonly accountDialogOpen = signal(false);
   protected readonly animKey = signal(0);
   protected readonly confetti = signal<ConfettiPiece[]>([]);
@@ -155,6 +189,10 @@ export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
       .pipe(filter((e) => e.type === 'ATTENDANCE_TAP'))
       .subscribe((event) => {
         const payload = event.payload as TapResponse | undefined;
+        const myGroup = kioskGroupFromRole(this.auth.user()?.role);
+        if (payload?.kioskGroup && payload.kioskGroup !== myGroup) {
+          return;
+        }
         // Other kiosks share the recent list only — do not takeover this screen's hero.
         if (payload?.attendanceId) {
           this.mergeRecent(payload);
@@ -170,8 +208,12 @@ export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
         if (Date.now() < this.ignoreTapErrorEchoUntil) {
           return;
         }
-        const payload = (event.payload ?? {}) as { location?: string | null };
+        const payload = (event.payload ?? {}) as { location?: string | null; kioskGroup?: string | null };
         const myGate = this.auth.user()?.location ?? null;
+        const myGroup = kioskGroupFromRole(this.auth.user()?.role);
+        if (payload.kioskGroup && payload.kioskGroup !== myGroup) {
+          return;
+        }
         // Only react to errors from this kiosk's gate (or when gates are unknown).
         if (!myGate || !payload.location || payload.location === myGate) {
           this.showError('Record Not Found', true);

@@ -60,14 +60,16 @@
         </select>
       </div>
       <div hlmField>
-        <label hlmFieldLabel for="user-location">Location / Gate</label>
+        <label hlmFieldLabel for="user-location">
+          Location / Gate{{ needsLocation ? ' *' : '' }}
+        </label>
         <input
           hlmInput
           id="user-location"
           name="location"
           [(ngModel)]="location"
           autocomplete="off"
-          placeholder="e.g. Gate 1 (for guards)"
+          [placeholder]="needsLocation ? 'e.g. Gate 1, Library desk, Olive lobby' : 'Optional'"
         />
       </div>
     </div>

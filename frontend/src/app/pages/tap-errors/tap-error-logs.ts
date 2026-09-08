@@ -8,6 +8,8 @@ import { HlmInput } from '@spartan-ng/helm/input';
 import { HlmTableImports } from '@spartan-ng/helm/table';
 import { Subscription, filter } from 'rxjs';
 import { NotificationService } from '../../core/notifications/notification.service';
+import { AuthService } from '../../core/auth/auth.service';
+import { KIOSK_GROUP_LABELS, seesAllTapErrors, kioskGroupFromRole, type KioskGroup } from '../../core/kiosk/kiosk-group';
 import {
   TapErrorLogsApiService,
   type TapErrorLog,
@@ -29,6 +31,7 @@ function manilaToday(): string {
 export class TapErrorLogs implements OnDestroy {
   private readonly api = inject(TapErrorLogsApiService);
   private readonly notifications = inject(NotificationService);
+  private readonly auth = inject(AuthService);
   private readonly liveSub: Subscription;
 
   protected readonly logs = signal<TapErrorLog[]>([]);
@@ -38,6 +41,8 @@ export class TapErrorLogs implements OnDestroy {
   protected readonly filter = signal('');
   /** Campus (Asia/Manila) date — defaults to today so lists stay small and relevant. */
   protected readonly date = signal(manilaToday());
+  protected readonly showKioskColumn = seesAllTapErrors(this.auth.user()?.role);
+  protected readonly kioskLabels = KIOSK_GROUP_LABELS;
 
   protected readonly filtered = computed(() => {
     const term = this.filter().trim().toLowerCase();
@@ -45,7 +50,10 @@ export class TapErrorLogs implements OnDestroy {
       return this.logs();
     }
     return this.logs().filter((row) =>
-      [row.identifier, row.location ?? ''].join(' ').toLowerCase().includes(term),
+      [row.identifier, row.location ?? '', this.kioskLabel(row.kioskGroup)]
+        .join(' ')
+        .toLowerCase()
+        .includes(term),
     );
   });
 
@@ -55,7 +63,13 @@ export class TapErrorLogs implements OnDestroy {
     this.liveSub = this.notifications.events$
       .pipe(filter((e) => e.type === 'ATTENDANCE_TAP_ERROR'))
       .subscribe((event) => {
-        const payload = (event.payload ?? {}) as { tappedAt?: string | null };
+        const payload = (event.payload ?? {}) as { tappedAt?: string | null; kioskGroup?: string | null };
+        if (!seesAllTapErrors(this.auth.user()?.role)) {
+          const myGroup = kioskGroupFromRole(this.auth.user()?.role);
+          if (payload.kioskGroup && payload.kioskGroup !== myGroup) {
+            return;
+          }
+        }
         const eventDay = payload.tappedAt
           ? new Date(payload.tappedAt).toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' })
           : manilaToday();
@@ -113,5 +127,12 @@ export class TapErrorLogs implements OnDestroy {
         this.error.set(err?.error?.message ?? 'Failed to clear RFID error logs');
       },
     });
+  }
+
+  protected kioskLabel(group: string | null | undefined): string {
+    if (group === 'LIBRARY' || group === 'OLIVE_HOTEL' || group === 'MAIN_GATES') {
+      return this.kioskLabels[group as KioskGroup];
+    }
+    return 'Main Gates';
   }
 }

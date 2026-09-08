@@ -20,6 +20,8 @@ import { HlmBadge } from '@spartan-ng/helm/badge';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmCheckbox } from '@spartan-ng/helm/checkbox';
 import { HlmDialogService } from '@spartan-ng/helm/dialog';
+import { AuthService } from '../../core/auth/auth.service';
+import { isVenueAdmin } from '../../core/kiosk/kiosk-group';
 import { HlmInput } from '@spartan-ng/helm/input';
 import { HlmSeparator } from '@spartan-ng/helm/separator';
 import { HlmTableImports } from '@spartan-ng/helm/table';
@@ -91,6 +93,8 @@ export class Employees {
   private readonly store = inject(EmployeesStore);
   private readonly api = inject(EmployeesApiService);
   private readonly dialog = inject(HlmDialogService);
+  private readonly auth = inject(AuthService);
+  protected readonly canManageDirectory = !isVenueAdmin(this.auth.user()?.role);
 
   protected readonly data = this.store.employees;
   protected readonly loading = this.store.loading;
@@ -120,13 +124,13 @@ export class Employees {
 
   protected readonly table = createAngularTable<Employee>(() => ({
     data: this.data(),
-    columns: this.columns,
+    columns: this.columns.filter((col) => this.canManageDirectory || col.id !== 'select'),
     state: {
       sorting: this.sorting(),
       globalFilter: this.globalFilter(),
       rowSelection: this.rowSelection(),
     },
-    enableRowSelection: true,
+    enableRowSelection: this.canManageDirectory,
     globalFilterFn: 'includesString',
     getRowId: (row) => row.id,
     onSortingChange: (updater) =>

@@ -16,6 +16,8 @@ import org.nors.dev.codes.lpu.dto.StudentImportRequest;
 import org.nors.dev.codes.lpu.dto.StudentPageResponse;
 import org.nors.dev.codes.lpu.dto.StudentRequest;
 import org.nors.dev.codes.lpu.dto.StudentResponse;
+import org.nors.dev.codes.lpu.model.KioskGroup;
+import org.nors.dev.codes.lpu.model.KioskGroups;
 import org.nors.dev.codes.lpu.security.AuthenticatedUser;
 import org.nors.dev.codes.lpu.service.AttendanceService;
 import org.nors.dev.codes.lpu.service.PhotoStorageService;
@@ -103,10 +105,12 @@ public class StudentController {
             @RequestParam(defaultValue = "date") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir,
             @RequestParam(defaultValue = "0") int offset,
-            @RequestParam(defaultValue = "50") int limit
+            @RequestParam(defaultValue = "50") int limit,
+            @AuthenticationPrincipal AuthenticatedUser user
     ) {
         return ResponseEntity.ok(attendanceService.pageDaily(
-                "STUDENT", id, startDate, endDate, null, null, null, status, sortBy, sortDir, offset, limit
+                "STUDENT", id, startDate, endDate, null, null, null, status,
+                viewGroup(user), sortBy, sortDir, offset, limit
         ));
     }
 
@@ -114,9 +118,10 @@ public class StudentController {
     public ResponseEntity<PersonAttendanceSummaryResponse> attendanceSummary(
             @PathVariable Long id,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @AuthenticationPrincipal AuthenticatedUser user
     ) {
-        return ResponseEntity.ok(attendanceService.personSummary("STUDENT", id, startDate, endDate));
+        return ResponseEntity.ok(attendanceService.personSummary("STUDENT", id, startDate, endDate, viewGroup(user)));
     }
 
     @GetMapping("/{id}/attendance/events")
@@ -128,10 +133,11 @@ public class StudentController {
             @RequestParam(required = false) String action,
             @RequestParam(defaultValue = "desc") String sortDir,
             @RequestParam(defaultValue = "0") int offset,
-            @RequestParam(defaultValue = "50") int limit
+            @RequestParam(defaultValue = "50") int limit,
+            @AuthenticationPrincipal AuthenticatedUser user
     ) {
         return ResponseEntity.ok(attendanceService.pageEvents(
-                "STUDENT", id, startDate, endDate, null, location, action, sortDir, offset, limit
+                "STUDENT", id, startDate, endDate, null, location, action, viewGroup(user), sortDir, offset, limit
         ));
     }
 
@@ -141,9 +147,12 @@ public class StudentController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
             @RequestParam(required = false) String location,
-            @RequestParam(required = false) String action
+            @RequestParam(required = false) String action,
+            @AuthenticationPrincipal AuthenticatedUser user
     ) {
-        byte[] csv = attendanceService.exportPersonEventsCsv("STUDENT", id, startDate, endDate, location, action);
+        byte[] csv = attendanceService.exportPersonEventsCsv(
+                "STUDENT", id, startDate, endDate, location, action, viewGroup(user)
+        );
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"student-attendance.csv\"")
                 .contentType(new MediaType("text", "csv"))
@@ -239,5 +248,9 @@ public class StudentController {
     @PostMapping("/{id}/restore")
     public ResponseEntity<StudentResponse> restore(@PathVariable Long id) {
         return ResponseEntity.ok(studentService.restore(id));
+    }
+
+    private static KioskGroup viewGroup(AuthenticatedUser user) {
+        return KioskGroups.resolveForView(user != null ? user.getRole() : null, null);
     }
 }

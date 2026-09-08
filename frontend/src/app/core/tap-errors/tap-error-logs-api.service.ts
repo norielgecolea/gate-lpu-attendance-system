@@ -7,6 +7,7 @@ export interface TapErrorLog {
   id: string;
   identifier: string;
   location: string | null;
+  kioskGroup?: string | null;
   tappedAt: string;
 }
 

@@ -1,0 +1,74 @@
+<div class="flex flex-col gap-4 p-1">
+  <div hlmDialogHeader>
+    <h2 hlmDialogTitle>Export attendance</h2>
+    <p hlmDialogDescription>
+      Choose all-time records or a date range
+      @if (canPickKiosk) {
+        , and which kiosk group to include.
+      } @else {
+        .
+      }
+    </p>
+  </div>
+
+  @if (error()) {
+    <p class="bg-destructive/10 text-destructive rounded-md px-3 py-2 text-sm" role="alert">
+      {{ error() }}
+    </p>
+  }
+
+  <div hlmFieldGroup class="gap-4">
+    <div hlmField>
+      <span hlmFieldLabel>Range</span>
+      <div class="mt-1 flex flex-wrap gap-1">
+        <button
+          hlmBtn
+          type="button"
+          size="sm"
+          [variant]="rangeMode === 'all' ? 'default' : 'outline'"
+          (click)="rangeMode = 'all'"
+        >
+          All time
+        </button>
+        <button
+          hlmBtn
+          type="button"
+          size="sm"
+          [variant]="rangeMode === 'range' ? 'default' : 'outline'"
+          (click)="rangeMode = 'range'"
+        >
+          Date range
+        </button>
+      </div>
+    </div>
+
+    @if (rangeMode === 'range') {
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div hlmField>
+          <label hlmFieldLabel for="export-start">Start</label>
+          <input hlmInput id="export-start" type="date" [(ngModel)]="startDate" name="exportStart" />
+        </div>
+        <div hlmField>
+          <label hlmFieldLabel for="export-end">End</label>
+          <input hlmInput id="export-end" type="date" [(ngModel)]="endDate" name="exportEnd" />
+        </div>
+      </div>
+    }
+
+    @if (canPickKiosk) {
+      <div hlmField>
+        <label hlmFieldLabel for="export-kiosk">Kiosk</label>
+        <select hlmInput id="export-kiosk" name="exportKiosk" class="w-full" [(ngModel)]="kioskGroup">
+          @for (group of kioskGroups; track group) {
+            <option [value]="group">{{ kioskLabels[group] }}</option>
+          }
+        </select>
+      </div>
+    }
+  </div>
+
+  <div hlmDialogFooter class="gap-2">
+    <button hlmBtn type="button" variant="outline" (click)="cancel()">Cancel</button>
+    <button hlmBtn type="button" (click)="submit()">Export CSV</button>
+  </div>
+</div>

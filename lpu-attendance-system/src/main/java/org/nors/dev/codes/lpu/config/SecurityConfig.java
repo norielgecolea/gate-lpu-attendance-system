@@ -66,21 +66,21 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").authenticated()
                         // Guard kiosks read the display setting; OSAS admins manage it.
                         .requestMatchers(HttpMethod.GET, "/api/guard-display")
-                        .hasAnyRole("SUPERADMIN", "GUARD", "OSAS")
+                        .hasAnyRole("SUPERADMIN", "GUARD", "LIBRARY_KIOSK", "OLIVE_KIOSK", "OSAS")
                         .requestMatchers("/api/guard-display/**")
                         .hasAnyRole("SUPERADMIN", "OSAS")
                         // Guard kiosks load assigned tones; OSAS/superadmin manage the library.
                         .requestMatchers(HttpMethod.GET, "/api/gate-tones")
-                        .hasAnyRole("SUPERADMIN", "GUARD", "OSAS")
+                        .hasAnyRole("SUPERADMIN", "GUARD", "LIBRARY_KIOSK", "OLIVE_KIOSK", "OSAS")
                         .requestMatchers("/api/gate-tones/**")
                         .hasAnyRole("SUPERADMIN", "OSAS")
                         // Dashboard read access for cross-role summaries.
                         .requestMatchers(HttpMethod.GET, "/api/students/**")
-                        .hasAnyRole("SUPERADMIN", "OSAS", "HR")
+                        .hasAnyRole("SUPERADMIN", "OSAS", "HR", "LIBRARIAN", "OLIVE")
                         .requestMatchers("/api/students/**")
                         .hasAnyRole("SUPERADMIN", "OSAS")
                         .requestMatchers(HttpMethod.GET, "/api/employees/**")
-                        .hasAnyRole("SUPERADMIN", "OSAS", "HR")
+                        .hasAnyRole("SUPERADMIN", "OSAS", "HR", "LIBRARIAN", "OLIVE")
                         .requestMatchers("/api/employees/**")
                         .hasAnyRole("SUPERADMIN", "HR")
                         .requestMatchers(HttpMethod.GET, "/api/rfid/**")
@@ -88,24 +88,29 @@ public class SecurityConfig {
                         .requestMatchers("/api/users/**")
                         .hasAnyRole("SUPERADMIN", "OSAS", "HR")
                         .requestMatchers(HttpMethod.GET, "/api/tap-errors/count")
-                        .hasAnyRole("SUPERADMIN", "OSAS", "HR", "MONITORING")
+                        .hasAnyRole("SUPERADMIN", "OSAS", "HR", "MONITORING", "LIBRARIAN", "OLIVE")
                         .requestMatchers("/api/tap-errors/**")
-                        .hasAnyRole("SUPERADMIN", "OSAS", "HR")
+                        .hasAnyRole("SUPERADMIN", "OSAS", "HR", "LIBRARIAN", "OLIVE")
                         // Kiosk endpoints stay available to guards; reporting is admin/monitoring.
-                        .requestMatchers("/api/attendance/tap").hasAnyRole("SUPERADMIN", "GUARD")
+                        .requestMatchers("/api/attendance/tap")
+                        .hasAnyRole("SUPERADMIN", "GUARD", "LIBRARY_KIOSK", "OLIVE_KIOSK")
                         .requestMatchers("/api/attendance/recent")
-                        .hasAnyRole("SUPERADMIN", "GUARD", "MONITORING", "OSAS", "HR")
+                        .hasAnyRole(
+                                "SUPERADMIN", "GUARD", "LIBRARY_KIOSK", "OLIVE_KIOSK",
+                                "MONITORING", "OSAS", "HR", "LIBRARIAN", "OLIVE"
+                        )
                         // Live guard kiosk presence for dashboard / monitoring wall.
                         .requestMatchers(HttpMethod.GET, "/api/guards/online")
-                        .hasAnyRole("SUPERADMIN", "MONITORING", "OSAS", "HR")
+                        .hasAnyRole("SUPERADMIN", "MONITORING", "OSAS", "HR", "LIBRARIAN", "OLIVE")
                         // Read-only aggregates power the monitoring wall and admin dashboards.
                         .requestMatchers(
                                 "/api/attendance/summary",
                                 "/api/attendance/by-department",
                                 "/api/attendance/by-hour"
                         )
-                        .hasAnyRole("SUPERADMIN", "MONITORING", "OSAS", "HR")
-                        .requestMatchers("/api/attendance/**").hasAnyRole("SUPERADMIN", "OSAS", "HR")
+                        .hasAnyRole("SUPERADMIN", "MONITORING", "OSAS", "HR", "LIBRARIAN", "OLIVE")
+                        .requestMatchers("/api/attendance/**")
+                        .hasAnyRole("SUPERADMIN", "OSAS", "HR", "LIBRARIAN", "OLIVE")
                         .requestMatchers("/api/backup", "/api/backup/**").hasRole("SUPERADMIN")
                         .requestMatchers("/api/**").hasRole("SUPERADMIN")
                         .anyRequest().permitAll()

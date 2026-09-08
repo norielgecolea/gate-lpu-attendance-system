@@ -19,6 +19,7 @@
 
     <hlm-separator orientation="vertical" class="mx-1 h-6" />
 
+    @if (canManageDirectory) {
     <button hlmBtn class="gap-1.5" type="button" (click)="openCreate()">
       <ng-icon name="lucidePlus" class="text-base" />
       New
@@ -76,6 +77,7 @@
       <ng-icon name="lucideUserX" class="text-base" />
       Deactivate
     </button>
+    }
   </div>
 
   @if (error() || actionError()) {
@@ -198,6 +200,7 @@
                         >
                           <ng-icon name="lucideHistory" class="text-base" />
                         </button>
+                        @if (canManageDirectory) {
                         <button
                           hlmBtn
                           size="icon"
@@ -222,6 +225,7 @@
                         >
                           <ng-icon name="lucideUserX" class="text-base" />
                         </button>
+                        }
                       </div>
                     }
                     @default {

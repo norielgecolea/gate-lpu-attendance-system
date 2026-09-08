@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import org.nors.dev.codes.lpu.model.AttendanceLog;
 import org.nors.dev.codes.lpu.model.Employee;
+import org.nors.dev.codes.lpu.model.KioskGroup;
 import org.nors.dev.codes.lpu.model.Student;
 
 public record TapResponse(
@@ -20,6 +21,7 @@ public record TapResponse(
         boolean financeTagged,
         String warningMessage,
         String personType,
+        String kioskGroup,
         StudentResponse student,
         EmployeeResponse employee
 ) {
@@ -35,6 +37,7 @@ public record TapResponse(
                 && birthdate.getMonthValue() == date.getMonthValue()
                 && birthdate.getDayOfMonth() == date.getDayOfMonth();
         boolean financeTagged = student != null && student.isFinanceTagged();
+        String kioskGroup = log.getKioskGroup() != null ? log.getKioskGroup().name() : KioskGroup.MAIN_GATES.name();
         return new TapResponse(
                 action,
                 message,
@@ -49,6 +52,7 @@ public record TapResponse(
                 financeTagged,
                 financeTagged ? "PLEASE VISIT FINANCE DEPARTMENT" : null,
                 student != null ? "STUDENT" : "EMPLOYEE",
+                kioskGroup,
                 student != null ? StudentResponse.from(student) : null,
                 employee != null ? EmployeeResponse.from(employee) : null
         );

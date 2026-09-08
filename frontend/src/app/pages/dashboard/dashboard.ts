@@ -1,5 +1,7 @@
 import { DatePipe, DecimalPipe, NgClass } from '@angular/common';
-import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, computed, effect, inject, signal, untracked } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { ActivatedRoute } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
   lucideActivity,
@@ -22,6 +24,13 @@ import {
   type PersonType,
   type TapResponse,
 } from '../../core/attendance/attendance-api.service';
+import { AuthService } from '../../core/auth/auth.service';
+import {
+  kioskGroupFromRole,
+  KIOSK_GROUP_LABELS,
+  isVenueAdmin,
+  type KioskGroup,
+} from '../../core/kiosk/kiosk-group';
 import { NotificationService } from '../../core/notifications/notification.service';
 import { studentPhotoUrl } from '../../core/students/student-photo.util';
 import { PhotoPreview } from '../../shared/photo-preview/photo-preview.directive';
@@ -124,7 +133,40 @@ export class Dashboard implements OnDestroy {
 
   private readonly attendanceApi = inject(AttendanceApiService);
   private readonly studentsApi = inject(StudentsApiService);
+  private readonly auth = inject(AuthService);
+  private readonly route = inject(ActivatedRoute);
   protected readonly notifications = inject(NotificationService);
+  private readonly routeData = toSignal(this.route.data, {
+    initialValue: this.route.snapshot.data,
+  });
+  protected readonly kioskGroup = computed<KioskGroup>(() => {
+    const fromRoute = this.routeData()?.['kioskGroup'] as KioskGroup | undefined;
+    if (fromRoute === 'LIBRARY' || fromRoute === 'OLIVE_HOTEL' || fromRoute === 'MAIN_GATES') {
+      return fromRoute;
+    }
+    return kioskGroupFromRole(this.auth.user()?.role);
+  });
+  protected readonly venueTitle = computed(() => {
+    switch (this.kioskGroup()) {
+      case 'LIBRARY':
+        return 'Library Dashboard';
+      case 'OLIVE_HOTEL':
+        return 'Olive Hotel Dashboard';
+      default:
+        return 'Gate Dashboard';
+    }
+  });
+  protected readonly venueSubtitle = computed(() =>
+    this.kioskGroup() === 'MAIN_GATES'
+      ? 'Realtime gate activity across LPU-Laguna'
+      : `Realtime ${KIOSK_GROUP_LABELS[this.kioskGroup()]} attendance`,
+  );
+  protected readonly showDirectoryStats = computed(
+    () => !isVenueAdmin(this.auth.user()?.role) && this.kioskGroup() === 'MAIN_GATES',
+  );
+  protected readonly onlineKioskLocations = computed(() =>
+    this.notifications.onlineLocationsFor(this.kioskGroup()),
+  );
 
   protected readonly recentTaps = signal<TapResponse[]>([]);
   protected readonly tapsLoading = signal(true);
@@ -225,27 +267,24 @@ export class Dashboard implements OnDestroy {
   );
 
   constructor() {
-    this.attendanceApi.recent(Dashboard.RECENT_LIMIT).subscribe({
-      next: (taps) => {
-        this.recentTaps.set(taps);
-        this.tapsLoading.set(false);
-      },
-      error: () => this.tapsLoading.set(false),
+    effect(() => {
+      const group = this.kioskGroup();
+      untracked(() => this.reloadVenue(group));
     });
 
-    this.studentsApi.list().subscribe({
-      next: (students) => {
-        this.activeCount.set(students.length);
-        this.rfidCount.set(students.filter((s) => !!s.rfid).length);
-      },
-      error: () => undefined,
-    });
-    this.studentsApi.listInactive().subscribe({
-      next: (students) => this.inactiveCount.set(students.length),
-      error: () => undefined,
-    });
-
-    this.loadTodayPresence();
+    if (this.showDirectoryStats()) {
+      this.studentsApi.list().subscribe({
+        next: (students) => {
+          this.activeCount.set(students.length);
+          this.rfidCount.set(students.filter((s) => !!s.rfid).length);
+        },
+        error: () => undefined,
+      });
+      this.studentsApi.listInactive().subscribe({
+        next: (students) => this.inactiveCount.set(students.length),
+        error: () => undefined,
+      });
+    }
 
     // Live updates: a TIME_OUT replaces the existing TIME_IN card for the same log,
     // and every tap also refreshes the hero figures and department charts.
@@ -254,6 +293,9 @@ export class Dashboard implements OnDestroy {
       .subscribe((event) => {
         const tap = event.payload as TapResponse | undefined;
         if (!tap?.attendanceId) {
+          return;
+        }
+        if (tap.kioskGroup && tap.kioskGroup !== this.kioskGroup()) {
           return;
         }
         this.recentTaps.update((list) =>
@@ -312,16 +354,30 @@ export class Dashboard implements OnDestroy {
     return tap.personType === 'STUDENT' || !!tap.student;
   }
 
+  private reloadVenue(group: KioskGroup): void {
+    this.tapsLoading.set(true);
+    this.deptsLoading.set(true);
+    this.attendanceApi.recent(Dashboard.RECENT_LIMIT, 0, group).subscribe({
+      next: (taps) => {
+        this.recentTaps.set(taps);
+        this.tapsLoading.set(false);
+      },
+      error: () => this.tapsLoading.set(false),
+    });
+    this.loadTodayPresence();
+  }
+
   /** Loads today's summaries and per-department presence for students and employees. */
   private loadTodayPresence(): void {
     const today = this.manilaDate(0);
+    const group = this.kioskGroup();
     const summaryFor = (personType: PersonType) =>
       this.attendanceApi
-        .summary({ personType, startDate: today, endDate: today })
+        .summary({ personType, startDate: today, endDate: today, kioskGroup: group })
         .pipe(catchError(() => of(EMPTY_SUMMARY)));
     const deptsFor = (personType: PersonType) =>
       this.attendanceApi
-        .byDepartment(personType, today, today)
+        .byDepartment(personType, today, today, group)
         .pipe(catchError(() => of([] as AttendanceDepartmentCount[])));
 
     forkJoin({

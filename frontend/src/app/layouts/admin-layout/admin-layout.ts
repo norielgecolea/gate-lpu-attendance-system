@@ -10,9 +10,13 @@ import {
 import { Subscription, filter } from 'rxjs';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
+  lucideBookOpen,
   lucideBriefcase,
   lucideBanknote,
+  lucideBuilding2,
   lucideChartColumn,
+  lucideChevronDown,
+  lucideChevronRight,
   lucideClock,
   lucideDatabaseBackup,
   lucideGraduationCap,
@@ -45,6 +49,7 @@ import {
 import { AlertSoundService } from '../../core/alert-sound.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { canAccessAdminRoute } from '../../core/auth/role-access';
+import { isVenueAdmin, kioskGroupFromRole, seesAllTapErrors } from '../../core/kiosk/kiosk-group';
 import { NotificationService } from '../../core/notifications/notification.service';
 import { ChangePasswordDialog } from '../../shared/change-password/change-password-dialog';
 
@@ -63,6 +68,7 @@ interface TapErrorPayload {
   identifier?: string | null;
   location?: string | null;
   tappedAt?: string | null;
+  kioskGroup?: string | null;
 }
 
 interface TapErrorAlert {
@@ -88,6 +94,8 @@ interface TapErrorAlert {
   viewProviders: [
     provideIcons({
       lucideLayoutDashboard,
+      lucideBookOpen,
+      lucideBuilding2,
       lucideChartColumn,
       lucideIdCard,
       lucideMonitorPlay,
@@ -103,6 +111,8 @@ interface TapErrorAlert {
       lucideHistory,
       lucideDatabaseBackup,
       lucidePanelLeft,
+      lucideChevronDown,
+      lucideChevronRight,
       lucideMenu,
       lucideGraduationCap,
       lucideKeyRound,
@@ -162,9 +172,17 @@ export class AdminLayout implements OnDestroy {
 
   protected readonly navSections: NavSection[] = [
     {
+      label: 'Dashboards',
+      items: [
+        { label: 'Gate Dashboard', icon: 'lucideLayoutDashboard', route: '/dashboard' },
+        { label: 'Library Dashboard', icon: 'lucideBookOpen', route: '/dashboard/library' },
+        { label: 'Olive Hotel Dashboard', icon: 'lucideBuilding2', route: '/dashboard/olive' },
+      ],
+    },
+    {
       label: null,
       items: [
-        { label: 'Dashboard', icon: 'lucideLayoutDashboard', route: '/dashboard' },
+        { label: 'Attendance', icon: 'lucideClock', route: '/attendance' },
         { label: 'RFID Checker', icon: 'lucideIdCard', route: '/rfid-checker' },
         { label: 'Daily Recap', icon: 'lucideChartColumn', route: '/daily-recap' },
       ],
@@ -172,7 +190,7 @@ export class AdminLayout implements OnDestroy {
     {
       label: 'Students',
       items: [
-        { label: 'Student Management', icon: 'lucideUsers', route: '/students' },
+        { label: 'Students', icon: 'lucideUsers', route: '/students' },
         { label: 'Student Attendance', icon: 'lucideClock', route: '/students/attendance' },
         { label: 'RFID Registration', icon: 'lucideScanBarcode', route: '/students/rfid' },
         { label: 'Inactive Students', icon: 'lucideUserX', route: '/students/inactive' },
@@ -182,7 +200,7 @@ export class AdminLayout implements OnDestroy {
     {
       label: 'Employees',
       items: [
-        { label: 'Employee Management', icon: 'lucideBriefcase', route: '/employees' },
+        { label: 'Employees', icon: 'lucideBriefcase', route: '/employees' },
         { label: 'Employee Attendance', icon: 'lucideClock', route: '/employees/attendance' },
         { label: 'RFID Registration', icon: 'lucideScanBarcode', route: '/employees/rfid' },
         { label: 'Inactive Employees', icon: 'lucideUserMinus', route: '/employees/inactive' },
@@ -213,14 +231,38 @@ export class AdminLayout implements OnDestroy {
     },
   ];
 
+  protected readonly collapsedNav = signal<Record<string, boolean>>(readCollapsedNav());
+
   protected readonly visibleNavSections = computed(() => {
     const role = this.auth.user()?.role;
-    return this.navSections
+    const sections = this.navSections
       .map((section) => ({
         ...section,
-        items: section.items.filter((item) => canAccessAdminRoute(role, item.route)),
+        items: section.items
+          .filter((item) => canAccessAdminRoute(role, item.route))
+          .map((item) => this.relabelDashboard(item, role)),
       }))
       .filter((section) => section.items.length > 0);
+
+    if (!isVenueAdmin(role)) {
+      return sections;
+    }
+
+    const directoryItems = sections
+      .filter((section) => section.label === 'Students' || section.label === 'Employees')
+      .flatMap((section) => section.items);
+    const rest = sections.filter(
+      (section) => section.label !== 'Students' && section.label !== 'Employees',
+    );
+    if (directoryItems.length === 0) {
+      return rest;
+    }
+    const directory: NavSection = { label: 'Directory', items: directoryItems };
+    const insertAt = rest.findIndex((section) => section.label === 'Administration');
+    if (insertAt < 0) {
+      return [...rest, directory];
+    }
+    return [...rest.slice(0, insertAt), directory, ...rest.slice(insertAt)];
   });
 
   private readonly router = inject(Router);
@@ -292,6 +334,39 @@ export class AdminLayout implements OnDestroy {
     this.sidebarOpen.update((open) => !open);
   }
 
+  protected isSectionCollapsed(label: string | null): boolean {
+    if (!label || !this.showSidebarLabels()) {
+      return false;
+    }
+    return !!this.collapsedNav()[label];
+  }
+
+  protected toggleNavSection(label: string | null, event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!label) {
+      return;
+    }
+    this.collapsedNav.update((current) => {
+      const next = { ...current, [label]: !current[label] };
+      writeCollapsedNav(next);
+      return next;
+    });
+  }
+
+  private relabelDashboard(item: NavItem, role: string | null | undefined): NavItem {
+    if (item.route !== '/dashboard') {
+      return item;
+    }
+    if (role === 'LIBRARIAN') {
+      return { ...item, label: 'Library Dashboard' };
+    }
+    if (role === 'OLIVE') {
+      return { ...item, label: 'Olive Hotel Dashboard' };
+    }
+    return item;
+  }
+
   protected closeMobileNav(): void {
     this.mobileNavOpen.set(false);
   }
@@ -328,7 +403,14 @@ export class AdminLayout implements OnDestroy {
     this.tapErrors.update((list) => list.filter((a) => a.id !== id));
   }
 
-  private pushTapError(payload: TapErrorPayload): void {
+  private pushTapError(payload: TapErrorPayload & { kioskGroup?: string | null }): void {
+    const role = this.auth.user()?.role;
+    if (!seesAllTapErrors(role)) {
+      const myGroup = kioskGroupFromRole(role);
+      if (payload.kioskGroup && payload.kioskGroup !== myGroup) {
+        return;
+      }
+    }
     const alert: TapErrorAlert = {
       id: this.nextAlertId++,
       identifier: payload.identifier?.trim() || 'Unknown ID',
@@ -342,5 +424,37 @@ export class AdminLayout implements OnDestroy {
       this.alertTimers.delete(timer);
     }, 12_000);
     this.alertTimers.add(timer);
+  }
+}
+
+const NAV_COLLAPSE_KEY = 'lpu-admin-nav-collapsed';
+
+function readCollapsedNav(): Record<string, boolean> {
+  if (typeof localStorage === 'undefined') {
+    return {};
+  }
+  try {
+    const raw = localStorage.getItem(NAV_COLLAPSE_KEY);
+    if (!raw) {
+      return {};
+    }
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return {};
+    }
+    return parsed as Record<string, boolean>;
+  } catch {
+    return {};
+  }
+}
+
+function writeCollapsedNav(value: Record<string, boolean>): void {
+  if (typeof localStorage === 'undefined') {
+    return;
+  }
+  try {
+    localStorage.setItem(NAV_COLLAPSE_KEY, JSON.stringify(value));
+  } catch {
+    // ignore quota / private mode
   }
 }

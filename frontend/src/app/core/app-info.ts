@@ -16,6 +16,36 @@ export interface Release {
  */
 export const RELEASES: Release[] = [
   {
+    version: '2.5.0',
+    notes: [
+      {
+        title: 'Library and Olive Hotel kiosks',
+        detail:
+          'Library and Olive Hotel now have their own attendance kiosks, separate from the main gate. Each keeps the LPU Laguna name on top and uses its own look.',
+      },
+      {
+        title: 'Venue attendance',
+        detail:
+          'A tap at the main gate, library, or Olive Hotel is stored for that place only, so the same person can check in at more than one venue in a day.',
+      },
+      {
+        title: 'Attendance kiosk filter',
+        detail:
+          'Superadmin can filter student and employee attendance logs by Main Gates, Library, or Olive Hotel.',
+      },
+      {
+        title: 'Live monitor split',
+        detail:
+          'The monitoring wall shows Main Gates, Library, and Olive Hotel side by side on a wide or fullscreen display, and stacked on a small screen.',
+      },
+      {
+        title: 'Librarian and Olive accounts',
+        detail:
+          'Superadmin can create Librarian and Olive staff accounts, plus library and Olive kiosk logins, each limited to their own venue.',
+      },
+    ],
+  },
+  {
     version: '2.3.6',
     notes: [
       {

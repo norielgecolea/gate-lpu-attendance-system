@@ -6,6 +6,7 @@ import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.query.Query;
 import org.nors.dev.codes.lpu.model.AttendanceEvent;
+import org.nors.dev.codes.lpu.model.KioskGroup;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,16 +34,18 @@ public class AttendanceEventRepository {
      * Tap counts per campus-local hour and action for one date. Rows: [hour, action, count].
      */
     @Transactional(readOnly = true)
-    public List<Object[]> countByHour(LocalDate date) {
+    public List<Object[]> countByHour(LocalDate date, KioskGroup kioskGroup) {
         return currentSession()
                 .createNativeQuery(
                         "SELECT CAST(EXTRACT(HOUR FROM tapped_at AT TIME ZONE 'Asia/Manila') AS int) AS h,"
                                 + " action, COUNT(*)"
                                 + " FROM attendance_events WHERE attendance_date = :date"
+                                + " AND kiosk_group = :kioskGroup"
                                 + " GROUP BY 1, 2 ORDER BY 1",
                         Object[].class
                 )
                 .setParameter("date", date)
+                .setParameter("kioskGroup", kioskGroup.name())
                 .getResultList();
     }
 
@@ -64,6 +67,7 @@ public class AttendanceEventRepository {
             String search,
             String location,
             String action,
+            KioskGroup kioskGroup,
             String sortDir,
             int offset,
             int limit
@@ -71,12 +75,12 @@ public class AttendanceEventRepository {
         StringBuilder hql = new StringBuilder(
                 "SELECT e FROM AttendanceEvent e LEFT JOIN FETCH e.student s LEFT JOIN FETCH e.employee emp WHERE 1=1"
         );
-        appendFilters(hql, personType, personId, startDate, endDate, search, location, action);
+        appendFilters(hql, personType, personId, startDate, endDate, search, location, action, kioskGroup);
         boolean asc = "asc".equalsIgnoreCase(sortDir);
         hql.append(asc ? " ORDER BY e.tappedAt ASC, e.id ASC" : " ORDER BY e.tappedAt DESC, e.id DESC");
 
         Query<AttendanceEvent> query = currentSession().createQuery(hql.toString(), AttendanceEvent.class);
-        bindFilters(query, personType, personId, startDate, endDate, search, location, action);
+        bindFilters(query, personType, personId, startDate, endDate, search, location, action, kioskGroup);
         return query.setFirstResult(Math.max(offset, 0)).setMaxResults(Math.max(limit, 1)).getResultList();
     }
 
@@ -88,14 +92,15 @@ public class AttendanceEventRepository {
             LocalDate endDate,
             String search,
             String location,
-            String action
+            String action,
+            KioskGroup kioskGroup
     ) {
         StringBuilder hql = new StringBuilder(
                 "SELECT COUNT(e.id) FROM AttendanceEvent e LEFT JOIN e.student s LEFT JOIN e.employee emp WHERE 1=1"
         );
-        appendFilters(hql, personType, personId, startDate, endDate, search, location, action);
+        appendFilters(hql, personType, personId, startDate, endDate, search, location, action, kioskGroup);
         Query<Long> query = currentSession().createQuery(hql.toString(), Long.class);
-        bindFilters(query, personType, personId, startDate, endDate, search, location, action);
+        bindFilters(query, personType, personId, startDate, endDate, search, location, action, kioskGroup);
         Long count = query.uniqueResult();
         return count != null ? count : 0;
     }
@@ -108,8 +113,12 @@ public class AttendanceEventRepository {
             LocalDate endDate,
             String search,
             String location,
-            String action
+            String action,
+            KioskGroup kioskGroup
     ) {
+        if (kioskGroup != null) {
+            hql.append(" AND e.kioskGroup = :kioskGroup");
+        }
         if ("STUDENT".equalsIgnoreCase(personType)) {
             hql.append(" AND e.student IS NOT NULL");
         } else if ("EMPLOYEE".equalsIgnoreCase(personType)) {
@@ -118,7 +127,7 @@ public class AttendanceEventRepository {
         if (personId != null) {
             if ("EMPLOYEE".equalsIgnoreCase(personType)) {
                 hql.append(" AND e.employee.id = :personId");
-            } else {
+            } else if ("STUDENT".equalsIgnoreCase(personType)) {
                 hql.append(" AND e.student.id = :personId");
             }
         }
@@ -153,8 +162,12 @@ public class AttendanceEventRepository {
             LocalDate endDate,
             String search,
             String location,
-            String action
+            String action,
+            KioskGroup kioskGroup
     ) {
+        if (kioskGroup != null) {
+            query.setParameter("kioskGroup", kioskGroup);
+        }
         if (personId != null) {
             query.setParameter("personId", personId);
         }

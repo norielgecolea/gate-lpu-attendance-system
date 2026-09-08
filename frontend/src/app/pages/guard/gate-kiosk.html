@@ -47,8 +47,8 @@
     <div class="gate-brand">
       <img class="gate-logo" src="/logo.svg" alt="LPU Laguna" />
       <div class="gate-brand-text">
-        <p class="gate-brand-label">LPU Laguna</p>
-        <h1 class="gate-title">Gate Attendance</h1>
+        <p class="gate-brand-label">{{ venueBrand }}</p>
+        <h1 class="gate-title">{{ venueTitle }}</h1>
       </div>
     </div>
 
@@ -118,7 +118,7 @@
             <div class="gate-error-copy">
               <p class="gate-error-title">{{ errMsg }}</p>
               @if (errorNotFound()) {
-                <p class="gate-error-hint">Please go to OSAS</p>
+                <p class="gate-error-hint">{{ notFoundHint }}</p>
               } @else {
                 <p class="gate-error-hint">Please tap again</p>
               }
@@ -205,9 +205,9 @@
           <p class="gate-idle-clock">{{ clock() | date: 'hh:mm:ss a' : clockTz() }}</p>
           <p class="gate-idle-date">{{ clock() | date: 'EEEE, MMMM d' : clockTz() }}</p>
           <div class="gate-idle-icon">
-            <ng-icon name="lucideScanBarcode" />
+            <ng-icon [name]="idleIcon" />
           </div>
-          <p class="gate-idle-hint">Ready to scan</p>
+          <p class="gate-idle-hint">{{ idleHint }}</p>
         </div>
       }
     </section>

@@ -33,4 +33,5 @@ export interface AuthEventMessage {
   payload?: unknown;
   /** Present on GUARD_PRESENCE (and optionally other) events. */
   locations?: string[];
+  kiosks?: Record<string, string[]>;
 }
