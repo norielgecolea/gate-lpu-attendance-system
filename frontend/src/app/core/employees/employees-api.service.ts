@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, from, switchMap } from 'rxjs';
 import { environment } from '../../../environments/environment';
@@ -13,7 +13,7 @@ import type { Employee } from '../../pages/employees/employees.store';
 
 export type { PhotoBulkUploadProgress, PhotoBulkUploadResult } from '../media/bulk-photo-upload';
 
-export type EmployeePayload = Omit<Employee, 'id'>;
+export type EmployeePayload = Omit<Employee, 'id' | 'alarmMarked'>;
 export interface EmployeeImportPayload {
   employeeNo: string;
   name?: string | null;
@@ -53,8 +53,25 @@ export class EmployeesApiService {
     return this.http.get<Employee[]>(`${this.baseUrl}/inactive`);
   }
 
+  listAlarmMarked(): Observable<Employee[]> {
+    return this.http.get<Employee[]>(`${this.baseUrl}/alarm-marked`);
+  }
+
+  search(q: string, limit = 12): Observable<Employee[]> {
+    const params = new HttpParams().set('q', q).set('limit', limit);
+    return this.http.get<Employee[]>(`${this.baseUrl}/search`, { params });
+  }
+
   restore(id: string): Observable<Employee> {
     return this.http.post<Employee>(`${this.baseUrl}/${id}/restore`, {});
+  }
+
+  alarmMark(id: string): Observable<Employee> {
+    return this.http.post<Employee>(`${this.baseUrl}/${id}/alarm-marked`, {});
+  }
+
+  alarmUnmark(id: string): Observable<Employee> {
+    return this.http.delete<Employee>(`${this.baseUrl}/${id}/alarm-marked`);
   }
 
   getById(id: string): Observable<Employee> {

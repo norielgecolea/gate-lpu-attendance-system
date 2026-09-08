@@ -123,10 +123,13 @@
         @for (tap of recentTaps(); track tap.attendanceId + tap.action) {
           <article
             class="tap-card flex min-w-0 flex-col gap-3 rounded-xl border p-3 shadow-sm transition-shadow hover:shadow-md sm:p-4"
+            [class.tap-card--alarm]="isAlarm(tap)"
             [ngClass]="
-              isStudent(tap)
-                ? 'border-sky-500/30 bg-sky-500/5'
-                : 'border-violet-500/30 bg-violet-500/5'
+              isAlarm(tap)
+                ? 'border-rose-500/50 bg-rose-500/10'
+                : isStudent(tap)
+                  ? 'border-sky-500/30 bg-sky-500/5'
+                  : 'border-violet-500/30 bg-violet-500/5'
             "
           >
             <div class="flex items-center gap-3">
@@ -177,6 +180,13 @@
                 >
                   {{ tap.action === 'TIME_IN' ? 'IN' : 'OUT' }}
                 </span>
+                @if (isAlarm(tap)) {
+                  <span
+                    class="rounded-full bg-rose-500/15 px-2 py-0.5 text-[10px] font-bold tracking-wide text-rose-700"
+                  >
+                    ALARM
+                  </span>
+                }
               </div>
               <div class="min-w-0 text-end leading-tight">
                 <p class="text-foreground text-xs font-semibold tabular-nums">

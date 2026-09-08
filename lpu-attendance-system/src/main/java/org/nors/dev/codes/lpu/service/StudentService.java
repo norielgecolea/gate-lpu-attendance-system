@@ -234,6 +234,13 @@ public class StudentService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<StudentResponse> listAlarmMarked() {
+        return studentRepository.findActiveAlarmMarked().stream()
+                .map(StudentResponse::from)
+                .toList();
+    }
+
     /** "Delete" only deactivates — the record stays and can be restored. */
     @Transactional
     public void delete(Long id, Long actorUserId, String actorUsername) {
@@ -273,6 +280,17 @@ public class StudentService {
         studentRepository.save(student);
         log.info("{} finance tag student id={} studentNo={}",
                 tagged ? "Applied" : "Removed", id, student.getStudentNo());
+        return StudentResponse.from(student);
+    }
+
+    @Transactional
+    public StudentResponse setAlarmMarked(Long id, boolean marked) {
+        Student student = requireActive(id);
+        student.setAlarmMarked(marked);
+        student.setUpdatedAt(Instant.now());
+        studentRepository.save(student);
+        log.info("{} alarm mark student id={} studentNo={}",
+                marked ? "Applied" : "Removed", id, student.getStudentNo());
         return StudentResponse.from(student);
     }
 

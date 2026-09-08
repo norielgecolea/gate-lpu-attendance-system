@@ -16,6 +16,7 @@ export interface Employee {
   lpuEmail?: string | null;
   department: string | null;
   position: string | null;
+  alarmMarked: boolean;
 }
 
 @Injectable({ providedIn: 'root' })

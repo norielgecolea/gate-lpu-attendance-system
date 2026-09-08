@@ -19,6 +19,7 @@ import {
   lucideGraduationCap,
   lucideKeyRound,
   lucideLogOut,
+  lucideBell,
   lucideScanBarcode,
   lucideTriangleAlert,
   lucideX,
@@ -33,6 +34,7 @@ import {
   type AttendanceSummary,
   type PersonType,
   type TapResponse,
+  isAlarmMarked,
 } from '../../core/attendance/attendance-api.service';
 import { AlertSoundService } from '../../core/alert-sound.service';
 import { AuthService } from '../../core/auth/auth.service';
@@ -93,6 +95,14 @@ interface TapErrorAlert {
   time: Date;
 }
 
+interface AlarmTapAlert {
+  id: number;
+  name: string;
+  personType: string;
+  location: string;
+  time: Date;
+}
+
 @Component({
   selector: 'app-monitor',
   imports: [DatePipe, DecimalPipe, NgIcon, HlmAvatarImports],
@@ -108,6 +118,7 @@ interface TapErrorAlert {
       lucideKeyRound,
       lucideLogOut,
       lucideScanBarcode,
+      lucideBell,
       lucideTriangleAlert,
       lucideX,
     }),
@@ -159,11 +170,41 @@ interface TapErrorAlert {
       animation: feed-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
     }
 
+    @keyframes alarm-blink {
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 rgb(244 63 94 / 0.7);
+      }
+      50% {
+        box-shadow: 0 0 0 10px rgb(244 63 94 / 0);
+      }
+    }
+
+    .spotlight-card--alarm {
+      animation:
+        spotlight-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both,
+        alarm-blink 0.7s ease-in-out infinite;
+      background: rgb(244 63 94 / 0.18);
+    }
+
+    .feed-row--alarm {
+      animation:
+        feed-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both,
+        alarm-blink 0.7s ease-in-out infinite;
+      background: rgb(244 63 94 / 0.18);
+    }
+
     @media (prefers-reduced-motion: reduce) {
       .spotlight-card,
       .feed-row,
       .alert-card {
         animation: none;
+      }
+
+      .spotlight-card--alarm,
+      .feed-row--alarm {
+        animation: none;
+        box-shadow: 0 0 0 2px rgb(244 63 94 / 0.7);
       }
     }
 
@@ -311,6 +352,7 @@ export class Monitor implements OnDestroy {
     ...EMPTY_VENUE_TAPS,
   });
   protected readonly tapErrors = signal<TapErrorAlert[]>([]);
+  protected readonly alarmAlerts = signal<AlarmTapAlert[]>([]);
   private nextAlertId = 1;
   private readonly alertTimers = new Set<ReturnType<typeof setTimeout>>();
   protected readonly studentSummary = signal<AttendanceSummary>(EMPTY_SUMMARY);
@@ -380,6 +422,9 @@ export class Monitor implements OnDestroy {
               ...(map[group] ?? []).filter((t) => t.attendanceId !== tap.attendanceId),
             ].slice(0, Monitor.FEED_LIMIT + 1),
           }));
+          if (isAlarmMarked(tap)) {
+            this.pushAlarmTap(tap, group);
+          }
           this.refresh.next();
         }),
     );
@@ -422,6 +467,30 @@ export class Monitor implements OnDestroy {
 
   protected dismissTapError(id: number): void {
     this.tapErrors.update((list) => list.filter((a) => a.id !== id));
+  }
+
+  protected dismissAlarm(id: number): void {
+    this.alarmAlerts.update((list) => list.filter((a) => a.id !== id));
+  }
+
+  private pushAlarmTap(tap: TapResponse, group: KioskGroup): void {
+    const alert: AlarmTapAlert = {
+      id: this.nextAlertId++,
+      name: this.personName(tap) || 'Unknown',
+      personType: this.personKind(tap),
+      location: [tap.location?.trim(), this.kioskLabels[group]].filter(Boolean).join(' · ')
+        || 'Unknown gate',
+      time: tap.action === 'TIME_OUT' && tap.timeOut
+        ? new Date(tap.timeOut)
+        : new Date(tap.timeIn),
+    };
+    this.alarmAlerts.update((list) => [alert, ...list].slice(0, 4));
+    this.alertSound.playAlarm();
+    const timer = setTimeout(() => {
+      this.dismissAlarm(alert.id);
+      this.alertTimers.delete(timer);
+    }, 12_000);
+    this.alertTimers.add(timer);
   }
 
   private pushTapError(payload: TapErrorPayload): void {
@@ -500,6 +569,10 @@ export class Monitor implements OnDestroy {
 
   protected personKind(tap: TapResponse): string {
     return tap.student ? 'Student' : 'Employee';
+  }
+
+  protected isAlarm(tap: TapResponse): boolean {
+    return isAlarmMarked(tap);
   }
 
   protected initials(name: string): string {

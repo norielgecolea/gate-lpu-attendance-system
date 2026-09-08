@@ -47,6 +47,16 @@ ALTER TABLE students
 CREATE INDEX IF NOT EXISTS idx_students_finance_tagged ON students (finance_tagged);
 
 ALTER TABLE students
+    ADD COLUMN IF NOT EXISTS alarm_marked BOOLEAN NOT NULL DEFAULT FALSE;
+
+CREATE INDEX IF NOT EXISTS idx_students_alarm_marked ON students (alarm_marked);
+
+ALTER TABLE employees
+    ADD COLUMN IF NOT EXISTS alarm_marked BOOLEAN NOT NULL DEFAULT FALSE;
+
+CREATE INDEX IF NOT EXISTS idx_employees_alarm_marked ON employees (alarm_marked);
+
+ALTER TABLE students
     ADD COLUMN IF NOT EXISTS lpu_email VARCHAR(255);
 
 ALTER TABLE employees

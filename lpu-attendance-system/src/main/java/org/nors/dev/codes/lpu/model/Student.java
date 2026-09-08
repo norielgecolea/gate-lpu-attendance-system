@@ -50,6 +50,9 @@ public class Student {
     @Column(name = "finance_tagged", nullable = false)
     private boolean financeTagged = false;
 
+    @Column(name = "alarm_marked", nullable = false)
+    private boolean alarmMarked = false;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 
@@ -150,6 +153,14 @@ public class Student {
 
     public void setFinanceTagged(boolean financeTagged) {
         this.financeTagged = financeTagged;
+    }
+
+    public boolean isAlarmMarked() {
+        return alarmMarked;
+    }
+
+    public void setAlarmMarked(boolean alarmMarked) {
+        this.alarmMarked = alarmMarked;
     }
 
     public Instant getCreatedAt() {

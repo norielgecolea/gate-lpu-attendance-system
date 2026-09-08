@@ -75,6 +75,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/gate-tones/**")
                         .hasAnyRole("SUPERADMIN", "OSAS")
                         // Dashboard read access for cross-role summaries.
+                        .requestMatchers("/api/students/alarm-marked", "/api/students/*/alarm-marked")
+                        .hasRole("SUPERADMIN")
+                        .requestMatchers("/api/employees/alarm-marked", "/api/employees/*/alarm-marked")
+                        .hasRole("SUPERADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/students/**")
                         .hasAnyRole("SUPERADMIN", "OSAS", "HR", "LIBRARIAN", "OLIVE")
                         .requestMatchers("/api/students/**")

@@ -44,6 +44,9 @@ public class Employee {
     @Column(nullable = false)
     private boolean deleted = false;
 
+    @Column(name = "alarm_marked", nullable = false)
+    private boolean alarmMarked = false;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 
@@ -128,6 +131,14 @@ public class Employee {
 
     public void setDeleted(boolean deleted) {
         this.deleted = deleted;
+    }
+
+    public boolean isAlarmMarked() {
+        return alarmMarked;
+    }
+
+    public void setAlarmMarked(boolean alarmMarked) {
+        this.alarmMarked = alarmMarked;
     }
 
     public Instant getCreatedAt() {

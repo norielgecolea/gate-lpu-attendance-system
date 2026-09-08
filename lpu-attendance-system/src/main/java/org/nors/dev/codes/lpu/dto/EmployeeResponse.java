@@ -12,7 +12,8 @@ public record EmployeeResponse(
         LocalDate birthdate,
         String lpuEmail,
         String department,
-        String position
+        String position,
+        boolean alarmMarked
 ) {
     public static EmployeeResponse from(Employee employee) {
         return new EmployeeResponse(
@@ -24,7 +25,8 @@ public record EmployeeResponse(
                 employee.getBirthdate(),
                 employee.getLpuEmail(),
                 employee.getDepartment(),
-                employee.getPosition()
+                employee.getPosition(),
+                employee.isAlarmMarked()
         );
     }
 }

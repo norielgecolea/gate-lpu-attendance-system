@@ -1,9 +1,37 @@
 <div class="bg-muted/40 relative flex h-dvh overflow-hidden">
-  <!-- RFID error alerts -->
-  @if (tapErrors().length > 0) {
+  <!-- RFID error and alarm alerts -->
+  @if (tapErrors().length > 0 || alarmAlerts().length > 0) {
     <div
       class="pointer-events-none absolute top-16 right-3 z-50 flex w-96 max-w-[calc(100vw-1.5rem)] flex-col gap-2 sm:top-20 sm:right-6"
     >
+      @for (alert of alarmAlerts(); track alert.id) {
+        <div
+          class="alert-card pointer-events-auto flex items-start gap-3 rounded-xl border border-rose-200 bg-white p-3 shadow-2xl sm:p-4"
+          role="alert"
+        >
+          <div class="grid size-9 shrink-0 place-items-center rounded-lg bg-rose-100 text-rose-600 sm:size-10">
+            <ng-icon name="lucideBell" class="text-lg sm:text-xl" />
+          </div>
+          <div class="min-w-0 flex-1 leading-tight">
+            <p class="text-sm font-bold text-rose-700">Alarm tap</p>
+            <p class="mt-0.5 truncate text-sm text-slate-700">
+              <span class="font-semibold">{{ alert.name }}</span>
+              <span class="text-slate-500"> · {{ alert.personType }}</span>
+            </p>
+            <p class="mt-0.5 text-xs text-slate-500">
+              {{ alert.location }} · {{ alert.time | date: 'h:mm:ss a' }}
+            </p>
+          </div>
+          <button
+            type="button"
+            class="grid size-7 shrink-0 place-items-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+            aria-label="Dismiss alarm"
+            (click)="dismissAlarm(alert.id)"
+          >
+            <ng-icon name="lucideX" class="text-sm" />
+          </button>
+        </div>
+      }
       @for (alert of tapErrors(); track alert.id) {
         <div
           class="alert-card pointer-events-auto flex items-start gap-3 rounded-xl border border-red-200 bg-white p-3 shadow-2xl sm:p-4"

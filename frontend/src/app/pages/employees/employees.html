@@ -169,7 +169,12 @@
                         </hlm-avatar>
                         <div class="leading-tight">
                           <p class="text-foreground font-medium">{{ row.original.name }}</p>
-                          <p class="text-muted-foreground text-xs">{{ row.original.employeeNo }}</p>
+                          <p class="text-muted-foreground text-xs">
+                            {{ row.original.employeeNo }}
+                            @if (row.original.alarmMarked) {
+                              <span class="text-rose-700"> · Alarm</span>
+                            }
+                          </p>
                         </div>
                       </div>
                     }

@@ -66,6 +66,19 @@ public class EmployeeController {
         return ResponseEntity.ok(employeeService.listInactive());
     }
 
+    @GetMapping("/alarm-marked")
+    public ResponseEntity<List<EmployeeResponse>> listAlarmMarked() {
+        return ResponseEntity.ok(employeeService.listAlarmMarked());
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<EmployeeResponse>> search(
+            @RequestParam(defaultValue = "") String q,
+            @RequestParam(defaultValue = "12") int limit
+    ) {
+        return ResponseEntity.ok(employeeService.searchActive(q, limit));
+    }
+
     @GetMapping(value = "/export", produces = "text/csv")
     public ResponseEntity<byte[]> export() {
         byte[] csv = employeeService.exportCsv();
@@ -172,6 +185,16 @@ public class EmployeeController {
     @GetMapping("/{id}/audit")
     public ResponseEntity<List<EmployeeAuditEventResponse>> audit(@PathVariable Long id) {
         return ResponseEntity.ok(employeeService.listAuditEvents(id));
+    }
+
+    @PostMapping("/{id}/alarm-marked")
+    public ResponseEntity<EmployeeResponse> alarmMark(@PathVariable Long id) {
+        return ResponseEntity.ok(employeeService.setAlarmMarked(id, true));
+    }
+
+    @DeleteMapping("/{id}/alarm-marked")
+    public ResponseEntity<EmployeeResponse> alarmUnmark(@PathVariable Long id) {
+        return ResponseEntity.ok(employeeService.setAlarmMarked(id, false));
     }
 
     @PostMapping("/import")

@@ -13,6 +13,7 @@ import {
   lucideBookOpen,
   lucideBriefcase,
   lucideBanknote,
+  lucideBell,
   lucideBuilding2,
   lucideChartColumn,
   lucideChevronDown,
@@ -47,6 +48,7 @@ import {
   HlmNavigationMenuList,
 } from '@spartan-ng/helm/navigation-menu';
 import { AlertSoundService } from '../../core/alert-sound.service';
+import { isAlarmMarked, type TapResponse } from '../../core/attendance/attendance-api.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { canAccessAdminRoute } from '../../core/auth/role-access';
 import { isVenueAdmin, kioskGroupFromRole, seesAllTapErrors } from '../../core/kiosk/kiosk-group';
@@ -74,6 +76,14 @@ interface TapErrorPayload {
 interface TapErrorAlert {
   id: number;
   identifier: string;
+  location: string;
+  time: Date;
+}
+
+interface AlarmTapAlert {
+  id: number;
+  name: string;
+  personType: string;
   location: string;
   time: Date;
 }
@@ -106,6 +116,7 @@ interface TapErrorAlert {
       lucideUserMinus,
       lucideBriefcase,
       lucideBanknote,
+      lucideBell,
       lucideScanBarcode,
       lucideShieldCheck,
       lucideHistory,
@@ -166,9 +177,11 @@ export class AdminLayout implements OnDestroy {
   protected readonly loggingOut = signal(false);
   protected readonly accountMenuOpen = signal(false);
   protected readonly tapErrors = signal<TapErrorAlert[]>([]);
+  protected readonly alarmAlerts = signal<AlarmTapAlert[]>([]);
   private nextAlertId = 1;
   private readonly alertTimers = new Set<ReturnType<typeof setTimeout>>();
   private readonly tapErrorSub: Subscription;
+  private readonly alarmTapSub: Subscription;
 
   protected readonly navSections: NavSection[] = [
     {
@@ -195,6 +208,7 @@ export class AdminLayout implements OnDestroy {
         { label: 'RFID Registration', icon: 'lucideScanBarcode', route: '/students/rfid' },
         { label: 'Inactive Students', icon: 'lucideUserX', route: '/students/inactive' },
         { label: 'Finance Tagged', icon: 'lucideBanknote', route: '/students/finance-tagged' },
+        { label: 'Alarm', icon: 'lucideBell', route: '/students/alarm' },
       ],
     },
     {
@@ -204,6 +218,7 @@ export class AdminLayout implements OnDestroy {
         { label: 'Employee Attendance', icon: 'lucideClock', route: '/employees/attendance' },
         { label: 'RFID Registration', icon: 'lucideScanBarcode', route: '/employees/rfid' },
         { label: 'Inactive Employees', icon: 'lucideUserMinus', route: '/employees/inactive' },
+        { label: 'Alarm', icon: 'lucideBell', route: '/employees/alarm' },
       ],
     },
     {
@@ -294,10 +309,21 @@ export class AdminLayout implements OnDestroy {
         const payload = (event.payload ?? {}) as TapErrorPayload;
         this.pushTapError(payload);
       });
+
+    this.alarmTapSub = this.notifications.events$
+      .pipe(filter((e) => e.type === 'ATTENDANCE_TAP'))
+      .subscribe((event) => {
+        const tap = event.payload as TapResponse | undefined;
+        if (!tap || !isAlarmMarked(tap) || this.auth.user()?.role !== 'SUPERADMIN') {
+          return;
+        }
+        this.pushAlarmTap(tap);
+      });
   }
 
   ngOnDestroy(): void {
     this.tapErrorSub.unsubscribe();
+    this.alarmTapSub.unsubscribe();
     this.alertTimers.forEach((t) => clearTimeout(t));
     this.alertTimers.clear();
   }
@@ -401,6 +427,27 @@ export class AdminLayout implements OnDestroy {
 
   protected dismissTapError(id: number): void {
     this.tapErrors.update((list) => list.filter((a) => a.id !== id));
+  }
+
+  protected dismissAlarm(id: number): void {
+    this.alarmAlerts.update((list) => list.filter((a) => a.id !== id));
+  }
+
+  private pushAlarmTap(tap: TapResponse): void {
+    const alert: AlarmTapAlert = {
+      id: this.nextAlertId++,
+      name: tap.student?.name ?? tap.employee?.name ?? 'Unknown',
+      personType: tap.personType === 'EMPLOYEE' || tap.employee ? 'Employee' : 'Student',
+      location: tap.location?.trim() || 'Unknown gate',
+      time: new Date(tap.action === 'TIME_OUT' && tap.timeOut ? tap.timeOut : tap.timeIn),
+    };
+    this.alarmAlerts.update((list) => [alert, ...list].slice(0, 4));
+    this.alertSound.playAlarm();
+    const timer = setTimeout(() => {
+      this.dismissAlarm(alert.id);
+      this.alertTimers.delete(timer);
+    }, 12_000);
+    this.alertTimers.add(timer);
   }
 
   private pushTapError(payload: TapErrorPayload & { kioskGroup?: string | null }): void {

@@ -23,6 +23,7 @@ import {
   type AttendanceSummary,
   type PersonType,
   type TapResponse,
+  isAlarmMarked,
 } from '../../core/attendance/attendance-api.service';
 import { AuthService } from '../../core/auth/auth.service';
 import {
@@ -114,6 +115,25 @@ const DONUT_CIRCUMFERENCE = 2 * Math.PI * 42;
       animation: tap-badge-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both;
     }
 
+    @keyframes alarm-blink {
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 rgb(244 63 94 / 0.7);
+        border-color: rgb(244 63 94);
+      }
+      50% {
+        box-shadow: 0 0 0 10px rgb(244 63 94 / 0);
+        border-color: rgb(251 113 133);
+      }
+    }
+
+    .tap-card--alarm {
+      animation:
+        tap-card-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both,
+        alarm-blink 0.7s ease-in-out infinite;
+      background: color-mix(in srgb, rgb(244 63 94) 10%, transparent);
+    }
+
     .dept-bar {
       transform-origin: left;
       animation: bar-grow-x 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -124,6 +144,12 @@ const DONUT_CIRCUMFERENCE = 2 * Math.PI * 42;
       .tap-card .tap-badge,
       .dept-bar {
         animation: none;
+      }
+
+      .tap-card--alarm {
+        animation: none;
+        border-color: rgb(244 63 94);
+        box-shadow: 0 0 0 2px rgb(244 63 94 / 0.55);
       }
     }
   `,
@@ -352,6 +378,10 @@ export class Dashboard implements OnDestroy {
 
   protected isStudent(tap: TapResponse): boolean {
     return tap.personType === 'STUDENT' || !!tap.student;
+  }
+
+  protected isAlarm(tap: TapResponse): boolean {
+    return isAlarmMarked(tap);
   }
 
   private reloadVenue(group: KioskGroup): void {

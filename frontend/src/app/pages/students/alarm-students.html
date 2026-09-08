@@ -1,0 +1,166 @@
+<div class="flex min-h-0 flex-1 flex-col gap-4">
+  <p class="text-muted-foreground text-sm">
+    Mark existing students so Superadmin and the monitoring wall ring when they tap. They stay in
+    the directory and can still time in and out.
+  </p>
+
+  <div class="relative">
+    <ng-icon
+      name="lucideSearch"
+      class="text-muted-foreground pointer-events-none absolute inset-y-0 left-3 my-auto text-base"
+    />
+    <input
+      hlmInput
+      class="bg-card w-full pl-9"
+      type="search"
+      placeholder="Search students to add (name, student number, or RFID)"
+      [ngModel]="query()"
+      (ngModelChange)="onQueryChange($event)"
+    />
+    @if (searching() || suggestions().length > 0 || query().trim().length >= 2) {
+      <div
+        class="bg-card absolute z-20 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border shadow-lg"
+      >
+        @if (searching() && suggestions().length === 0) {
+          <p class="text-muted-foreground px-3 py-3 text-sm">Searching…</p>
+        } @else if (suggestions().length === 0) {
+          <p class="text-muted-foreground px-3 py-3 text-sm">No unmarked students match that search.</p>
+        } @else {
+          <ul>
+            @for (student of suggestions(); track student.id) {
+              <li class="flex items-center gap-3 border-b px-3 py-2 last:border-b-0">
+                <hlm-avatar
+                  class="size-8"
+                  [photoPreview]="photoSrc(student.photo)"
+                  [photoPreviewAlt]="student.name"
+                >
+                  @if (photoSrc(student.photo); as src) {
+                    <img [src]="src" [alt]="student.name" hlmAvatarImage />
+                  }
+                  <span hlmAvatarFallback>{{ initials(student.name) }}</span>
+                </hlm-avatar>
+                <div class="min-w-0 flex-1 leading-tight">
+                  <p class="text-foreground truncate text-sm font-medium">{{ student.name }}</p>
+                  <p class="text-muted-foreground truncate text-xs">
+                    {{ student.studentNo }}
+                    @if (student.department) {
+                      · {{ student.department }}
+                    }
+                  </p>
+                </div>
+                <button
+                  hlmBtn
+                  size="sm"
+                  class="gap-1.5"
+                  type="button"
+                  [disabled]="addingId() === student.id"
+                  (click)="add(student)"
+                >
+                  <ng-icon name="lucidePlus" class="text-base" />
+                  {{ addingId() === student.id ? 'Adding…' : 'Add' }}
+                </button>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+    }
+  </div>
+
+  <div class="relative min-w-0">
+    <ng-icon
+      name="lucideSearch"
+      class="text-muted-foreground pointer-events-none absolute inset-y-0 left-3 my-auto text-base"
+    />
+    <input
+      hlmInput
+      class="bg-card w-full pl-9"
+      type="search"
+      placeholder="Filter alarm-marked students"
+      [ngModel]="filter()"
+      (ngModelChange)="filter.set($event)"
+    />
+  </div>
+
+  @if (error()) {
+    <p class="text-destructive text-sm" role="alert">{{ error() }}</p>
+  }
+
+  <div hlmTableContainer class="bg-card min-h-0 flex-1 overflow-y-auto rounded-lg border shadow-sm">
+    <table hlmTable class="text-sm">
+      <thead hlmTHead class="sticky top-0 z-10">
+        <tr hlmTr class="bg-primary hover:bg-primary [&>th]:text-primary-foreground">
+          <th hlmTh>Name</th>
+          <th hlmTh>RFID #</th>
+          <th hlmTh>Department</th>
+          <th hlmTh>Course</th>
+          <th hlmTh>School</th>
+          <th hlmTh class="text-end">Action</th>
+        </tr>
+      </thead>
+      <tbody hlmTBody>
+        @if (loading() && students().length === 0) {
+          <tr hlmTr>
+            <td hlmTd colspan="6" class="text-muted-foreground py-10 text-center">
+              Loading alarm-marked students…
+            </td>
+          </tr>
+        } @else {
+          @for (student of filtered(); track student.id) {
+            <tr hlmTr>
+              <td hlmTd>
+                <div class="flex items-center gap-3">
+                  <hlm-avatar
+                    [photoPreview]="photoSrc(student.photo)"
+                    [photoPreviewAlt]="student.name"
+                  >
+                    @if (photoSrc(student.photo); as src) {
+                      <img [src]="src" [alt]="student.name" hlmAvatarImage />
+                    }
+                    <span hlmAvatarFallback>{{ initials(student.name) }}</span>
+                  </hlm-avatar>
+                  <div class="leading-tight">
+                    <p class="text-foreground font-medium">{{ student.name }}</p>
+                    <p class="text-muted-foreground text-xs">{{ student.studentNo }}</p>
+                  </div>
+                </div>
+              </td>
+              <td hlmTd>
+                @if (student.rfid) {
+                  <span class="tabular-nums">{{ student.rfid }}</span>
+                } @else {
+                  <span class="text-muted-foreground">—</span>
+                }
+              </td>
+              <td hlmTd>{{ student.department }}</td>
+              <td hlmTd>{{ student.course }}</td>
+              <td hlmTd>{{ student.school }}</td>
+              <td hlmTd>
+                <div class="flex justify-end">
+                  <button
+                    hlmBtn
+                    size="sm"
+                    variant="outline"
+                    class="gap-1.5"
+                    type="button"
+                    [disabled]="removingId() === student.id"
+                    (click)="remove(student)"
+                  >
+                    <ng-icon name="lucideX" class="text-base" />
+                    {{ removingId() === student.id ? 'Removing…' : 'Remove' }}
+                  </button>
+                </div>
+              </td>
+            </tr>
+          } @empty {
+            <tr hlmTr>
+              <td hlmTd colspan="6" class="text-muted-foreground py-10 text-center">
+                No alarm-marked students. Search above to add one.
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
