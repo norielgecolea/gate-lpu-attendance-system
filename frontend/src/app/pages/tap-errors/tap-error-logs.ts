@@ -9,7 +9,7 @@ import { HlmTableImports } from '@spartan-ng/helm/table';
 import { Subscription, filter } from 'rxjs';
 import { NotificationService } from '../../core/notifications/notification.service';
 import { AuthService } from '../../core/auth/auth.service';
-import { kioskGroupFromRole } from '../../core/kiosk/kiosk-group';
+import { KIOSK_GROUP_LABELS, seesAllTapErrors, kioskGroupFromRole, type KioskGroup } from '../../core/kiosk/kiosk-group';
 import {
   TapErrorLogsApiService,
   type TapErrorLog,
@@ -41,6 +41,8 @@ export class TapErrorLogs implements OnDestroy {
   protected readonly filter = signal('');
   /** Campus (Asia/Manila) date — defaults to today so lists stay small and relevant. */
   protected readonly date = signal(manilaToday());
+  protected readonly showKioskColumn = seesAllTapErrors(this.auth.user()?.role);
+  protected readonly kioskLabels = KIOSK_GROUP_LABELS;
 
   protected readonly filtered = computed(() => {
     const term = this.filter().trim().toLowerCase();
@@ -48,7 +50,10 @@ export class TapErrorLogs implements OnDestroy {
       return this.logs();
     }
     return this.logs().filter((row) =>
-      [row.identifier, row.location ?? ''].join(' ').toLowerCase().includes(term),
+      [row.identifier, row.location ?? '', this.kioskLabel(row.kioskGroup)]
+        .join(' ')
+        .toLowerCase()
+        .includes(term),
     );
   });
 
@@ -59,9 +64,11 @@ export class TapErrorLogs implements OnDestroy {
       .pipe(filter((e) => e.type === 'ATTENDANCE_TAP_ERROR'))
       .subscribe((event) => {
         const payload = (event.payload ?? {}) as { tappedAt?: string | null; kioskGroup?: string | null };
-        const myGroup = kioskGroupFromRole(this.auth.user()?.role);
-        if (payload.kioskGroup && payload.kioskGroup !== myGroup) {
-          return;
+        if (!seesAllTapErrors(this.auth.user()?.role)) {
+          const myGroup = kioskGroupFromRole(this.auth.user()?.role);
+          if (payload.kioskGroup && payload.kioskGroup !== myGroup) {
+            return;
+          }
         }
         const eventDay = payload.tappedAt
           ? new Date(payload.tappedAt).toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' })
@@ -120,5 +127,12 @@ export class TapErrorLogs implements OnDestroy {
         this.error.set(err?.error?.message ?? 'Failed to clear RFID error logs');
       },
     });
+  }
+
+  protected kioskLabel(group: string | null | undefined): string {
+    if (group === 'LIBRARY' || group === 'OLIVE_HOTEL' || group === 'MAIN_GATES') {
+      return this.kioskLabels[group as KioskGroup];
+    }
+    return 'Main Gates';
   }
 }

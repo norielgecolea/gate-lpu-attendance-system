@@ -9,7 +9,7 @@
         hlmInput
         class="bg-card w-full pl-9"
         type="search"
-        placeholder="Search by RFID / ID or gate"
+        placeholder="Search by RFID / ID, gate, or kiosk"
         [ngModel]="filter()"
         (ngModelChange)="filter.set($event)"
       />
@@ -41,7 +41,9 @@
 
   <p class="text-muted-foreground text-sm">
     Unrecognized RFID / ID taps for
-    <span class="text-foreground font-medium">{{ date() }}</span>.
+    <span class="text-foreground font-medium">{{ date() }}</span>@if (showKioskColumn) {
+      , from Main Gates, Library, and Olive Hotel
+    }.
     Showing {{ filtered().length }} of {{ logs().length }} log(s).
   </p>
 
@@ -55,6 +57,9 @@
         <tr hlmTr class="bg-primary hover:bg-primary [&>th]:text-primary-foreground">
           <th hlmTh>RFID / ID</th>
           <th hlmTh>Gate</th>
+          @if (showKioskColumn) {
+            <th hlmTh>Kiosk</th>
+          }
           <th hlmTh>Date</th>
           <th hlmTh>Time</th>
         </tr>
@@ -62,7 +67,7 @@
       <tbody hlmTBody>
         @if (loading() && logs().length === 0) {
           <tr hlmTr>
-            <td hlmTd colspan="4" class="text-muted-foreground py-10 text-center">
+            <td hlmTd [attr.colspan]="showKioskColumn ? 5 : 4" class="text-muted-foreground py-10 text-center">
               Loading RFID error logs…
             </td>
           </tr>
@@ -82,6 +87,9 @@
                   <span class="text-muted-foreground">Unknown gate</span>
                 }
               </td>
+              @if (showKioskColumn) {
+                <td hlmTd>{{ kioskLabel(row.kioskGroup) }}</td>
+              }
               <td hlmTd>{{ row.tappedAt | date: 'MMM d, y' : 'Asia/Manila' }}</td>
               <td hlmTd class="tabular-nums">
                 {{ row.tappedAt | date: 'h:mm:ss a' : 'Asia/Manila' }}
@@ -89,7 +97,7 @@
             </tr>
           } @empty {
             <tr hlmTr>
-              <td hlmTd colspan="4" class="text-muted-foreground py-10 text-center">
+              <td hlmTd [attr.colspan]="showKioskColumn ? 5 : 4" class="text-muted-foreground py-10 text-center">
                 No RFID reading errors for this date.
               </td>
             </tr>

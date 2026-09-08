@@ -33,6 +33,10 @@ export function isVenueAdmin(role: string | null | undefined): boolean {
   return role === 'LIBRARIAN' || role === 'OLIVE';
 }
 
+export function seesAllTapErrors(role: string | null | undefined): boolean {
+  return role === 'SUPERADMIN';
+}
+
 export function kioskGroupSlug(group: KioskGroup): string {
   switch (group) {
     case 'MAIN_GATES':

@@ -44,6 +44,21 @@ public final class KioskGroups {
     }
 
     /**
+     * RFID error logs. Superadmin sees every venue. Librarian/Olive stay locked.
+     * Other admin roles default to Main Gates.
+     */
+    public static KioskGroup resolveForTapErrors(Role role) {
+        KioskGroup locked = lockedGroup(role);
+        if (locked != null) {
+            return locked;
+        }
+        if (role == Role.SUPERADMIN) {
+            return null;
+        }
+        return KioskGroup.MAIN_GATES;
+    }
+
+    /**
      * CSV export. Superadmin/OSAS/HR may pick any venue; Librarian/Olive stay locked.
      */
     public static KioskGroup resolveForExport(Role role, String requested) {

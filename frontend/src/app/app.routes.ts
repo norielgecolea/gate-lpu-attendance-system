@@ -61,6 +61,18 @@ export const routes: Routes = [
     canActivate: [adminPortalGuard],
     children: [
       {
+        path: 'dashboard/library',
+        component: Dashboard,
+        data: { kioskGroup: 'LIBRARY' },
+        canActivate: [allowRoles(...SUPERADMIN_ROLES)],
+      },
+      {
+        path: 'dashboard/olive',
+        component: Dashboard,
+        data: { kioskGroup: 'OLIVE_HOTEL' },
+        canActivate: [allowRoles(...SUPERADMIN_ROLES)],
+      },
+      {
         path: 'dashboard',
         component: Dashboard,
         canActivate: [allowRoles(...PORTAL_ROLES)],

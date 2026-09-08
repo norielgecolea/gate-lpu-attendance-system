@@ -29,6 +29,9 @@ export function canAccessAdminRoute(role: string | null | undefined, route: stri
   if (route === '/dashboard') {
     return role === 'SUPERADMIN' || role === 'OSAS' || role === 'HR' || role === 'LIBRARIAN' || role === 'OLIVE';
   }
+  if (route === '/dashboard/library' || route === '/dashboard/olive') {
+    return role === 'SUPERADMIN';
+  }
   if (route === '/rfid-checker' || route === '/daily-recap') {
     return role === 'SUPERADMIN' || role === 'OSAS' || role === 'HR';
   }

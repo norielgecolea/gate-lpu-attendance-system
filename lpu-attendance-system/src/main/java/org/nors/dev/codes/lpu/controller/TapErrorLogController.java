@@ -55,6 +55,6 @@ public class TapErrorLogController {
     }
 
     private static KioskGroup viewGroup(AuthenticatedUser user) {
-        return KioskGroups.resolveForView(user != null ? user.getRole() : null, null);
+        return KioskGroups.resolveForTapErrors(user != null ? user.getRole() : null);
     }
 }
