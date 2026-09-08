@@ -312,13 +312,6 @@
                     >
                       {{ tap.action === 'TIME_IN' ? 'IN' : 'OUT' }}
                     </span>
-                    @if (isAlarm(tap)) {
-                      <span
-                        class="rounded-full bg-rose-500/25 px-2 py-0.5 text-[10px] font-black tracking-wider text-rose-200"
-                      >
-                        ALARM
-                      </span>
-                    }
                     <p class="text-[11px] font-semibold tabular-nums sm:text-xs">
                       {{ tapTime(tap) | date: 'h:mm:ss a' : clockTz() }}
                     </p>
@@ -359,13 +352,6 @@
                       >
                         {{ tap.action === 'TIME_IN' ? 'IN' : 'OUT' }}
                       </span>
-                      @if (isAlarm(tap)) {
-                        <span
-                          class="rounded-full bg-rose-500/25 px-1.5 py-0.5 text-[9px] font-bold text-rose-200"
-                        >
-                          ALARM
-                        </span>
-                      }
                       <span class="text-[10px] font-medium text-slate-300 tabular-nums">
                         {{ tapTime(tap) | date: 'h:mm:ss a' : clockTz() }}
                       </span>

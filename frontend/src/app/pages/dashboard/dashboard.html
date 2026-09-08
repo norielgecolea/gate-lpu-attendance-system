@@ -180,13 +180,6 @@
                 >
                   {{ tap.action === 'TIME_IN' ? 'IN' : 'OUT' }}
                 </span>
-                @if (isAlarm(tap)) {
-                  <span
-                    class="rounded-full bg-rose-500/15 px-2 py-0.5 text-[10px] font-bold tracking-wide text-rose-700"
-                  >
-                    ALARM
-                  </span>
-                }
               </div>
               <div class="min-w-0 text-end leading-tight">
                 <p class="text-foreground text-xs font-semibold tabular-nums">
