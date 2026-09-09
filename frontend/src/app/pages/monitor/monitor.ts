@@ -173,10 +173,14 @@ interface AlarmTapAlert {
     @keyframes alarm-blink {
       0%,
       100% {
-        box-shadow: 0 0 0 0 rgb(244 63 94 / 0.7);
+        box-shadow: inset 0 0 0 2px rgb(244 63 94 / 0.95);
+        background-color: rgb(244 63 94 / 0.18);
       }
       50% {
-        box-shadow: 0 0 0 10px rgb(244 63 94 / 0);
+        box-shadow:
+          inset 0 0 0 3px rgb(251 113 133),
+          inset 0 0 22px rgb(244 63 94 / 0.55);
+        background-color: rgb(244 63 94 / 0.38);
       }
     }
 
@@ -184,14 +188,12 @@ interface AlarmTapAlert {
       animation:
         spotlight-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both,
         alarm-blink 0.7s ease-in-out infinite;
-      background: rgb(244 63 94 / 0.18);
     }
 
     .feed-row--alarm {
       animation:
         feed-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both,
         alarm-blink 0.7s ease-in-out infinite;
-      background: rgb(244 63 94 / 0.18);
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -204,7 +206,8 @@ interface AlarmTapAlert {
       .spotlight-card--alarm,
       .feed-row--alarm {
         animation: none;
-        box-shadow: 0 0 0 2px rgb(244 63 94 / 0.7);
+        box-shadow: inset 0 0 0 2px rgb(244 63 94 / 0.95);
+        background-color: rgb(244 63 94 / 0.28);
       }
     }
 

@@ -323,7 +323,7 @@
                 </div>
               }
 
-              <div class="recent-tappers-scroll flex max-h-44 min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto sm:max-h-56">
+              <div class="recent-tappers-scroll flex max-h-44 min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto p-0.5 sm:max-h-56">
                 @for (tap of feedFor(venue.id); track tap.attendanceId + tap.action) {
                   <article
                     class="feed-row flex items-center gap-2 rounded-lg bg-slate-800/50 px-2.5 py-2"
