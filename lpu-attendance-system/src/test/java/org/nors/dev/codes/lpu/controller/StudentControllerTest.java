@@ -57,6 +57,7 @@ class StudentControllerTest {
                 "CCS",
                 "BSCS",
                 "LPL",
+                false,
                 false
         );
         AuthenticatedUser user = new AuthenticatedUser(7L, "osas.admin", Role.OSAS, "Main Gate");

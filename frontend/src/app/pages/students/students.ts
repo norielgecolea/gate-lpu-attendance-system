@@ -22,7 +22,6 @@ import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmCheckbox } from '@spartan-ng/helm/checkbox';
 import { HlmDialogService } from '@spartan-ng/helm/dialog';
 import { HlmInput } from '@spartan-ng/helm/input';
-import { HlmSeparator } from '@spartan-ng/helm/separator';
 import { HlmTableImports } from '@spartan-ng/helm/table';
 import { AuthService } from '../../core/auth/auth.service';
 import { isVenueAdmin } from '../../core/kiosk/kiosk-group';
@@ -65,7 +64,6 @@ import { type Student, StudentsStore } from './students.store';
     HlmInput,
     HlmCheckbox,
     HlmBadge,
-    HlmSeparator,
     HlmTableImports,
     HlmAvatarImports,
     PhotoPreview,

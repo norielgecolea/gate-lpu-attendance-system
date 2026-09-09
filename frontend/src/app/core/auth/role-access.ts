@@ -38,6 +38,9 @@ export function canAccessAdminRoute(role: string | null | undefined, route: stri
   if (route === '/attendance') {
     return role === 'LIBRARIAN' || role === 'OLIVE';
   }
+  if (route === '/students/alarm' || route === '/employees/alarm') {
+    return role === 'SUPERADMIN';
+  }
   if (
     route === '/students/inactive' ||
     route === '/students/finance-tagged' ||

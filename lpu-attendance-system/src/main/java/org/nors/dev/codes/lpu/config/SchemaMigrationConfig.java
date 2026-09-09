@@ -105,7 +105,9 @@ public class SchemaMigrationConfig {
             jdbc.execute("ALTER TABLE employees ALTER COLUMN department DROP NOT NULL");
             jdbc.execute("ALTER TABLE employees ALTER COLUMN position DROP NOT NULL");
             jdbc.execute("ALTER TABLE employees ADD COLUMN IF NOT EXISTS lpu_email VARCHAR(255)");
+            jdbc.execute("ALTER TABLE employees ADD COLUMN IF NOT EXISTS alarm_marked BOOLEAN NOT NULL DEFAULT FALSE");
             jdbc.execute("CREATE INDEX IF NOT EXISTS idx_employees_updated_id ON employees (updated_at ASC, id ASC)");
+            jdbc.execute("CREATE INDEX IF NOT EXISTS idx_employees_alarm_marked ON employees (alarm_marked)");
             jdbc.execute("""
                     CREATE TABLE IF NOT EXISTS employee_audit_events (
                         id             BIGSERIAL PRIMARY KEY,
@@ -145,8 +147,10 @@ public class SchemaMigrationConfig {
         );
         if (Boolean.TRUE.equals(studentsExists)) {
             jdbc.execute("ALTER TABLE students ADD COLUMN IF NOT EXISTS finance_tagged BOOLEAN NOT NULL DEFAULT FALSE");
+            jdbc.execute("ALTER TABLE students ADD COLUMN IF NOT EXISTS alarm_marked BOOLEAN NOT NULL DEFAULT FALSE");
             jdbc.execute("ALTER TABLE students ADD COLUMN IF NOT EXISTS lpu_email VARCHAR(255)");
             jdbc.execute("CREATE INDEX IF NOT EXISTS idx_students_finance_tagged ON students (finance_tagged)");
+            jdbc.execute("CREATE INDEX IF NOT EXISTS idx_students_alarm_marked ON students (alarm_marked)");
             jdbc.execute("CREATE INDEX IF NOT EXISTS idx_students_updated_id ON students (updated_at ASC, id ASC)");
             jdbc.execute("""
                     CREATE TABLE IF NOT EXISTS student_audit_events (

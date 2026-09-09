@@ -17,4 +17,11 @@ export class AlertSoundService {
     }
     this.player.playRfidError();
   }
+
+  playAlarm(): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+    this.player.playAlarm();
+  }
 }

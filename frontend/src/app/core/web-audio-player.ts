@@ -123,6 +123,19 @@ export class WebAudioPlayer {
     }
   }
 
+  /** Short urgent ring for Superadmin / monitoring alarm taps. */
+  playAlarm(): void {
+    const ctx = this.ensureContext();
+    if (!ctx) {
+      return;
+    }
+    const t = ctx.currentTime;
+    this.chime(ctx, t, 1760, 0.12, 0.95, 'square');
+    this.chime(ctx, t, 880, 0.12, 0.55, 'triangle');
+    this.chime(ctx, t + 0.14, 1318.51, 0.14, 0.92, 'square');
+    this.chime(ctx, t + 0.14, 659.25, 0.14, 0.45, 'sine');
+  }
+
   private buzz(
     ctx: AudioContext,
     start: number,

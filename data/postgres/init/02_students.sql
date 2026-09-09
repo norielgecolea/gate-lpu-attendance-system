@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS students (
     course          VARCHAR(100) NOT NULL,
     school          VARCHAR(100) NOT NULL,
     finance_tagged  BOOLEAN      NOT NULL DEFAULT FALSE,
+    alarm_marked    BOOLEAN      NOT NULL DEFAULT FALSE,
     deleted         BOOLEAN      NOT NULL DEFAULT FALSE,
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW()
@@ -18,3 +19,4 @@ CREATE TABLE IF NOT EXISTS students (
 CREATE INDEX IF NOT EXISTS idx_students_deleted ON students (deleted);
 CREATE INDEX IF NOT EXISTS idx_students_name ON students (name);
 CREATE INDEX IF NOT EXISTS idx_students_finance_tagged ON students (finance_tagged);
+CREATE INDEX IF NOT EXISTS idx_students_alarm_marked ON students (alarm_marked);

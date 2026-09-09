@@ -13,7 +13,7 @@ import type { Student } from '../../pages/students/students.store';
 
 export type { PhotoBulkUploadProgress, PhotoBulkUploadResult } from '../media/bulk-photo-upload';
 
-export type StudentPayload = Omit<Student, 'id' | 'financeTagged'>;
+export type StudentPayload = Omit<Student, 'id' | 'financeTagged' | 'alarmMarked'>;
 export interface StudentImportPayload {
   studentNo: string;
   name?: string | null;
@@ -74,6 +74,10 @@ export class StudentsApiService {
     return this.http.get<Student[]>(`${this.baseUrl}/finance-tagged`);
   }
 
+  listAlarmMarked(): Observable<Student[]> {
+    return this.http.get<Student[]>(`${this.baseUrl}/alarm-marked`);
+  }
+
   restore(id: string): Observable<Student> {
     return this.http.post<Student>(`${this.baseUrl}/${id}/restore`, {});
   }
@@ -123,6 +127,14 @@ export class StudentsApiService {
 
   financeUntag(id: string): Observable<Student> {
     return this.http.delete<Student>(`${this.baseUrl}/${id}/finance-tagged`);
+  }
+
+  alarmMark(id: string): Observable<Student> {
+    return this.http.post<Student>(`${this.baseUrl}/${id}/alarm-marked`, {});
+  }
+
+  alarmUnmark(id: string): Observable<Student> {
+    return this.http.delete<Student>(`${this.baseUrl}/${id}/alarm-marked`);
   }
 
   update(id: string, payload: StudentPayload): Observable<Student> {

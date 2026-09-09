@@ -14,7 +14,8 @@ public record StudentResponse(
         String department,
         String course,
         String school,
-        boolean financeTagged
+        boolean financeTagged,
+        boolean alarmMarked
 ) {
     public static StudentResponse from(Student student) {
         return new StudentResponse(
@@ -28,7 +29,8 @@ public record StudentResponse(
                 student.getDepartment(),
                 student.getCourse(),
                 student.getSchool(),
-                student.isFinanceTagged()
+                student.isFinanceTagged(),
+                student.isAlarmMarked()
         );
     }
 }

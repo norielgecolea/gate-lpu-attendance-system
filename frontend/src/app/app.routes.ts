@@ -6,11 +6,13 @@ import { Dashboard } from './pages/dashboard/dashboard';
 import { Students } from './pages/students/students';
 import { InactiveStudents } from './pages/students/inactive-students';
 import { FinanceTaggedStudents } from './pages/students/finance-tagged-students';
+import { AlarmStudents } from './pages/students/alarm-students';
 import { StudentRfidRegistration } from './pages/students/student-rfid-registration';
 import { PersonAttendance } from './pages/attendance/person-attendance';
 import { AttendancePage } from './pages/attendance/attendance-page';
 import { Employees } from './pages/employees/employees';
 import { InactiveEmployees } from './pages/employees/inactive-employees';
+import { AlarmEmployees } from './pages/employees/alarm-employees';
 import { EmployeeRfidRegistration } from './pages/employees/employee-rfid-registration';
 import { Users } from './pages/users/users';
 import { GuardDisplaySettings } from './pages/settings/guard-display-settings';
@@ -98,6 +100,11 @@ export const routes: Routes = [
         canActivate: [allowRoles(...OSAS_ROLES)],
       },
       {
+        path: 'students/alarm',
+        component: AlarmStudents,
+        canActivate: [allowRoles(...SUPERADMIN_ROLES)],
+      },
+      {
         path: 'students/rfid',
         component: StudentRfidRegistration,
         canActivate: [allowRoles(...OSAS_ROLES)],
@@ -132,6 +139,11 @@ export const routes: Routes = [
         path: 'employees/inactive',
         component: InactiveEmployees,
         canActivate: [allowRoles(...HR_ROLES)],
+      },
+      {
+        path: 'employees/alarm',
+        component: AlarmEmployees,
+        canActivate: [allowRoles(...SUPERADMIN_ROLES)],
       },
       {
         path: 'employees/rfid',

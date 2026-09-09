@@ -45,6 +45,39 @@ public class EmployeeRepository {
     }
 
     @Transactional(readOnly = true)
+    public List<Employee> findActiveAlarmMarked() {
+        return currentSession()
+                .createQuery(
+                        "FROM Employee e WHERE e.deleted = false AND e.alarmMarked = true ORDER BY e.name ASC",
+                        Employee.class
+                )
+                .getResultList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<Employee> searchActive(String term, int limit) {
+        return currentSession()
+                .createQuery(
+                        "FROM Employee e WHERE e.deleted = false AND (:term = '' OR lower(e.name) LIKE :term"
+                                + " OR lower(e.employeeNo) LIKE :term OR lower(coalesce(e.rfid, '')) LIKE :term"
+                                + " OR lower(coalesce(e.department, '')) LIKE :term"
+                                + " OR lower(coalesce(e.position, '')) LIKE :term)"
+                                + " ORDER BY e.name ASC",
+                        Employee.class
+                )
+                .setParameter("term", likeTerm(term))
+                .setMaxResults(limit)
+                .getResultList();
+    }
+
+    private static String likeTerm(String term) {
+        if (term == null || term.isBlank()) {
+            return "";
+        }
+        return "%" + term.trim().toLowerCase() + "%";
+    }
+
+    @Transactional(readOnly = true)
     public Optional<Employee> findById(Long id) {
         return Optional.ofNullable(currentSession().find(Employee.class, id));
     }

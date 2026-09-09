@@ -23,7 +23,6 @@ import { HlmDialogService } from '@spartan-ng/helm/dialog';
 import { AuthService } from '../../core/auth/auth.service';
 import { isVenueAdmin } from '../../core/kiosk/kiosk-group';
 import { HlmInput } from '@spartan-ng/helm/input';
-import { HlmSeparator } from '@spartan-ng/helm/separator';
 import { HlmTableImports } from '@spartan-ng/helm/table';
 import {
   type ColumnDef,
@@ -65,7 +64,6 @@ import { type Employee, EmployeesStore } from './employees.store';
     HlmInput,
     HlmCheckbox,
     HlmBadge,
-    HlmSeparator,
     HlmTableImports,
     HlmAvatarImports,
     PhotoPreview,

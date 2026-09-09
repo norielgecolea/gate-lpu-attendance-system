@@ -19,6 +19,7 @@ public record TapResponse(
         String timeOutLocation,
         boolean birthday,
         boolean financeTagged,
+        boolean alarmMarked,
         String warningMessage,
         String personType,
         String kioskGroup,
@@ -37,6 +38,8 @@ public record TapResponse(
                 && birthdate.getMonthValue() == date.getMonthValue()
                 && birthdate.getDayOfMonth() == date.getDayOfMonth();
         boolean financeTagged = student != null && student.isFinanceTagged();
+        boolean alarmMarked = (student != null && student.isAlarmMarked())
+                || (employee != null && employee.isAlarmMarked());
         String kioskGroup = log.getKioskGroup() != null ? log.getKioskGroup().name() : KioskGroup.MAIN_GATES.name();
         return new TapResponse(
                 action,
@@ -50,6 +53,7 @@ public record TapResponse(
                 log.getTimeOutLocation(),
                 birthday,
                 financeTagged,
+                alarmMarked,
                 financeTagged ? "PLEASE VISIT FINANCE DEPARTMENT" : null,
                 student != null ? "STUDENT" : "EMPLOYEE",
                 kioskGroup,

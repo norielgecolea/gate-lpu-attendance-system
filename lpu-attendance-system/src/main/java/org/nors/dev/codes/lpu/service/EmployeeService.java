@@ -63,6 +63,21 @@ public class EmployeeService {
     }
 
     @Transactional(readOnly = true)
+    public List<EmployeeResponse> listAlarmMarked() {
+        return employeeRepository.findActiveAlarmMarked().stream()
+                .map(EmployeeResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<EmployeeResponse> searchActive(String search, int limit) {
+        int capped = Math.min(Math.max(limit, 1), 50);
+        return employeeRepository.searchActive(search, capped).stream()
+                .map(EmployeeResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public EmployeeResponse getById(Long id) {
         return EmployeeResponse.from(requireActive(id));
     }
@@ -240,6 +255,17 @@ public class EmployeeService {
         employee.setUpdatedAt(Instant.now());
         employeeRepository.save(employee);
         log.info("Restored employee id={} employeeNo={}", id, employee.getEmployeeNo());
+        return EmployeeResponse.from(employee);
+    }
+
+    @Transactional
+    public EmployeeResponse setAlarmMarked(Long id, boolean marked) {
+        Employee employee = requireActive(id);
+        employee.setAlarmMarked(marked);
+        employee.setUpdatedAt(Instant.now());
+        employeeRepository.save(employee);
+        log.info("{} alarm mark employee id={} employeeNo={}",
+                marked ? "Applied" : "Removed", id, employee.getEmployeeNo());
         return EmployeeResponse.from(employee);
     }
 

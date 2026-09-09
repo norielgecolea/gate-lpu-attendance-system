@@ -82,6 +82,11 @@ public class StudentController {
         return ResponseEntity.ok(studentService.listFinanceTagged());
     }
 
+    @GetMapping("/alarm-marked")
+    public ResponseEntity<List<StudentResponse>> listAlarmMarked() {
+        return ResponseEntity.ok(studentService.listAlarmMarked());
+    }
+
     @GetMapping(value = "/export", produces = "text/csv")
     public ResponseEntity<byte[]> export() {
         byte[] csv = studentService.exportCsv();
@@ -215,6 +220,16 @@ public class StudentController {
     @DeleteMapping("/{id}/finance-tagged")
     public ResponseEntity<StudentResponse> removeFinanceTag(@PathVariable Long id) {
         return ResponseEntity.ok(studentService.setFinanceTagged(id, false));
+    }
+
+    @PostMapping("/{id}/alarm-marked")
+    public ResponseEntity<StudentResponse> alarmMark(@PathVariable Long id) {
+        return ResponseEntity.ok(studentService.setAlarmMarked(id, true));
+    }
+
+    @DeleteMapping("/{id}/alarm-marked")
+    public ResponseEntity<StudentResponse> alarmUnmark(@PathVariable Long id) {
+        return ResponseEntity.ok(studentService.setAlarmMarked(id, false));
     }
 
     @PutMapping("/{id}")

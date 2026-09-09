@@ -182,6 +182,16 @@ public class StudentRepository {
     }
 
     @Transactional(readOnly = true)
+    public List<Student> findActiveAlarmMarked() {
+        return currentSession()
+                .createQuery(
+                        "FROM Student s WHERE s.deleted = false AND s.alarmMarked = true ORDER BY s.name ASC",
+                        Student.class
+                )
+                .getResultList();
+    }
+
+    @Transactional(readOnly = true)
     public Set<String> findAllActiveRfids() {
         return currentSession()
                 .createQuery(

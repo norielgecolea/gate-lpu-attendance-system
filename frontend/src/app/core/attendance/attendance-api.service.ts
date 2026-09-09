@@ -21,11 +21,16 @@ export interface TapResponse {
   timeOutLocation?: string | null;
   birthday?: boolean;
   financeTagged?: boolean;
+  alarmMarked?: boolean;
   warningMessage?: string | null;
   personType?: PersonType | string;
   kioskGroup?: KioskGroup | string;
   student?: Student | null;
   employee?: Employee | null;
+}
+
+export function isAlarmMarked(tap: TapResponse): boolean {
+  return !!(tap.alarmMarked || tap.student?.alarmMarked || tap.employee?.alarmMarked);
 }
 
 export interface AttendanceDailyRecord {

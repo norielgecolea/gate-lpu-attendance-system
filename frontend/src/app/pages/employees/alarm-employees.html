@@ -1,0 +1,149 @@
+<div class="flex min-h-0 flex-1 flex-col gap-4">
+  <p class="text-muted-foreground text-sm">
+    Mark existing employees so Superadmin and the monitoring wall ring when they tap. They stay in
+    the directory and can still time in and out.
+  </p>
+
+  <div class="relative z-30">
+    <ng-icon
+      name="lucideSearch"
+      class="text-muted-foreground pointer-events-none absolute inset-y-0 left-3 my-auto text-base"
+    />
+    <input
+      hlmInput
+      class="bg-card w-full pl-9"
+      type="search"
+      placeholder="Search employees to add (name, employee number, or RFID)"
+      [ngModel]="query()"
+      (ngModelChange)="onQueryChange($event)"
+    />
+    @if (searching() || suggestions().length > 0 || query().trim().length >= 2) {
+      <div
+        class="bg-card absolute z-50 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border shadow-lg"
+      >
+        @if (searching() && suggestions().length === 0) {
+          <p class="text-muted-foreground px-3 py-3 text-sm">Searching…</p>
+        } @else if (suggestions().length === 0) {
+          <p class="text-muted-foreground px-3 py-3 text-sm">No unmarked employees match that search.</p>
+        } @else {
+          <ul>
+            @for (employee of suggestions(); track employee.id) {
+              <li class="flex items-center gap-3 border-b px-3 py-2 last:border-b-0">
+                <hlm-avatar
+                  class="size-8"
+                  [photoPreview]="photoSrc(employee.photo)"
+                  [photoPreviewAlt]="employee.name"
+                >
+                  @if (photoSrc(employee.photo); as src) {
+                    <img [src]="src" [alt]="employee.name" hlmAvatarImage />
+                  }
+                  <span hlmAvatarFallback>{{ initials(employee.name) }}</span>
+                </hlm-avatar>
+                <div class="min-w-0 flex-1 leading-tight">
+                  <p class="text-foreground truncate text-sm font-medium">{{ employee.name }}</p>
+                  <p class="text-muted-foreground truncate text-xs">
+                    {{ employee.employeeNo }}
+                    @if (employee.department) {
+                      · {{ employee.department }}
+                    }
+                  </p>
+                </div>
+                <button
+                  hlmBtn
+                  size="sm"
+                  class="gap-1.5"
+                  type="button"
+                  [disabled]="addingId() === employee.id"
+                  (click)="add(employee)"
+                >
+                  <ng-icon name="lucidePlus" class="text-base" />
+                  {{ addingId() === employee.id ? 'Adding…' : 'Add' }}
+                </button>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+    }
+  </div>
+
+  @if (error()) {
+    <p class="text-destructive text-sm" role="alert">{{ error() }}</p>
+  }
+
+  <div hlmTableContainer class="bg-card relative z-0 min-h-0 flex-1 overflow-y-auto rounded-lg border shadow-sm">
+    <table hlmTable class="text-sm">
+      <thead hlmTHead class="sticky top-0 z-10">
+        <tr hlmTr class="bg-primary hover:bg-primary [&>th]:text-primary-foreground">
+          <th hlmTh>Name</th>
+          <th hlmTh>RFID #</th>
+          <th hlmTh>Department</th>
+          <th hlmTh>Position</th>
+          <th hlmTh class="text-end">Action</th>
+        </tr>
+      </thead>
+      <tbody hlmTBody>
+        @if (loading() && employees().length === 0) {
+          <tr hlmTr>
+            <td hlmTd colspan="5" class="text-muted-foreground py-10 text-center">
+              Loading alarm-marked employees…
+            </td>
+          </tr>
+        } @else {
+          @for (employee of employees(); track employee.id) {
+            <tr hlmTr>
+              <td hlmTd>
+                <div class="flex items-center gap-3">
+                  <hlm-avatar
+                    [photoPreview]="photoSrc(employee.photo)"
+                    [photoPreviewAlt]="employee.name"
+                  >
+                    @if (photoSrc(employee.photo); as src) {
+                      <img [src]="src" [alt]="employee.name" hlmAvatarImage />
+                    }
+                    <span hlmAvatarFallback>{{ initials(employee.name) }}</span>
+                  </hlm-avatar>
+                  <div class="leading-tight">
+                    <p class="text-foreground font-medium">{{ employee.name }}</p>
+                    <p class="text-muted-foreground text-xs">{{ employee.employeeNo }}</p>
+                  </div>
+                </div>
+              </td>
+              <td hlmTd>
+                @if (employee.rfid) {
+                  <span class="tabular-nums">{{ employee.rfid }}</span>
+                } @else {
+                  <span class="text-muted-foreground">—</span>
+                }
+              </td>
+              <td hlmTd>{{ employee.department || '—' }}</td>
+              <td hlmTd>{{ employee.position || '—' }}</td>
+              <td hlmTd>
+                <div class="flex justify-end">
+                  <button
+                    hlmBtn
+                    size="sm"
+                    variant="outline"
+                    class="gap-1.5"
+                    type="button"
+                    [disabled]="removingId() === employee.id"
+                    (click)="remove(employee)"
+                  >
+                    <ng-icon name="lucideX" class="text-base" />
+                    {{ removingId() === employee.id ? 'Removing…' : 'Remove' }}
+                  </button>
+                </div>
+              </td>
+            </tr>
+          } @empty {
+            <tr hlmTr>
+              <td hlmTd colspan="5" class="text-muted-foreground py-10 text-center">
+                No alarm-marked employees. Search above to add one.
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
