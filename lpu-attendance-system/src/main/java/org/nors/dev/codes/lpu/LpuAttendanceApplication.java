@@ -6,11 +6,13 @@ import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfigurat
 import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.web.servlet.support.SpringBootServletInitializer;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication(exclude = {
         HibernateJpaAutoConfiguration.class,
         UserDetailsServiceAutoConfiguration.class
 })
+@EnableScheduling
 public class LpuAttendanceApplication extends SpringBootServletInitializer {
 
     @Override

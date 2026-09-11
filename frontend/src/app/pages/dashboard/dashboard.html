@@ -44,10 +44,20 @@
             @for (gate of onlineKioskLocations(); track gate) {
               <span
                 class="bg-primary-foreground/15 text-primary-foreground flex w-fit items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold"
-                [title]="'Guard online at ' + gate"
+                [title]="'Guard online at ' + gate + (pingLabel(gate) ? ' · ' + pingLabel(gate) : '')"
               >
                 <span class="size-1.5 shrink-0 rounded-full bg-emerald-300"></span>
                 {{ gate }}
+                @if (pingLabel(gate); as ping) {
+                  <span
+                    class="tabular-nums"
+                    [class.text-emerald-200]="pingToneFor(gate) === 'good'"
+                    [class.text-amber-200]="pingToneFor(gate) === 'ok'"
+                    [class.text-rose-200]="pingToneFor(gate) === 'poor'"
+                  >
+                    · {{ ping }}
+                  </span>
+                }
               </span>
             }
           } @else if (notifications.connected()) {

@@ -57,6 +57,11 @@ public class AuthWebSocketHandler extends TextWebSocketHandler {
     }
 
     @Override
+    protected void handleTextMessage(WebSocketSession session, TextMessage message) {
+        notificationService.handleIncomingText(session.getId(), message.getPayload());
+    }
+
+    @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         notificationService.unregister(session);
     }

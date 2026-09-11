@@ -73,10 +73,25 @@
             @for (loc of onlineFor(venue.id); track loc) {
               <span
                 class="flex items-center gap-1.5 rounded-full bg-slate-800/90 px-2.5 py-1 text-[11px] font-semibold text-slate-200 sm:px-3 sm:text-xs"
-                [title]="venue.label + ' online at ' + loc"
+                [title]="
+                  venue.label +
+                  ' online at ' +
+                  loc +
+                  (pingLabel(venue.id, loc) ? ' · ' + pingLabel(venue.id, loc) : '')
+                "
               >
                 <span class="size-1.5 shrink-0 rounded-full bg-emerald-400"></span>
                 {{ venue.label }} · {{ loc }}
+                @if (pingLabel(venue.id, loc); as ping) {
+                  <span
+                    class="tabular-nums"
+                    [class.text-emerald-300]="pingToneFor(venue.id, loc) === 'good'"
+                    [class.text-amber-300]="pingToneFor(venue.id, loc) === 'ok'"
+                    [class.text-rose-300]="pingToneFor(venue.id, loc) === 'poor'"
+                  >
+                    · {{ ping }}
+                  </span>
+                }
               </span>
             }
           }
@@ -258,7 +273,7 @@
                   <h3 class="truncate text-sm font-bold text-white sm:text-base">{{ venue.label }}</h3>
                   <p class="truncate text-[11px] text-slate-500">
                     @if (onlineFor(venue.id).length > 0) {
-                      {{ onlineFor(venue.id).join(', ') }}
+                      {{ onlineSummary(venue.id) }}
                     } @else {
                       No kiosk online
                     }

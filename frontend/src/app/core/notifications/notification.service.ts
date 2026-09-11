@@ -2,8 +2,23 @@ import { isPlatformBrowser } from '@angular/common';
 import { Injectable, PLATFORM_ID, inject, signal } from '@angular/core';
 import { Subject } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { AuthEventMessage } from '../auth/auth.models';
+import { AuthEventMessage, KioskPings } from '../auth/auth.models';
 import { GuardPresenceApiService } from '../guards/guard-presence-api.service';
+
+export type PingTone = 'good' | 'ok' | 'poor';
+
+export function pingTone(ms: number | null | undefined): PingTone | null {
+  if (ms == null || !Number.isFinite(ms)) {
+    return null;
+  }
+  if (ms < 100) {
+    return 'good';
+  }
+  if (ms <= 250) {
+    return 'ok';
+  }
+  return 'poor';
+}
 
 @Injectable({ providedIn: 'root' })
 export class NotificationService {
@@ -24,6 +39,7 @@ export class NotificationService {
   /** Gate locations with at least one connected guard kiosk. */
   readonly onlineGuardLocations = signal<string[]>([]);
   readonly onlineKiosks = signal<Record<string, string[]>>({});
+  readonly onlinePings = signal<KioskPings>({});
 
   onlineLocationsFor(group: string): string[] {
     const grouped = this.onlineKiosks()[group];
@@ -34,6 +50,24 @@ export class NotificationService {
       return this.onlineGuardLocations();
     }
     return [];
+  }
+
+  pingMsFor(group: string, location: string): number | null {
+    const groupPings = this.onlinePings()[group];
+    if (!groupPings) {
+      return null;
+    }
+    const exact = groupPings[location];
+    if (typeof exact === 'number' && Number.isFinite(exact)) {
+      return exact;
+    }
+    const lower = location.toLowerCase();
+    for (const [key, value] of Object.entries(groupPings)) {
+      if (key.toLowerCase() === lower && typeof value === 'number' && Number.isFinite(value)) {
+        return value;
+      }
+    }
+    return null;
   }
 
   connect(token: string): void {
@@ -68,6 +102,7 @@ export class NotificationService {
     this.presenceFromSocket = false;
     this.onlineGuardLocations.set([]);
     this.onlineKiosks.set({});
+    this.onlinePings.set({});
   }
 
   dismissLatest(): void {
@@ -106,6 +141,7 @@ export class NotificationService {
             if (presence.kiosks) {
               this.onlineKiosks.set(presence.kiosks);
             }
+            this.onlinePings.set(normalizePings(presence.pings));
           }
         },
         error: () => undefined,
@@ -115,6 +151,10 @@ export class NotificationService {
     this.socket.onmessage = (event) => {
       try {
         const payload = JSON.parse(event.data as string) as AuthEventMessage;
+        if (payload.type === 'KIOSK_PING') {
+          this.replyKioskPing(payload.id);
+          return;
+        }
         this.latestEvent.set(payload);
         this.eventsSubject.next(payload);
         if (payload.type === 'GUARD_PRESENCE' && Array.isArray(payload.locations)) {
@@ -127,6 +167,7 @@ export class NotificationService {
           if (payload.kiosks && typeof payload.kiosks === 'object') {
             this.onlineKiosks.set(payload.kiosks);
           }
+          this.onlinePings.set(normalizePings(payload.pings));
         }
       } catch {
         // ignore malformed payloads
@@ -161,6 +202,13 @@ export class NotificationService {
     }
   }
 
+  private replyKioskPing(id: string | undefined): void {
+    if (!id || this.socket?.readyState !== WebSocket.OPEN) {
+      return;
+    }
+    this.socket.send(JSON.stringify({ type: 'KIOSK_PONG', id }));
+  }
+
   private canReadGuardPresence(token: string | null): boolean {
     if (!token) {
       return false;
@@ -182,4 +230,24 @@ export class NotificationService {
       return false;
     }
   }
+}
+
+function normalizePings(raw: KioskPings | null | undefined): KioskPings {
+  if (!raw || typeof raw !== 'object') {
+    return {};
+  }
+  const out: KioskPings = {};
+  for (const [group, locs] of Object.entries(raw)) {
+    if (!locs || typeof locs !== 'object' || Array.isArray(locs)) {
+      continue;
+    }
+    const mapped: Record<string, number> = {};
+    for (const [loc, ms] of Object.entries(locs)) {
+      if (typeof ms === 'number' && Number.isFinite(ms)) {
+        mapped[loc] = Math.round(ms);
+      }
+    }
+    out[group] = mapped;
+  }
+  return out;
 }

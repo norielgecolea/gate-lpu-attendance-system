@@ -43,7 +43,7 @@ import {
   KIOSK_GROUP_LABELS,
   type KioskGroup,
 } from '../../core/kiosk/kiosk-group';
-import { NotificationService } from '../../core/notifications/notification.service';
+import { NotificationService, pingTone } from '../../core/notifications/notification.service';
 import { studentPhotoUrl } from '../../core/students/student-photo.util';
 import { TapErrorLogsApiService } from '../../core/tap-errors/tap-error-logs-api.service';
 import { ServerClockService } from '../../core/time/server-clock.service';
@@ -542,6 +542,28 @@ export class Monitor implements OnDestroy {
 
   protected onlineFor(group: KioskGroup): string[] {
     return this.notifications.onlineLocationsFor(group);
+  }
+
+  protected pingMsFor(group: KioskGroup, location: string): number | null {
+    return this.notifications.pingMsFor(group, location);
+  }
+
+  protected pingLabel(group: KioskGroup, location: string): string | null {
+    const ms = this.pingMsFor(group, location);
+    return ms == null ? null : `${ms}ms`;
+  }
+
+  protected pingToneFor(group: KioskGroup, location: string) {
+    return pingTone(this.pingMsFor(group, location));
+  }
+
+  protected onlineSummary(group: KioskGroup): string {
+    return this.onlineFor(group)
+      .map((loc) => {
+        const ping = this.pingLabel(group, loc);
+        return ping ? `${loc} (${ping})` : loc;
+      })
+      .join(', ');
   }
 
   private venueOf(raw: string | null | undefined): KioskGroup {
