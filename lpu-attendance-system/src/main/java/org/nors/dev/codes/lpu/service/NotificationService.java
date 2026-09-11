@@ -1,12 +1,15 @@
 package org.nors.dev.codes.lpu.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -25,6 +28,7 @@ public class NotificationService {
     private static final Logger log = LogManager.getLogger(NotificationService.class);
     private static final int SEND_TIME_LIMIT_MS = 5_000;
     private static final int SEND_BUFFER_LIMIT = 512 * 1024;
+    private static final long PING_TIMEOUT_NANOS = 8_000_000_000L;
 
     private final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
     /** sessionId → connected kiosk (location label + venue). */
@@ -64,6 +68,7 @@ public class NotificationService {
                     onlineKiosks.size()
             );
             broadcastGuardPresence();
+            sendPing(session.getId(), kiosk);
         }
     }
 
@@ -105,12 +110,64 @@ public class NotificationService {
         return byGroup;
     }
 
+    /** Worst (highest) measured ping ms per location, grouped by venue. Omits locations still waiting. */
+    public Map<String, Map<String, Integer>> kioskPingsByGroup() {
+        long now = System.nanoTime();
+        Map<String, Map<String, Integer>> byGroup = new LinkedHashMap<>();
+        for (KioskGroup group : KioskGroup.values()) {
+            Map<String, Integer> pings = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+            for (OnlineKiosk kiosk : onlineKiosks.values()) {
+                if (kiosk.group() != group) {
+                    continue;
+                }
+                kiosk.expireIfStale(now, PING_TIMEOUT_NANOS);
+                Integer ms = kiosk.pingMs();
+                if (ms == null) {
+                    continue;
+                }
+                pings.merge(kiosk.label(), ms, Math::max);
+            }
+            byGroup.put(group.name(), pings);
+        }
+        return byGroup;
+    }
+
     public void sendGuardPresence(WebSocketSession session) {
         sendRaw(session, guardPresencePayload());
     }
 
     public void broadcastGuardPresence() {
         broadcastRaw(guardPresencePayload());
+    }
+
+    public void pingKiosks() {
+        long now = System.nanoTime();
+        boolean expired = false;
+        for (Map.Entry<String, OnlineKiosk> entry : onlineKiosks.entrySet()) {
+            OnlineKiosk kiosk = entry.getValue();
+            if (kiosk.expireIfStale(now, PING_TIMEOUT_NANOS)) {
+                expired = true;
+            }
+            sendPing(entry.getKey(), kiosk);
+        }
+        if (expired) {
+            broadcastGuardPresence();
+        }
+    }
+
+    public void handleIncomingText(String sessionId, String payload) {
+        if (payload == null || payload.isBlank()) {
+            return;
+        }
+        try {
+            JsonNode node = objectMapper.readTree(payload);
+            if (!"KIOSK_PONG".equals(node.path("type").asText())) {
+                return;
+            }
+            handleKioskPong(sessionId, node.path("id").asText(null));
+        } catch (Exception ex) {
+            log.debug("Ignoring malformed WebSocket text from session {}", sessionId);
+        }
     }
 
     public void broadcast(AuthEventMessage event) {
@@ -146,6 +203,43 @@ public class NotificationService {
         }
     }
 
+    private void sendPing(String sessionId, OnlineKiosk kiosk) {
+        WebSocketSession session = sessions.get(sessionId);
+        if (session == null || !session.isOpen()) {
+            return;
+        }
+        String id = UUID.randomUUID().toString();
+        long sentAt = System.nanoTime();
+        kiosk.beginPing(id, sentAt);
+        try {
+            Map<String, String> event = new LinkedHashMap<>();
+            event.put("type", "KIOSK_PING");
+            event.put("id", id);
+            session.sendMessage(new TextMessage(objectMapper.writeValueAsString(event)));
+        } catch (Exception ex) {
+            log.warn("Failed to ping kiosk session {}", sessionId, ex);
+            sessions.remove(sessionId);
+            if (onlineKiosks.remove(sessionId) != null) {
+                broadcastGuardPresence();
+            }
+        }
+    }
+
+    private void handleKioskPong(String sessionId, String id) {
+        if (id == null || id.isBlank()) {
+            return;
+        }
+        OnlineKiosk kiosk = onlineKiosks.get(sessionId);
+        if (kiosk == null) {
+            return;
+        }
+        Integer ms = kiosk.completePing(id, System.nanoTime());
+        if (ms == null) {
+            return;
+        }
+        broadcastGuardPresence();
+    }
+
     private void sendRaw(WebSocketSession session, String payload) {
         WebSocketSession target = sessions.getOrDefault(session.getId(), session);
         if (!target.isOpen()) {
@@ -164,6 +258,7 @@ public class NotificationService {
             event.put("type", "GUARD_PRESENCE");
             event.put("locations", onlineGuardLocations());
             event.put("kiosks", onlineKiosksByGroup());
+            event.put("pings", kioskPingsByGroup());
             event.put("message", "Online guard locations updated");
             return objectMapper.writeValueAsString(event);
         } catch (IOException ex) {
@@ -182,6 +277,57 @@ public class NotificationService {
         return "Unknown gate";
     }
 
-    private record OnlineKiosk(String label, KioskGroup group) {
+    private static final class OnlineKiosk {
+        private final String label;
+        private final KioskGroup group;
+        private String pendingPingId;
+        private long pingSentAtNanos;
+        private Integer pingMs;
+        private long lastPongAtNanos;
+
+        private OnlineKiosk(String label, KioskGroup group) {
+            this.label = label;
+            this.group = group;
+        }
+
+        private String label() {
+            return label;
+        }
+
+        private KioskGroup group() {
+            return group;
+        }
+
+        private synchronized void beginPing(String id, long sentAtNanos) {
+            this.pendingPingId = id;
+            this.pingSentAtNanos = sentAtNanos;
+        }
+
+        private synchronized Integer completePing(String id, long receivedAtNanos) {
+            if (pendingPingId == null || !pendingPingId.equals(id)) {
+                return null;
+            }
+            long rttMs = Math.max(0L, (receivedAtNanos - pingSentAtNanos) / 1_000_000L);
+            pendingPingId = null;
+            pingMs = rttMs > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) rttMs;
+            lastPongAtNanos = receivedAtNanos;
+            return pingMs;
+        }
+
+        private synchronized boolean expireIfStale(long nowNanos, long timeoutNanos) {
+            boolean expired = false;
+            if (lastPongAtNanos != 0L && nowNanos - lastPongAtNanos >= timeoutNanos && pingMs != null) {
+                pingMs = null;
+                expired = true;
+            }
+            if (pendingPingId != null && nowNanos - pingSentAtNanos >= timeoutNanos) {
+                pendingPingId = null;
+            }
+            return expired;
+        }
+
+        private synchronized Integer pingMs() {
+            return pingMs;
+        }
     }
 }

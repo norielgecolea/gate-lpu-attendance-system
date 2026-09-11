@@ -27,7 +27,8 @@ public class GuardPresenceController {
         KioskGroup group = KioskGroups.resolveForView(user != null ? user.getRole() : null, null);
         return ResponseEntity.ok(Map.of(
                 "locations", notificationService.onlineKioskLocations(group),
-                "kiosks", notificationService.onlineKiosksByGroup()
+                "kiosks", notificationService.onlineKiosksByGroup(),
+                "pings", notificationService.kioskPingsByGroup()
         ));
     }
 }

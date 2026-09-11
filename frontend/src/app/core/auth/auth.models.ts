@@ -24,8 +24,11 @@ export interface ChangePasswordRequest {
   newPassword: string;
 }
 
+export type KioskPings = Record<string, Record<string, number>>;
+
 export interface AuthEventMessage {
   type: string;
+  id?: string;
   username?: string;
   message?: string;
   timestamp?: string;
@@ -34,4 +37,5 @@ export interface AuthEventMessage {
   /** Present on GUARD_PRESENCE (and optionally other) events. */
   locations?: string[];
   kiosks?: Record<string, string[]>;
+  pings?: KioskPings;
 }

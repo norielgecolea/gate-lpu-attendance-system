@@ -32,7 +32,7 @@ import {
   isVenueAdmin,
   type KioskGroup,
 } from '../../core/kiosk/kiosk-group';
-import { NotificationService } from '../../core/notifications/notification.service';
+import { NotificationService, pingTone } from '../../core/notifications/notification.service';
 import { studentPhotoUrl } from '../../core/students/student-photo.util';
 import { PhotoPreview } from '../../shared/photo-preview/photo-preview.directive';
 import { StudentsApiService } from '../../core/students/students-api.service';
@@ -193,6 +193,15 @@ export class Dashboard implements OnDestroy {
   protected readonly onlineKioskLocations = computed(() =>
     this.notifications.onlineLocationsFor(this.kioskGroup()),
   );
+
+  protected pingLabel(location: string): string | null {
+    const ms = this.notifications.pingMsFor(this.kioskGroup(), location);
+    return ms == null ? null : `${ms}ms`;
+  }
+
+  protected pingToneFor(location: string) {
+    return pingTone(this.notifications.pingMsFor(this.kioskGroup(), location));
+  }
 
   protected readonly recentTaps = signal<TapResponse[]>([]);
   protected readonly tapsLoading = signal(true);
