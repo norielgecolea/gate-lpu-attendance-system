@@ -9,6 +9,30 @@ server {
     server_name  ${SERVER_NAME};
 
     client_max_body_size 2g;
+    sendfile on;
+    tcp_nopush on;
+
+    # Guard videos / photos / tones are UUID-named files. Serve them from disk so
+    # looping kiosk players do not stream gigabytes through Tomcat/Java.
+    location /attendance-system/videos/ {
+        alias /usr/share/nginx/videos/;
+        gzip off;
+        expires 1y;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        add_header Accept-Ranges bytes;
+    }
+
+    location /attendance-system/pictures/ {
+        alias /usr/share/nginx/pictures/;
+        expires 1y;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
+
+    location /attendance-system/tones/ {
+        alias /usr/share/nginx/tones/;
+        expires 1y;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
 
     # Backend API + WebSocket (Tomcat WAR context)
     location /attendance-system/ {
@@ -21,6 +45,8 @@ server {
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection $connection_upgrade;
         proxy_read_timeout 86400;
+        proxy_buffering off;
+        proxy_request_buffering off;
     }
 
     # Angular frontend (production SSR on :4200, or ng serve when FRONTEND_MODE=development)

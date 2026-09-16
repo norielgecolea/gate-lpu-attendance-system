@@ -36,7 +36,8 @@ services:
       APP_VIDEOS_DIR: /usr/local/tomcat/videos
       APP_TONES_DIR: /usr/local/tomcat/tones
       TZ: Asia/Manila
-      JAVA_OPTS: "-Dlpu.log.dir=/usr/local/tomcat/logs"
+      JAVA_OPTS: "-Xms256m -Xmx1024m -Dlpu.log.dir=/usr/local/tomcat/logs"
+    mem_limit: 1536m
     volumes:
       # Deploy: mvn -f lpu-attendance-system clean package && cp lpu-attendance-system/target/attendance-system.war data/tomcat/webapps/
       - ./data/tomcat/webapps:/usr/local/tomcat/webapps
@@ -89,6 +90,9 @@ services:
       - "80:80"
     volumes:
       - ./data/web/templates:/etc/nginx/templates
+      - ./data/videos:/usr/share/nginx/videos:ro
+      - ./data/pictures:/usr/share/nginx/pictures:ro
+      - ./data/tones:/usr/share/nginx/tones:ro
     environment:
       NGINX_PORT: 80
       SERVER_NAME: ${SERVER_NAME:-attendance.norielgecolea.com attendance.lpulaguna.com attendancev2.lpu-laguna.edu.ph localhost}
