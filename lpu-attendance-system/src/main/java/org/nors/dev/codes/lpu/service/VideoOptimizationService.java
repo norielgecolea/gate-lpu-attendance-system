@@ -68,6 +68,15 @@ public class VideoOptimizationService {
         );
 
         try {
+            // #region agent log
+            AgentDebugLog.write(
+                    "C",
+                    "VideoOptimizationService.transcodeToMp4",
+                    "ffmpeg start",
+                    "{\"sourceBytes\":" + Files.size(source) + "}"
+            );
+            log.info("DEBUG_FREEZE hypothesis=C ffmpeg start sourceBytes={}", Files.size(source));
+            // #endregion
             ProcessBuilder builder = new ProcessBuilder(command);
             builder.redirectErrorStream(true);
             Process process = builder.start();

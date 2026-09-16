@@ -151,6 +151,14 @@ public class MediaBackupService {
         Files.createDirectories(incoming);
         Files.createDirectories(live);
 
+        // #region agent log
+        AgentDebugLog.write(
+                "B",
+                "MediaBackupService.replaceDirectory",
+                "media replace start (live+snapshot+incoming copies)",
+                "{\"live\":\"" + live.getFileName() + "\"}"
+        );
+        // #endregion
         Path snapshot = live.resolveSibling(live.getFileName() + ".restore-prev");
         deleteRecursive(snapshot);
         Files.createDirectories(snapshot);

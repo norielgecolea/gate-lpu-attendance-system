@@ -61,10 +61,21 @@ public class ImageOptimizationService {
             return false;
         }
         try {
+            // #region agent log
+            AgentDebugLog.write("D", "ImageOptimizationService.optimizeToJpeg", "ImageIO.read start", "{}");
+            // #endregion
             BufferedImage source = ImageIO.read(input);
             if (source == null) {
                 return false;
             }
+            // #region agent log
+            AgentDebugLog.write(
+                    "D",
+                    "ImageOptimizationService.optimizeToJpeg",
+                    "ImageIO.read done",
+                    "{\"width\":" + source.getWidth() + ",\"height\":" + source.getHeight() + "}"
+            );
+            // #endregion
             BufferedImage resized = resize(source, maxDimension);
             BufferedImage rgb = stripAlpha(resized);
             writeJpeg(rgb, destination, jpegQuality);

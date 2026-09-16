@@ -285,6 +285,15 @@ public class EmployeeService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Bulk photo upload is limited to 5,000 files");
         }
 
+        // #region agent log
+        AgentDebugLog.write(
+                "E",
+                "EmployeeService.bulkUploadPhotos",
+                "bulk photo start",
+                "{\"fileCount\":" + files.size() + "}"
+        );
+        log.info("DEBUG_FREEZE hypothesis=E bulk employee photo start fileCount={}", files.size());
+        // #endregion
         int updated = 0;
         int notFound = 0;
         int skippedInvalid = 0;

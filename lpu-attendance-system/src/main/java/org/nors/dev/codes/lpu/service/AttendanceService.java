@@ -431,6 +431,15 @@ public class AttendanceService {
     ) {
         requirePersonType(personType);
         DateRange range = normalizeRange(startDate, endDate, true);
+        // #region agent log
+        AgentDebugLog.write(
+                "F",
+                "AttendanceService.exportCsv",
+                "in-memory csv export start",
+                "{\"start\":\"" + range.start() + "\",\"end\":\"" + range.end() + "\"}"
+        );
+        log.info("DEBUG_FREEZE hypothesis=F csv export start start={} end={}", range.start(), range.end());
+        // #endregion
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try (PrintWriter writer = new PrintWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8))) {
             boolean combined = isAllPeople(personType);
@@ -519,7 +528,12 @@ public class AttendanceService {
                 offset += items.size();
             }
         }
-        return baos.toByteArray();
+        byte[] csv = baos.toByteArray();
+        // #region agent log
+        AgentDebugLog.write("F", "AttendanceService.exportCsv", "in-memory csv export done", "{\"bytes\":" + csv.length + "}");
+        log.info("DEBUG_FREEZE hypothesis=F csv export done bytes={}", csv.length);
+        // #endregion
+        return csv;
     }
 
     @Transactional(readOnly = true)

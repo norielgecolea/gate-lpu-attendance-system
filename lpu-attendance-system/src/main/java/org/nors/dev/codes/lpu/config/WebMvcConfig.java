@@ -2,8 +2,10 @@ package org.nors.dev.codes.lpu.config;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.CacheControl;
 import org.springframework.web.servlet.config.annotation.AsyncSupportConfigurer;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -32,7 +34,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
             location = location + "/";
         }
         registry.addResourceHandler("/pictures/**")
-                .addResourceLocations(location);
+                .addResourceLocations(location)
+                .setCacheControl(mediaCacheControl());
 
         Path videosPath = Paths.get(uploadProperties.getVideosDir()).toAbsolutePath().normalize();
         String videosLocation = videosPath.toUri().toString();
@@ -40,7 +43,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
             videosLocation = videosLocation + "/";
         }
         registry.addResourceHandler("/videos/**")
-                .addResourceLocations(videosLocation);
+                .addResourceLocations(videosLocation)
+                .setCacheControl(mediaCacheControl());
 
         Path tonesPath = Paths.get(uploadProperties.getTonesDir()).toAbsolutePath().normalize();
         String tonesLocation = tonesPath.toUri().toString();
@@ -48,6 +52,12 @@ public class WebMvcConfig implements WebMvcConfigurer {
             tonesLocation = tonesLocation + "/";
         }
         registry.addResourceHandler("/tones/**")
-                .addResourceLocations(tonesLocation);
+                .addResourceLocations(tonesLocation)
+                .setCacheControl(mediaCacheControl());
+    }
+
+    /** UUID media filenames never change in place, so kiosks can keep the file locally. */
+    private static CacheControl mediaCacheControl() {
+        return CacheControl.maxAge(Duration.ofDays(365)).cachePublic();
     }
 }

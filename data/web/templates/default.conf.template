@@ -21,6 +21,8 @@ server {
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection $connection_upgrade;
         proxy_read_timeout 86400;
+        proxy_buffering off;
+        proxy_request_buffering off;
     }
 
     # Angular frontend (production SSR on :4200, or ng serve when FRONTEND_MODE=development)

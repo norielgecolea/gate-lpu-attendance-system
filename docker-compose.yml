@@ -36,7 +36,8 @@ services:
       APP_VIDEOS_DIR: /usr/local/tomcat/videos
       APP_TONES_DIR: /usr/local/tomcat/tones
       TZ: Asia/Manila
-      JAVA_OPTS: "-Dlpu.log.dir=/usr/local/tomcat/logs"
+      JAVA_OPTS: "-Xms256m -Xmx1024m -Dlpu.log.dir=/usr/local/tomcat/logs"
+    mem_limit: 1536m
     volumes:
       # Deploy: mvn -f lpu-attendance-system clean package && cp lpu-attendance-system/target/attendance-system.war data/tomcat/webapps/
       - ./data/tomcat/webapps:/usr/local/tomcat/webapps

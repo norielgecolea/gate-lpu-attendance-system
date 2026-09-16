@@ -59,6 +59,10 @@ public class BackupService {
         Path zipFile = null;
         boolean streaming = false;
         try {
+            // #region agent log
+            AgentDebugLog.write("A", "BackupService.startDownload", "backup zip start", "{}");
+            log.info("DEBUG_FREEZE hypothesis=A backup zip start");
+            // #endregion
             dumpDir = Files.createTempDirectory("lpu-backup-db-");
             databaseBackupService.dumpToDirectory(dumpDir);
             zipFile = Files.createTempFile("lpu-backup-", ".zip");
@@ -70,6 +74,10 @@ public class BackupService {
 
             Path zip = zipFile;
             long size = Files.size(zip);
+            // #region agent log
+            AgentDebugLog.write("A", "BackupService.startDownload", "backup zip ready", "{\"zipBytes\":" + size + "}");
+            log.info("DEBUG_FREEZE hypothesis=A backup zip ready zipBytes={}", size);
+            // #endregion
             StreamingResponseBody body = output -> {
                 try {
                     Files.copy(zip, output);
@@ -103,6 +111,15 @@ public class BackupService {
         Path upload = null;
         Path staging = null;
         try {
+            // #region agent log
+            AgentDebugLog.write(
+                    "A",
+                    "BackupService.restore",
+                    "restore start",
+                    "{\"declaredBytes\":" + file.getSize() + "}"
+            );
+            log.info("DEBUG_FREEZE hypothesis=A restore start declaredBytes={}", file.getSize());
+            // #endregion
             upload = Files.createTempFile("lpu-restore-", ".zip");
             file.transferTo(upload);
             staging = Files.createTempDirectory("lpu-restore-staging-");
