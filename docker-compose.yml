@@ -90,9 +90,6 @@ services:
       - "80:80"
     volumes:
       - ./data/web/templates:/etc/nginx/templates
-      - ./data/videos:/usr/share/nginx/videos:ro
-      - ./data/pictures:/usr/share/nginx/pictures:ro
-      - ./data/tones:/usr/share/nginx/tones:ro
     environment:
       NGINX_PORT: 80
       SERVER_NAME: ${SERVER_NAME:-attendance.norielgecolea.com attendance.lpulaguna.com attendancev2.lpu-laguna.edu.ph localhost}
