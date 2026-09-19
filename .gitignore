@@ -33,6 +33,7 @@ data/videos/
 data/tones/
 data/tomcat/logs/
 data/tomcat/webapps-archive/
+data/redis/
 data/cloudflared/
 
 # Logs

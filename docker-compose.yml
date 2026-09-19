@@ -1,3 +1,46 @@
+x-tomcat: &tomcat
+  build:
+    context: ./docker/tomcat
+  image: lpu-attendance-tomcat:11-jdk21-ffmpeg
+  environment:
+    SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+    SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+    SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+    SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "5"
+    SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: "1"
+    APP_JWT_SECRET: ${APP_JWT_SECRET:-bHB1LWdhdGUtYXR0ZW5kYW5jZS1qd3Qtc2VjcmV0LWtleS0zMmJ5dGVzIQ==}
+    APP_SYNC_API_KEY: ${APP_SYNC_API_KEY:-}
+    APP_PICTURES_DIR: /usr/local/tomcat/pictures
+    APP_VIDEOS_DIR: /usr/local/tomcat/videos
+    APP_TONES_DIR: /usr/local/tomcat/tones
+    APP_REDIS_ENABLED: "true"
+    SPRING_DATA_REDIS_HOST: redis
+    SPRING_DATA_REDIS_PORT: "6379"
+    TZ: Asia/Manila
+    JAVA_OPTS: "-Xms256m -Xmx1024m -Dlpu.log.dir=/usr/local/tomcat/logs"
+  mem_limit: 1536m
+  volumes:
+    # Deploy: mvn -f lpu-attendance-system clean package && cp lpu-attendance-system/target/attendance-system.war data/tomcat/webapps/
+    - ./data/tomcat/webapps/attendance-system.war:/opt/deploy/attendance-system.war:ro
+    - ./data/pictures:/usr/local/tomcat/pictures
+    - ./data/videos:/usr/local/tomcat/videos
+    - ./data/tones:/usr/local/tomcat/tones
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  healthcheck:
+    test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/attendance-system/api/health || exit 1"]
+    interval: 10s
+    timeout: 5s
+    retries: 12
+    start_period: 90s
+  networks:
+    default:
+      aliases:
+        - tomcat
+
 services:
 
   postgres:
@@ -19,35 +62,27 @@ services:
       timeout: 5s
       retries: 10
 
-  tomcat:
-    build:
-      context: ./docker/tomcat
-    image: lpu-attendance-tomcat:11-jdk21-ffmpeg
-    container_name: tomcat_server
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - ./data/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  tomcat-1:
+    <<: *tomcat
+    hostname: tomcat-1
     ports:
       - "${TOMCAT_PORT:-8080}:8080"
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
-      APP_JWT_SECRET: ${APP_JWT_SECRET:-bHB1LWdhdGUtYXR0ZW5kYW5jZS1qd3Qtc2VjcmV0LWtleS0zMmJ5dGVzIQ==}
-      APP_SYNC_API_KEY: ${APP_SYNC_API_KEY:-}
-      APP_PICTURES_DIR: /usr/local/tomcat/pictures
-      APP_VIDEOS_DIR: /usr/local/tomcat/videos
-      APP_TONES_DIR: /usr/local/tomcat/tones
-      TZ: Asia/Manila
-      JAVA_OPTS: "-Xms256m -Xmx1024m -Dlpu.log.dir=/usr/local/tomcat/logs"
-    mem_limit: 1536m
-    volumes:
-      # Deploy: mvn -f lpu-attendance-system clean package && cp lpu-attendance-system/target/attendance-system.war data/tomcat/webapps/
-      - ./data/tomcat/webapps:/usr/local/tomcat/webapps
-      - ./data/tomcat/logs:/usr/local/tomcat/logs
-      - ./data/pictures:/usr/local/tomcat/pictures
-      - ./data/videos:/usr/local/tomcat/videos
-      - ./data/tones:/usr/local/tomcat/tones
-    depends_on:
-      postgres:
-        condition: service_healthy
+
+  tomcat-2:
+    <<: *tomcat
+    hostname: tomcat-2
 
   angular:
     image: node:24-alpine
@@ -82,7 +117,10 @@ services:
     stdin_open: true
     tty: true
     depends_on:
-      - tomcat
+      tomcat-1:
+        condition: service_healthy
+      tomcat-2:
+        condition: service_healthy
 
   web:
     image: nginx:latest
@@ -95,11 +133,10 @@ services:
       SERVER_NAME: ${SERVER_NAME:-attendance.norielgecolea.com attendance.lpulaguna.com attendancev2.lpu-laguna.edu.ph localhost}
       UPSTREAM_HOST: angular
       UPSTREAM_PORT: 4200
-      TOMCAT_HOST: tomcat
-      TOMCAT_PORT: 8080
     depends_on:
       - angular
-      - tomcat
+      - tomcat-1
+      - tomcat-2
 
   cloudflared:
     image: cloudflare/cloudflared:latest

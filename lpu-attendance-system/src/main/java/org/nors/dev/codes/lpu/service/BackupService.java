@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -14,6 +15,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.nors.dev.codes.lpu.cluster.ClusterLock;
 import org.nors.dev.codes.lpu.dto.BackupManifest;
 import org.nors.dev.codes.lpu.dto.BackupRestoreResponse;
 import org.springframework.http.HttpStatus;
@@ -28,6 +30,8 @@ public class BackupService {
     private static final Logger log = LogManager.getLogger(BackupService.class);
     private static final ZoneId MANILA = ZoneId.of("Asia/Manila");
     private static final DateTimeFormatter FILENAME_TIME = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
+    private static final Duration CLUSTER_LOCK_TTL = Duration.ofHours(1);
+    static final String BACKUP_LOCK_KEY = "backup:lock";
     private static final List<String> INCLUDED_PATHS = List.of(
             MediaBackupService.DATABASE_PREFIX + "/",
             MediaBackupService.PICTURES_PREFIX + "/",
@@ -38,17 +42,20 @@ public class BackupService {
     private final DatabaseBackupService databaseBackupService;
     private final MediaBackupService mediaBackupService;
     private final ObjectMapper objectMapper;
+    private final ClusterLock clusterLock;
     private final AtomicBoolean inProgress = new AtomicBoolean(false);
     private final String appVersion;
 
     public BackupService(
             DatabaseBackupService databaseBackupService,
             MediaBackupService mediaBackupService,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            ClusterLock clusterLock
     ) {
         this.databaseBackupService = databaseBackupService;
         this.mediaBackupService = mediaBackupService;
         this.objectMapper = objectMapper;
+        this.clusterLock = clusterLock;
         String version = getClass().getPackage().getImplementationVersion();
         this.appVersion = version == null || version.isBlank() ? "dev" : version;
     }
@@ -95,7 +102,7 @@ public class BackupService {
                 deleteQuietly(dumpDir);
                 deleteQuietly(zipFile);
             }
-            inProgress.set(false);
+            release();
         }
     }
 
@@ -150,7 +157,7 @@ public class BackupService {
         } finally {
             deleteQuietly(upload);
             deleteQuietly(staging);
-            inProgress.set(false);
+            release();
         }
     }
 
@@ -202,6 +209,21 @@ public class BackupService {
                     HttpStatus.CONFLICT,
                     "A backup or restore is already in progress"
             );
+        }
+        if (!clusterLock.tryAcquire(BACKUP_LOCK_KEY, CLUSTER_LOCK_TTL)) {
+            inProgress.set(false);
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "A backup or restore is already in progress"
+            );
+        }
+    }
+
+    private void release() {
+        try {
+            clusterLock.release(BACKUP_LOCK_KEY);
+        } finally {
+            inProgress.set(false);
         }
     }
 

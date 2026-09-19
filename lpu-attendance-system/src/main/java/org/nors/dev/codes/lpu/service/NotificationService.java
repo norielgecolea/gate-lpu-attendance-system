@@ -2,6 +2,7 @@ package org.nors.dev.codes.lpu.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PreDestroy;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -13,10 +14,15 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.nors.dev.codes.lpu.cluster.ClusterBroadcast;
+import org.nors.dev.codes.lpu.cluster.KioskPresenceStore;
+import org.nors.dev.codes.lpu.cluster.PresenceRecord;
+import org.nors.dev.codes.lpu.cluster.WsBroadcastEvent;
 import org.nors.dev.codes.lpu.dto.AuthEventMessage;
 import org.nors.dev.codes.lpu.model.KioskGroup;
 import org.nors.dev.codes.lpu.model.KioskGroups;
 import org.nors.dev.codes.lpu.model.Role;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
@@ -29,14 +35,23 @@ public class NotificationService {
     private static final int SEND_TIME_LIMIT_MS = 5_000;
     private static final int SEND_BUFFER_LIMIT = 512 * 1024;
     private static final long PING_TIMEOUT_NANOS = 8_000_000_000L;
+    static final long PING_TIMEOUT_MS = 8_000L;
 
     private final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
-    /** sessionId → connected kiosk (location label + venue). */
+    /** Local ping timing only — presence reads go through {@link KioskPresenceStore}. */
     private final Map<String, OnlineKiosk> onlineKiosks = new ConcurrentHashMap<>();
     private final ObjectMapper objectMapper;
+    private final ClusterBroadcast clusterBroadcast;
+    private final KioskPresenceStore presenceStore;
 
-    public NotificationService(ObjectMapper objectMapper) {
+    public NotificationService(
+            ObjectMapper objectMapper,
+            ClusterBroadcast clusterBroadcast,
+            KioskPresenceStore presenceStore
+    ) {
         this.objectMapper = objectMapper;
+        this.clusterBroadcast = clusterBroadcast;
+        this.presenceStore = presenceStore;
     }
 
     public void register(WebSocketSession session, Role role, String username, String location) {
@@ -60,8 +75,9 @@ public class NotificationService {
                     KioskGroups.fromRole(role)
             );
             onlineKiosks.put(session.getId(), kiosk);
+            upsertPresence(session.getId(), kiosk);
             log.info(
-                    "Kiosk online: session={} label={} group={} (kiosks={})",
+                    "Kiosk online: session={} label={} group={} (localKiosks={})",
                     session.getId(),
                     kiosk.label(),
                     kiosk.group(),
@@ -75,6 +91,7 @@ public class NotificationService {
     public void unregister(WebSocketSession session) {
         sessions.remove(session.getId());
         OnlineKiosk removed = onlineKiosks.remove(session.getId());
+        presenceStore.remove(session.getId());
         log.info(
                 "WebSocket session unregistered: {} (active={}, wasKiosk={})",
                 session.getId(),
@@ -94,7 +111,7 @@ public class NotificationService {
     public List<String> onlineKioskLocations(KioskGroup group) {
         TreeSet<String> locations = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
         KioskGroup target = group != null ? group : KioskGroup.MAIN_GATES;
-        for (OnlineKiosk kiosk : onlineKiosks.values()) {
+        for (PresenceRecord kiosk : presenceStore.all()) {
             if (kiosk.group() == target) {
                 locations.add(kiosk.label());
             }
@@ -112,16 +129,15 @@ public class NotificationService {
 
     /** Worst (highest) measured ping ms per location, grouped by venue. Omits locations still waiting. */
     public Map<String, Map<String, Integer>> kioskPingsByGroup() {
-        long now = System.nanoTime();
+        long now = System.currentTimeMillis();
         Map<String, Map<String, Integer>> byGroup = new LinkedHashMap<>();
         for (KioskGroup group : KioskGroup.values()) {
             Map<String, Integer> pings = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-            for (OnlineKiosk kiosk : onlineKiosks.values()) {
+            for (PresenceRecord kiosk : presenceStore.all()) {
                 if (kiosk.group() != group) {
                     continue;
                 }
-                kiosk.expireIfStale(now, PING_TIMEOUT_NANOS);
-                Integer ms = kiosk.pingMs();
+                Integer ms = visiblePingMs(kiosk, now);
                 if (ms == null) {
                     continue;
                 }
@@ -141,12 +157,14 @@ public class NotificationService {
     }
 
     public void pingKiosks() {
+        presenceStore.touch();
         long now = System.nanoTime();
         boolean expired = false;
         for (Map.Entry<String, OnlineKiosk> entry : onlineKiosks.entrySet()) {
             OnlineKiosk kiosk = entry.getValue();
             if (kiosk.expireIfStale(now, PING_TIMEOUT_NANOS)) {
                 expired = true;
+                upsertPresence(entry.getKey(), kiosk);
             }
             sendPing(entry.getKey(), kiosk);
         }
@@ -182,6 +200,28 @@ public class NotificationService {
     }
 
     public void broadcastRaw(String payload) {
+        clusterBroadcast.publish(payload);
+    }
+
+    @EventListener
+    public void onClusterBroadcast(WsBroadcastEvent event) {
+        if (event == null || event.payload() == null) {
+            return;
+        }
+        deliverToLocalSessions(event.payload());
+    }
+
+    @PreDestroy
+    public void shutdown() {
+        presenceStore.clearInstance();
+        try {
+            clusterBroadcast.publish(guardPresencePayload());
+        } catch (Exception ex) {
+            log.debug("Could not publish presence on shutdown", ex);
+        }
+    }
+
+    void deliverToLocalSessions(String payload) {
         List<String> dead = new ArrayList<>();
         for (Map.Entry<String, WebSocketSession> entry : sessions.entrySet()) {
             WebSocketSession session = entry.getValue();
@@ -197,9 +237,16 @@ public class NotificationService {
                 dead.add(entry.getKey());
             }
         }
+        boolean removedKiosk = false;
         for (String id : dead) {
             sessions.remove(id);
-            onlineKiosks.remove(id);
+            if (onlineKiosks.remove(id) != null) {
+                removedKiosk = true;
+            }
+            presenceStore.remove(id);
+        }
+        if (removedKiosk) {
+            broadcastGuardPresence();
         }
     }
 
@@ -220,6 +267,7 @@ public class NotificationService {
             log.warn("Failed to ping kiosk session {}", sessionId, ex);
             sessions.remove(sessionId);
             if (onlineKiosks.remove(sessionId) != null) {
+                presenceStore.remove(sessionId);
                 broadcastGuardPresence();
             }
         }
@@ -237,6 +285,7 @@ public class NotificationService {
         if (ms == null) {
             return;
         }
+        upsertPresence(sessionId, kiosk);
         broadcastGuardPresence();
     }
 
@@ -267,6 +316,26 @@ public class NotificationService {
         }
     }
 
+    private void upsertPresence(String sessionId, OnlineKiosk kiosk) {
+        presenceStore.put(sessionId, new PresenceRecord(
+                sessionId,
+                kiosk.label(),
+                kiosk.group(),
+                kiosk.pingMs(),
+                kiosk.lastPongEpochMs()
+        ));
+    }
+
+    static Integer visiblePingMs(PresenceRecord kiosk, long nowEpochMs) {
+        if (kiosk.pingMs() == null || kiosk.lastPongEpochMs() == 0L) {
+            return null;
+        }
+        if (nowEpochMs - kiosk.lastPongEpochMs() >= PING_TIMEOUT_MS) {
+            return null;
+        }
+        return kiosk.pingMs();
+    }
+
     private static String resolveGuardLabel(String location, String username) {
         if (location != null && !location.isBlank()) {
             return location.trim();
@@ -284,6 +353,7 @@ public class NotificationService {
         private long pingSentAtNanos;
         private Integer pingMs;
         private long lastPongAtNanos;
+        private long lastPongEpochMs;
 
         private OnlineKiosk(String label, KioskGroup group) {
             this.label = label;
@@ -311,6 +381,7 @@ public class NotificationService {
             pendingPingId = null;
             pingMs = rttMs > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) rttMs;
             lastPongAtNanos = receivedAtNanos;
+            lastPongEpochMs = System.currentTimeMillis();
             return pingMs;
         }
 
@@ -328,6 +399,10 @@ public class NotificationService {
 
         private synchronized Integer pingMs() {
             return pingMs;
+        }
+
+        private synchronized long lastPongEpochMs() {
+            return lastPongEpochMs;
         }
     }
 }

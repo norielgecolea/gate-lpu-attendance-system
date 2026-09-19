@@ -60,6 +60,7 @@ public class SecurityConfig {
                         // <audio> tags cannot attach auth headers
                         .requestMatchers(HttpMethod.GET, "/tones/**").permitAll()
                         .requestMatchers("/ws/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/health").permitAll()
                         // Machine-only pull endpoints use a deployment-managed API key.
                         .requestMatchers("/api/sync/**").hasRole("SYNC")
                         // Any signed-in role (Superadmin, OSAS, HR, Monitoring, Guard) can manage its own session.

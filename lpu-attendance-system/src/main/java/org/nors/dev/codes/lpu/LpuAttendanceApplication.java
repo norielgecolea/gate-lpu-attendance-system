@@ -2,6 +2,9 @@ package org.nors.dev.codes.lpu;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;
+import org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration;
+import org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration;
 import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
 import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration;
 import org.springframework.boot.builder.SpringApplicationBuilder;
@@ -10,7 +13,10 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication(exclude = {
         HibernateJpaAutoConfiguration.class,
-        UserDetailsServiceAutoConfiguration.class
+        UserDetailsServiceAutoConfiguration.class,
+        RedisAutoConfiguration.class,
+        RedisReactiveAutoConfiguration.class,
+        RedisRepositoriesAutoConfiguration.class
 })
 @EnableScheduling
 public class LpuAttendanceApplication extends SpringBootServletInitializer {
