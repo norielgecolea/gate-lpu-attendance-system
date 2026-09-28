@@ -90,6 +90,23 @@ public class SchemaMigrationConfig {
                     ON sync_deletion_tombstones (deleted_at ASC, id ASC)
                 """);
 
+        jdbc.execute("""
+                CREATE TABLE IF NOT EXISTS api_request_audit_events (
+                    id           BIGSERIAL PRIMARY KEY,
+                    method       VARCHAR(10)  NOT NULL,
+                    path         VARCHAR(200) NOT NULL,
+                    label        VARCHAR(100),
+                    query_string VARCHAR(500),
+                    status_code  INTEGER      NOT NULL,
+                    client_ip    VARCHAR(64),
+                    created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+                )
+                """);
+        jdbc.execute("""
+                CREATE INDEX IF NOT EXISTS idx_api_request_audit_events_created
+                    ON api_request_audit_events (created_at DESC, id DESC)
+                """);
+
         Boolean employeesExists = jdbc.queryForObject(
                 """
                 SELECT EXISTS (
@@ -245,7 +262,8 @@ public class SchemaMigrationConfig {
 
         log.info(
                 "Schema migration applied (app_settings, guard_videos, tap_error_logs, gate_tones,"
-                        + " student_audit_events, employee_audit_events, sync_deletion_tombstones, kiosk_groups)"
+                        + " student_audit_events, employee_audit_events, api_request_audit_events,"
+                        + " sync_deletion_tombstones, kiosk_groups)"
         );
         return new SchemaMigrator();
     }

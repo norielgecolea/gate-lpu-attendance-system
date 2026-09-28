@@ -29,8 +29,8 @@ public class AuditLogService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "date is required");
         }
         String type = personType == null ? "" : personType.trim().toUpperCase();
-        if (!type.isEmpty() && !"STUDENT".equals(type) && !"EMPLOYEE".equals(type)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "personType must be STUDENT or EMPLOYEE");
+        if (!type.isEmpty() && !"STUDENT".equals(type) && !"EMPLOYEE".equals(type) && !"API".equals(type)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "personType must be STUDENT, EMPLOYEE, or API");
         }
 
         int size = Math.min(Math.max(limit, 1), 500);
@@ -42,8 +42,10 @@ public class AuditLogService {
             fromClause = studentSelectSql();
         } else if ("EMPLOYEE".equals(type)) {
             fromClause = employeeSelectSql();
+        } else if ("API".equals(type)) {
+            fromClause = apiSelectSql();
         } else {
-            fromClause = studentSelectSql() + " UNION ALL " + employeeSelectSql();
+            fromClause = studentSelectSql() + " UNION ALL " + employeeSelectSql() + " UNION ALL " + apiSelectSql();
         }
 
         @SuppressWarnings("unchecked")
@@ -101,6 +103,32 @@ public class AuditLogService {
                     e.created_at AS created_at
                 FROM employee_audit_events e
                 JOIN employees emp ON emp.id = e.employee_id
+                WHERE CAST(e.created_at AT TIME ZONE 'Asia/Manila' AS date) = :date
+                """;
+    }
+
+    private static String apiSelectSql() {
+        return """
+                SELECT
+                    'api-' || CAST(e.id AS text) AS id,
+                    'API' AS person_type,
+                    e.path AS person_id,
+                    COALESCE(NULLIF(e.label, ''), 'Sync API') AS person_name,
+                    CASE
+                        WHEN e.status_code >= 400 THEN CAST(e.status_code AS text) || ' · '
+                        ELSE ''
+                    END
+                        || COALESCE(NULLIF(e.query_string, ''), e.method)
+                        || CASE
+                            WHEN e.client_ip IS NOT NULL AND btrim(e.client_ip) <> ''
+                                THEN ' · ' || e.client_ip
+                            ELSE ''
+                        END AS person_no,
+                    CASE WHEN e.status_code >= 400 THEN 'FAILED' ELSE 'REQUESTED' END AS action,
+                    CAST(NULL AS bigint) AS actor_user_id,
+                    'ERP' AS actor_username,
+                    e.created_at AS created_at
+                FROM api_request_audit_events e
                 WHERE CAST(e.created_at AT TIME ZONE 'Asia/Manila' AS date) = :date
                 """;
     }

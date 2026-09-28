@@ -81,6 +81,20 @@ CREATE TABLE IF NOT EXISTS sync_deletion_tombstones (
 CREATE INDEX IF NOT EXISTS idx_sync_tombstones_deleted
     ON sync_deletion_tombstones (deleted_at ASC, id ASC);
 
+CREATE TABLE IF NOT EXISTS api_request_audit_events (
+    id           BIGSERIAL PRIMARY KEY,
+    method       VARCHAR(10)  NOT NULL,
+    path         VARCHAR(200) NOT NULL,
+    label        VARCHAR(100),
+    query_string VARCHAR(500),
+    status_code  INTEGER      NOT NULL,
+    client_ip    VARCHAR(64),
+    created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_api_request_audit_events_created
+    ON api_request_audit_events (created_at DESC, id DESC);
+
 CREATE TABLE IF NOT EXISTS student_audit_events (
     id             BIGSERIAL PRIMARY KEY,
     student_id     BIGINT      NOT NULL REFERENCES students(id) ON DELETE CASCADE,

@@ -22,9 +22,10 @@
       (ngModelChange)="onPersonTypeChange($event)"
       aria-label="Filter by person type"
     >
-      <option value="">All (Students & Employees)</option>
+      <option value="">All</option>
       <option value="STUDENT">Students</option>
       <option value="EMPLOYEE">Employees</option>
+      <option value="API">API requests</option>
     </select>
 
     <input
@@ -81,14 +82,24 @@
                   [class]="
                     row.personType === 'STUDENT'
                       ? 'bg-primary/10 text-primary'
-                      : 'bg-sky-500/10 text-sky-700'
+                      : row.personType === 'API'
+                        ? 'bg-amber-500/10 text-amber-700'
+                        : 'bg-sky-500/10 text-sky-700'
                   "
                 >
                   <ng-icon
-                    [name]="row.personType === 'STUDENT' ? 'lucideGraduationCap' : 'lucideBriefcase'"
+                    [name]="
+                      row.personType === 'STUDENT'
+                        ? 'lucideGraduationCap'
+                        : row.personType === 'API'
+                          ? 'lucideServer'
+                          : 'lucideBriefcase'
+                    "
                     class="text-sm"
                   />
-                  {{ row.personType === 'STUDENT' ? 'Student' : 'Employee' }}
+                  {{
+                    row.personType === 'STUDENT' ? 'Student' : row.personType === 'API' ? 'API' : 'Employee'
+                  }}
                 </span>
               </td>
               <td hlmTd>

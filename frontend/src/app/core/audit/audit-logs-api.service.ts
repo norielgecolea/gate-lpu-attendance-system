@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
-export type AuditPersonType = 'STUDENT' | 'EMPLOYEE';
+export type AuditPersonType = 'STUDENT' | 'EMPLOYEE' | 'API';
 export type AuditAction = 'CREATED' | 'UPDATED' | 'PHOTO_UPDATED' | 'DELETED';
 
 export interface AuditLog {

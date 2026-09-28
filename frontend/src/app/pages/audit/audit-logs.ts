@@ -8,6 +8,7 @@ import {
   lucideHistory,
   lucideRefreshCw,
   lucideSearch,
+  lucideServer,
 } from '@ng-icons/lucide';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmInput } from '@spartan-ng/helm/input';
@@ -32,6 +33,7 @@ function manilaToday(): string {
       lucideRefreshCw,
       lucideGraduationCap,
       lucideBriefcase,
+      lucideServer,
     }),
   ],
   templateUrl: './audit-logs.html',
@@ -77,7 +79,9 @@ export class AuditLogs {
   }
 
   protected onPersonTypeChange(value: string): void {
-    this.personType.set(value === 'STUDENT' || value === 'EMPLOYEE' ? value : '');
+    this.personType.set(
+      value === 'STUDENT' || value === 'EMPLOYEE' || value === 'API' ? value : '',
+    );
     this.reload();
   }
 
@@ -113,6 +117,10 @@ export class AuditLogs {
         return 'Photo added';
       case 'DELETED':
         return 'Deleted';
+      case 'REQUESTED':
+        return 'Requested';
+      case 'FAILED':
+        return 'Failed';
       default:
         return action;
     }

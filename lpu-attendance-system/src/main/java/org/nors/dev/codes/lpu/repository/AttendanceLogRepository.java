@@ -105,6 +105,52 @@ public class AttendanceLogRepository {
                 .getResultList();
     }
 
+    /**
+     * Employee daily logs for one venue, ordered for a stable ERP page.
+     */
+    @Transactional(readOnly = true)
+    public List<AttendanceLog> findEmployeeLogs(
+            LocalDate startDate,
+            LocalDate endDate,
+            KioskGroup kioskGroup,
+            int offset,
+            int limit
+    ) {
+        return currentSession()
+                .createQuery(
+                        "SELECT a FROM AttendanceLog a JOIN FETCH a.employee e"
+                                + " WHERE a.kioskGroup = :kioskGroup"
+                                + " AND a.attendanceDate >= :startDate"
+                                + " AND a.attendanceDate <= :endDate"
+                                + " ORDER BY a.attendanceDate ASC, e.employeeNo ASC, a.id ASC",
+                        AttendanceLog.class
+                )
+                .setParameter("kioskGroup", kioskGroup)
+                .setParameter("startDate", startDate)
+                .setParameter("endDate", endDate)
+                .setFirstResult(Math.max(offset, 0))
+                .setMaxResults(Math.max(limit, 1))
+                .getResultList();
+    }
+
+    @Transactional(readOnly = true)
+    public long countEmployeeLogs(LocalDate startDate, LocalDate endDate, KioskGroup kioskGroup) {
+        Long count = currentSession()
+                .createQuery(
+                        "SELECT COUNT(a.id) FROM AttendanceLog a"
+                                + " WHERE a.employee IS NOT NULL"
+                                + " AND a.kioskGroup = :kioskGroup"
+                                + " AND a.attendanceDate >= :startDate"
+                                + " AND a.attendanceDate <= :endDate",
+                        Long.class
+                )
+                .setParameter("kioskGroup", kioskGroup)
+                .setParameter("startDate", startDate)
+                .setParameter("endDate", endDate)
+                .uniqueResult();
+        return count != null ? count : 0;
+    }
+
     @Transactional(readOnly = true)
     public List<AttendanceLog> searchDaily(
             String personType,
