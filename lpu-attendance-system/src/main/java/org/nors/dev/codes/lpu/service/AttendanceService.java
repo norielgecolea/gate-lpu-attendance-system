@@ -95,6 +95,24 @@ public class AttendanceService {
     }
 
     /**
+     * Canonical location label of an active Guard account.
+     * Superadmin kiosk taps must name one of these gates.
+     */
+    @Transactional(readOnly = true)
+    public String resolveGuardLocation(String rawLocation) {
+        String requested = rawLocation == null ? "" : rawLocation.trim();
+        if (requested.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Gate location is required");
+        }
+        for (String location : userRepository.findActiveLocations(Role.GUARD)) {
+            if (location != null && location.equalsIgnoreCase(requested)) {
+                return location;
+            }
+        }
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown guard location");
+    }
+
+    /**
      * Alternating tap cycles are allowed all day.
      * Final daily record always keeps the first {@code time_in} and the latest {@code time_out}.
      * Every accepted tap is also stored as an immutable attendance event.

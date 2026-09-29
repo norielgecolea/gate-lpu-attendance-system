@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
+import org.nors.dev.codes.lpu.model.Role;
 import org.nors.dev.codes.lpu.model.User;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +36,20 @@ public class UserRepository {
                 .createQuery("FROM User u WHERE u.id = :id", User.class)
                 .setParameter("id", id)
                 .uniqueResultOptional();
+    }
+
+    @Transactional(readOnly = true)
+    public List<String> findActiveLocations(Role role) {
+        return currentSession()
+                .createQuery(
+                        "SELECT DISTINCT u.location FROM User u"
+                                + " WHERE u.role = :role AND u.active = true"
+                                + " AND u.location IS NOT NULL AND trim(u.location) <> ''"
+                                + " ORDER BY u.location ASC",
+                        String.class
+                )
+                .setParameter("role", role)
+                .getResultList();
     }
 
     @Transactional(readOnly = true)

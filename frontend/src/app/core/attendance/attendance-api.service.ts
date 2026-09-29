@@ -131,8 +131,11 @@ export class AttendanceApiService {
   private readonly studentsUrl = `${environment.apiBaseUrl}/students`;
   private readonly employeesUrl = `${environment.apiBaseUrl}/employees`;
 
-  tap(identifier: string): Observable<TapResponse> {
-    return this.http.post<TapResponse>(`${this.baseUrl}/tap`, { identifier });
+  tap(identifier: string, location?: string | null): Observable<TapResponse> {
+    return this.http.post<TapResponse>(`${this.baseUrl}/tap`, {
+      identifier,
+      ...(location ? { location } : {}),
+    });
   }
 
   recent(limit = 20, offset = 0, kioskGroup?: KioskGroup): Observable<TapResponse[]> {

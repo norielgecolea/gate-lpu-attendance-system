@@ -22,6 +22,7 @@ import { AuditLogs } from './pages/audit/audit-logs';
 import { Backup } from './pages/backup/backup';
 import { RfidChecker } from './pages/rfid-checker/rfid-checker';
 import { DailyRecap } from './pages/daily-recap/daily-recap';
+import { AdminKiosk } from './pages/kiosk/admin-kiosk';
 import { GateKiosk } from './pages/guard/gate-kiosk';
 import { Monitor } from './pages/monitor/monitor';
 import {
@@ -78,6 +79,11 @@ export const routes: Routes = [
         path: 'dashboard',
         component: Dashboard,
         canActivate: [allowRoles(...PORTAL_ROLES)],
+      },
+      {
+        path: 'kiosk',
+        component: AdminKiosk,
+        canActivate: [allowRoles(...SUPERADMIN_ROLES)],
       },
       {
         path: 'rfid-checker',

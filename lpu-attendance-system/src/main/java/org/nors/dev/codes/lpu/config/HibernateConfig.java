@@ -3,6 +3,7 @@ package org.nors.dev.codes.lpu.config;
 import java.util.Properties;
 import javax.sql.DataSource;
 import org.hibernate.SessionFactory;
+import org.nors.dev.codes.lpu.model.ApiRequestAuditEvent;
 import org.nors.dev.codes.lpu.model.AppSetting;
 import org.nors.dev.codes.lpu.model.AttendanceEvent;
 import org.nors.dev.codes.lpu.model.AttendanceLog;
@@ -45,7 +46,8 @@ public class HibernateConfig {
         factoryBean.setAnnotatedClasses(
                 User.class, Student.class, Employee.class, AttendanceLog.class, AttendanceEvent.class,
                 AppSetting.class, GuardVideo.class, GateTone.class, TapErrorLog.class,
-                StudentAuditEvent.class, EmployeeAuditEvent.class, SyncDeletionTombstone.class
+                StudentAuditEvent.class, EmployeeAuditEvent.class, SyncDeletionTombstone.class,
+                ApiRequestAuditEvent.class
         );
         factoryBean.setHibernateProperties(hibernateProperties());
         return factoryBean;
