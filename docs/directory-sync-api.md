@@ -97,14 +97,14 @@ GET /api/sync/employee-attendance?startDate=2026-09-01&endDate=2026-09-28
       "name": "Maria Santos",
       "employeeNo": "EMP-1001",
       "attendanceDate": "2026-09-01",
-      "timeIn": "2026-09-01T00:05:00Z",
-      "timeOut": "2026-09-01T09:10:00Z"
+      "timeIn": "2026-09-01T08:05:00+08:00",
+      "timeOut": "2026-09-01T17:10:00+08:00"
     }
   ]
 }
 ```
 
-`timeIn` and `timeOut` are UTC instants. `limit` defaults to 1000 and must be
+`timeIn` and `timeOut` are Philippine time (`Asia/Manila`, `+08:00`). `limit` defaults to 1000 and must be
 between 1 and 5000. When `total` is larger than the page, request the next
 page with `offset`. Upsert by `employeeNo` and `attendanceDate`.
 
