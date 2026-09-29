@@ -27,6 +27,7 @@ import {
   lucideLayoutDashboard,
   lucideLogOut,
   lucideMenu,
+  lucideMonitor,
   lucideMonitorPlay,
   lucideMusic2,
   lucidePanelLeft,
@@ -125,6 +126,7 @@ interface AlarmTapAlert {
       lucideChevronDown,
       lucideChevronRight,
       lucideMenu,
+      lucideMonitor,
       lucideGraduationCap,
       lucideKeyRound,
       lucideUserRound,
@@ -196,6 +198,7 @@ export class AdminLayout implements OnDestroy {
       label: null,
       items: [
         { label: 'Attendance', icon: 'lucideClock', route: '/attendance' },
+        { label: 'Kiosk', icon: 'lucideMonitor', route: '/kiosk' },
         { label: 'RFID Checker', icon: 'lucideIdCard', route: '/rfid-checker' },
         { label: 'Daily Recap', icon: 'lucideChartColumn', route: '/daily-recap' },
       ],

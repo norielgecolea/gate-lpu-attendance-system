@@ -70,6 +70,9 @@ export function canAccessAdminRoute(role: string | null | undefined, route: stri
   if (route === '/tap-errors') {
     return role === 'SUPERADMIN' || role === 'OSAS' || role === 'HR' || role === 'LIBRARIAN' || role === 'OLIVE';
   }
+  if (route === '/kiosk') {
+    return role === 'SUPERADMIN';
+  }
   if (route === '/audit-logs') {
     return role === 'SUPERADMIN';
   }

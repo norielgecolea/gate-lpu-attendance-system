@@ -43,8 +43,12 @@ public class AttendanceController {
             @AuthenticationPrincipal AuthenticatedUser user
     ) {
         Long userId = user != null ? user.getId() : null;
-        String location = user != null ? user.getLocation() : null;
         Role role = user != null ? user.getRole() : null;
+        String location = user != null ? user.getLocation() : null;
+        if (role == Role.SUPERADMIN) {
+            location = attendanceService.resolveGuardLocation(request.location());
+            role = Role.GUARD;
+        }
         return ResponseEntity.ok(attendanceService.tap(request.identifier(), userId, location, role));
     }
 

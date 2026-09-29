@@ -1,0 +1,91 @@
+<div class="mx-auto flex max-w-xl flex-col gap-4">
+  <section class="bg-card flex flex-col gap-4 rounded-2xl border p-5 shadow-sm">
+    <div>
+      <label class="text-foreground mb-1.5 block text-sm font-medium" for="kiosk-location">
+        Guard location
+      </label>
+      <select
+        hlmInput
+        id="kiosk-location"
+        class="bg-card w-full"
+        [ngModel]="location()"
+        (ngModelChange)="onLocationChange($event)"
+        [disabled]="locationsLoading() || locations().length === 0"
+      >
+        @if (locationsLoading()) {
+          <option value="">Loading locations…</option>
+        } @else if (locations().length === 0) {
+          <option value="">No guard locations</option>
+        } @else {
+          @for (gate of locations(); track gate) {
+            <option [value]="gate">{{ gate }}</option>
+          }
+        }
+      </select>
+      @if (locationsError()) {
+        <p class="text-destructive mt-2 text-sm" role="alert">{{ locationsError() }}</p>
+      } @else if (!locationsLoading() && locations().length === 0) {
+        <p class="text-muted-foreground mt-2 text-sm">
+          Add an active Guard user with a location in User Management.
+        </p>
+      }
+    </div>
+
+    <form class="flex flex-col gap-2" (submit)="$event.preventDefault(); submit()">
+      <label class="text-foreground text-sm font-medium" for="kiosk-id">Student or employee ID</label>
+      <div class="flex gap-2">
+        <input
+          #idInput
+          hlmInput
+          id="kiosk-id"
+          class="bg-card min-w-0 flex-1"
+          type="text"
+          name="identifier"
+          autocomplete="off"
+          placeholder="Scan or type an ID"
+          [ngModel]="identifier()"
+          (input)="onScanInput($event)"
+          [disabled]="!location() || tapping()"
+        />
+        <button hlmBtn type="submit" [disabled]="!location() || tapping()">
+          {{ tapping() ? 'Tapping…' : 'Tap' }}
+        </button>
+      </div>
+    </form>
+  </section>
+
+  @if (error()) {
+    <section class="bg-destructive/5 flex items-center gap-3 rounded-2xl border border-destructive/30 p-4" role="alert">
+      <ng-icon name="lucideCircleAlert" class="text-destructive text-xl" />
+      <p class="text-destructive font-medium">{{ error() }}</p>
+    </section>
+  }
+
+  @if (result(); as tap) {
+    <section class="bg-card flex gap-4 rounded-2xl border p-5 shadow-sm">
+      @if (photoUrl(tap); as photo) {
+        <img [src]="photo" alt="" class="size-20 shrink-0 rounded-xl object-cover" />
+      } @else {
+        <div class="bg-primary/10 text-primary flex size-20 shrink-0 items-center justify-center rounded-xl">
+          <ng-icon name="lucideScanBarcode" class="text-3xl" />
+        </div>
+      }
+      <div class="min-w-0">
+        <p class="text-foreground text-lg font-semibold">{{ personName(tap) }}</p>
+        <p class="text-muted-foreground text-sm tabular-nums">{{ personNo(tap) }}</p>
+        <p class="mt-2 text-sm font-medium" [class]="tap.action === 'TIME_OUT' ? 'text-sky-700' : 'text-emerald-700'">
+          {{ actionLabel(tap.action) }}
+          @if (tap.location) {
+            <span class="text-muted-foreground font-normal"> · {{ tap.location }}</span>
+          }
+        </p>
+        <p class="text-muted-foreground mt-1 text-xs tabular-nums">
+          In {{ tap.timeIn | date: 'h:mm:ss a' : 'Asia/Manila' }}
+          @if (tap.timeOut) {
+            · Out {{ tap.timeOut | date: 'h:mm:ss a' : 'Asia/Manila' }}
+          }
+        </p>
+      </div>
+    </section>
+  }
+</div>
