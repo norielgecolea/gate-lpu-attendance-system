@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.nors.dev.codes.lpu.dto.ErpEmployeeAttendanceResponse;
@@ -33,8 +34,8 @@ class ErpAttendanceServiceTest {
         assertEquals("Maria Santos", response.records().getFirst().name());
         assertEquals("EMP-1001", response.records().getFirst().employeeNo());
         assertEquals(start, response.records().getFirst().attendanceDate());
-        assertEquals(Instant.parse("2026-09-01T00:05:00Z"), response.records().getFirst().timeIn());
-        assertEquals(Instant.parse("2026-09-01T09:10:00Z"), response.records().getFirst().timeOut());
+        assertEquals(OffsetDateTime.parse("2026-09-01T08:05:00+08:00"), response.records().getFirst().timeIn());
+        assertEquals(OffsetDateTime.parse("2026-09-01T17:10:00+08:00"), response.records().getFirst().timeOut());
         assertEquals(KioskGroup.MAIN_GATES, repository.kioskGroup);
         assertEquals(0, repository.offset);
         assertEquals(1000, repository.limit);
