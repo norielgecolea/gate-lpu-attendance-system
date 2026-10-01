@@ -32,6 +32,7 @@ public class ErpAttendanceService {
     public ErpEmployeeAttendanceResponse employeeMainGateLogs(
             LocalDate startDate,
             LocalDate endDate,
+            String employeeNo,
             Integer offset,
             Integer limit
     ) {
@@ -54,10 +55,13 @@ public class ErpAttendanceService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "limit must be between 1 and 5000");
         }
 
+        String employeeNumber = blankToNull(employeeNo);
         List<AttendanceLog> logs = attendanceLogRepository.findEmployeeLogs(
-                startDate, endDate, KioskGroup.MAIN_GATES, pageOffset, pageLimit
+                startDate, endDate, KioskGroup.MAIN_GATES, employeeNumber, pageOffset, pageLimit
         );
-        long total = attendanceLogRepository.countEmployeeLogs(startDate, endDate, KioskGroup.MAIN_GATES);
+        long total = attendanceLogRepository.countEmployeeLogs(
+                startDate, endDate, KioskGroup.MAIN_GATES, employeeNumber
+        );
         return new ErpEmployeeAttendanceResponse(
                 startDate,
                 endDate,
@@ -66,5 +70,12 @@ public class ErpAttendanceService {
                 pageLimit,
                 logs.stream().map(ErpEmployeeAttendanceLogResponse::from).toList()
         );
+    }
+
+    private static String blankToNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
     }
 }

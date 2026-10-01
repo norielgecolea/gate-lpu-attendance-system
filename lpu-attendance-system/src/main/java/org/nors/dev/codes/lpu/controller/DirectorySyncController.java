@@ -61,9 +61,12 @@ public class DirectorySyncController {
     public ResponseEntity<ErpEmployeeAttendanceResponse> employeeAttendance(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(required = false) String employeeNo,
             @RequestParam(required = false) Integer offset,
             @RequestParam(required = false) Integer limit
     ) {
-        return ResponseEntity.ok(erpAttendanceService.employeeMainGateLogs(startDate, endDate, offset, limit));
+        return ResponseEntity.ok(
+                erpAttendanceService.employeeMainGateLogs(startDate, endDate, employeeNo, offset, limit)
+        );
     }
 }

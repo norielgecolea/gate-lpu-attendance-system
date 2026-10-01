@@ -79,10 +79,11 @@ day: the first time in and the latest time out. `timeOut` is `null` when the
 employee has not timed out yet.
 
 `startDate` and `endDate` are required `YYYY-MM-DD` campus dates. The range
-cannot exceed 366 days.
+cannot exceed 366 days. Optional `employeeNo` limits the result to that
+employee. Omit it, or send it empty, to return every employee.
 
 ```text
-GET /api/sync/employee-attendance?startDate=2026-09-01&endDate=2026-09-28
+GET /api/sync/employee-attendance?startDate=2026-09-01&endDate=2026-09-28&employeeNo=EMP-1001
 ```
 
 ```json
