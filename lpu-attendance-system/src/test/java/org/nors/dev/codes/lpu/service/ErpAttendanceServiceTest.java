@@ -26,7 +26,7 @@ class ErpAttendanceServiceTest {
         RecordingRepository repository = new RecordingRepository(List.of(log), 1);
         ErpAttendanceService service = new ErpAttendanceService(repository);
 
-        ErpEmployeeAttendanceResponse response = service.employeeMainGateLogs(start, end, null, null);
+        ErpEmployeeAttendanceResponse response = service.employeeMainGateLogs(start, end, "  ", null, null);
 
         assertEquals(start, response.startDate());
         assertEquals(end, response.endDate());
@@ -39,6 +39,18 @@ class ErpAttendanceServiceTest {
         assertEquals(KioskGroup.MAIN_GATES, repository.kioskGroup);
         assertEquals(0, repository.offset);
         assertEquals(1000, repository.limit);
+        assertNull(repository.employeeNo);
+    }
+
+    @Test
+    void employeeMainGateLogs_filtersByEmployeeNumber() {
+        LocalDate day = LocalDate.of(2026, 9, 1);
+        RecordingRepository repository = new RecordingRepository(List.of(), 0);
+        ErpAttendanceService service = new ErpAttendanceService(repository);
+
+        service.employeeMainGateLogs(day, day, " EMP-1001 ", null, null);
+
+        assertEquals("EMP-1001", repository.employeeNo);
     }
 
     @Test
@@ -47,7 +59,7 @@ class ErpAttendanceServiceTest {
         AttendanceLog log = log(day, Instant.parse("2026-09-01T23:58:00Z"), null);
         ErpAttendanceService service = new ErpAttendanceService(new RecordingRepository(List.of(log), 70));
 
-        ErpEmployeeAttendanceResponse response = service.employeeMainGateLogs(day, day, 20, 50);
+        ErpEmployeeAttendanceResponse response = service.employeeMainGateLogs(day, day, null, 20, 50);
 
         assertNull(response.records().getFirst().timeOut());
         assertEquals(70, response.total());
@@ -60,7 +72,7 @@ class ErpAttendanceServiceTest {
         ErpAttendanceService service = new ErpAttendanceService(new RecordingRepository(List.of(), 0));
         assertThrows(
                 ResponseStatusException.class,
-                () -> service.employeeMainGateLogs(LocalDate.of(2026, 9, 1), null, null, null)
+                () -> service.employeeMainGateLogs(LocalDate.of(2026, 9, 1), null, null, null, null)
         );
     }
 
@@ -69,7 +81,9 @@ class ErpAttendanceServiceTest {
         ErpAttendanceService service = new ErpAttendanceService(new RecordingRepository(List.of(), 0));
         ResponseStatusException ex = assertThrows(
                 ResponseStatusException.class,
-                () -> service.employeeMainGateLogs(LocalDate.of(2026, 9, 28), LocalDate.of(2026, 9, 1), null, null)
+                () -> service.employeeMainGateLogs(
+                        LocalDate.of(2026, 9, 28), LocalDate.of(2026, 9, 1), null, null, null
+                )
         );
         assertEquals("startDate must be on or before endDate", ex.getReason());
     }
@@ -91,6 +105,7 @@ class ErpAttendanceServiceTest {
         private final List<AttendanceLog> logs;
         private final long total;
         private KioskGroup kioskGroup;
+        private String employeeNo;
         private int offset;
         private int limit;
 
@@ -105,17 +120,24 @@ class ErpAttendanceServiceTest {
                 LocalDate startDate,
                 LocalDate endDate,
                 KioskGroup kioskGroup,
+                String employeeNo,
                 int offset,
                 int limit
         ) {
             this.kioskGroup = kioskGroup;
+            this.employeeNo = employeeNo;
             this.offset = offset;
             this.limit = limit;
             return logs;
         }
 
         @Override
-        public long countEmployeeLogs(LocalDate startDate, LocalDate endDate, KioskGroup kioskGroup) {
+        public long countEmployeeLogs(
+                LocalDate startDate,
+                LocalDate endDate,
+                KioskGroup kioskGroup,
+                String employeeNo
+        ) {
             return total;
         }
     }
