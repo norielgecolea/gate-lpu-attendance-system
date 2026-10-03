@@ -1,30 +1,4 @@
 import { Routes } from '@angular/router';
-import { About } from './pages/about/about';
-import { Login } from './pages/login/login';
-import { AdminLayout } from './layouts/admin-layout/admin-layout';
-import { Dashboard } from './pages/dashboard/dashboard';
-import { Students } from './pages/students/students';
-import { InactiveStudents } from './pages/students/inactive-students';
-import { FinanceTaggedStudents } from './pages/students/finance-tagged-students';
-import { AlarmStudents } from './pages/students/alarm-students';
-import { StudentRfidRegistration } from './pages/students/student-rfid-registration';
-import { PersonAttendance } from './pages/attendance/person-attendance';
-import { AttendancePage } from './pages/attendance/attendance-page';
-import { Employees } from './pages/employees/employees';
-import { InactiveEmployees } from './pages/employees/inactive-employees';
-import { AlarmEmployees } from './pages/employees/alarm-employees';
-import { EmployeeRfidRegistration } from './pages/employees/employee-rfid-registration';
-import { Users } from './pages/users/users';
-import { GuardDisplaySettings } from './pages/settings/guard-display-settings';
-import { GateTonesSettings } from './pages/settings/gate-tones-settings';
-import { TapErrorLogs } from './pages/tap-errors/tap-error-logs';
-import { AuditLogs } from './pages/audit/audit-logs';
-import { Backup } from './pages/backup/backup';
-import { RfidChecker } from './pages/rfid-checker/rfid-checker';
-import { DailyRecap } from './pages/daily-recap/daily-recap';
-import { AdminKiosk } from './pages/kiosk/admin-kiosk';
-import { GateKiosk } from './pages/guard/gate-kiosk';
-import { Monitor } from './pages/monitor/monitor';
 import {
   adminPortalGuard,
   allowRoles,
@@ -45,96 +19,110 @@ const EMPLOYEE_DIRECTORY_ROLES = ['SUPERADMIN', 'HR', 'LIBRARIAN', 'OLIVE'] as c
 const VENUE_ADMIN_ROLES = ['LIBRARIAN', 'OLIVE'] as const;
 
 export const routes: Routes = [
-  { path: '', component: Login, canActivate: [guestGuard], pathMatch: 'full' },
+  {
+    path: '',
+    loadComponent: () => import('./pages/login/login').then((m) => m.Login),
+    canActivate: [guestGuard],
+    pathMatch: 'full',
+  },
   { path: 'login', redirectTo: '' },
-  { path: 'about', component: About },
+  {
+    path: 'about',
+    loadComponent: () => import('./pages/about/about').then((m) => m.About),
+  },
   {
     path: 'guard',
-    component: GateKiosk,
+    loadComponent: () => import('./pages/guard/gate-kiosk').then((m) => m.GateKiosk),
     canActivate: [guardRoleGuard],
   },
   {
     path: 'monitor',
-    component: Monitor,
+    loadComponent: () => import('./pages/monitor/monitor').then((m) => m.Monitor),
     canActivate: [monitoringGuard],
   },
   {
     path: '',
-    component: AdminLayout,
+    loadComponent: () => import('./layouts/admin-layout/admin-layout').then((m) => m.AdminLayout),
     canActivate: [adminPortalGuard],
     children: [
       {
         path: 'dashboard/library',
-        component: Dashboard,
+        loadComponent: () => import('./pages/dashboard/dashboard').then((m) => m.Dashboard),
         data: { kioskGroup: 'LIBRARY' },
         canActivate: [allowRoles(...SUPERADMIN_ROLES)],
       },
       {
         path: 'dashboard/olive',
-        component: Dashboard,
+        loadComponent: () => import('./pages/dashboard/dashboard').then((m) => m.Dashboard),
         data: { kioskGroup: 'OLIVE_HOTEL' },
         canActivate: [allowRoles(...SUPERADMIN_ROLES)],
       },
       {
         path: 'dashboard',
-        component: Dashboard,
+        loadComponent: () => import('./pages/dashboard/dashboard').then((m) => m.Dashboard),
         canActivate: [allowRoles(...PORTAL_ROLES)],
       },
       {
         path: 'kiosk',
-        component: AdminKiosk,
+        loadComponent: () => import('./pages/kiosk/admin-kiosk').then((m) => m.AdminKiosk),
         canActivate: [allowRoles(...SUPERADMIN_ROLES)],
       },
       {
         path: 'rfid-checker',
-        component: RfidChecker,
+        loadComponent: () => import('./pages/rfid-checker/rfid-checker').then((m) => m.RfidChecker),
         canActivate: [allowRoles(...ADMIN_ROLES)],
       },
       {
         path: 'daily-recap',
-        component: DailyRecap,
+        loadComponent: () => import('./pages/daily-recap/daily-recap').then((m) => m.DailyRecap),
         canActivate: [allowRoles(...ADMIN_ROLES)],
       },
       {
         path: 'students/inactive',
-        component: InactiveStudents,
+        loadComponent: () =>
+          import('./pages/students/inactive-students').then((m) => m.InactiveStudents),
         canActivate: [allowRoles(...OSAS_ROLES)],
       },
       {
         path: 'students/finance-tagged',
-        component: FinanceTaggedStudents,
+        loadComponent: () =>
+          import('./pages/students/finance-tagged-students').then((m) => m.FinanceTaggedStudents),
         canActivate: [allowRoles(...OSAS_ROLES)],
       },
       {
         path: 'students/alarm',
-        component: AlarmStudents,
+        loadComponent: () => import('./pages/students/alarm-students').then((m) => m.AlarmStudents),
         canActivate: [allowRoles(...SUPERADMIN_ROLES)],
       },
       {
         path: 'students/rfid',
-        component: StudentRfidRegistration,
+        loadComponent: () =>
+          import('./pages/students/student-rfid-registration').then((m) => m.StudentRfidRegistration),
         canActivate: [allowRoles(...OSAS_ROLES)],
       },
       {
         path: 'students/attendance',
-        component: AttendancePage,
+        loadComponent: () =>
+          import('./pages/attendance/attendance-page').then((m) => m.AttendancePage),
         data: { personType: 'STUDENT' },
         canActivate: [allowRoles(...OSAS_ROLES)],
       },
       {
         path: 'attendance',
-        component: AttendancePage,
+        loadComponent: () =>
+          import('./pages/attendance/attendance-page').then((m) => m.AttendancePage),
         data: { personType: 'ALL' },
         canActivate: [allowRoles(...VENUE_ADMIN_ROLES)],
       },
       {
         path: 'students',
-        component: Students,
+        loadComponent: () => import('./pages/students/students').then((m) => m.Students),
         canActivate: [allowRoles(...STUDENT_DIRECTORY_ROLES)],
         children: [
           {
             path: ':id/attendance',
-            component: PersonAttendance,
+            loadComponent: () =>
+              import('./pages/attendance/person-attendance').then((m) => m.PersonAttendance),
             data: { personType: 'STUDENT' },
             canActivate: [allowRoles(...STUDENT_DIRECTORY_ROLES)],
           },
@@ -143,33 +131,40 @@ export const routes: Routes = [
       },
       {
         path: 'employees/inactive',
-        component: InactiveEmployees,
+        loadComponent: () =>
+          import('./pages/employees/inactive-employees').then((m) => m.InactiveEmployees),
         canActivate: [allowRoles(...HR_ROLES)],
       },
       {
         path: 'employees/alarm',
-        component: AlarmEmployees,
+        loadComponent: () =>
+          import('./pages/employees/alarm-employees').then((m) => m.AlarmEmployees),
         canActivate: [allowRoles(...SUPERADMIN_ROLES)],
       },
       {
         path: 'employees/rfid',
-        component: EmployeeRfidRegistration,
+        loadComponent: () =>
+          import('./pages/employees/employee-rfid-registration').then(
+            (m) => m.EmployeeRfidRegistration,
+          ),
         canActivate: [allowRoles(...HR_ROLES)],
       },
       {
         path: 'employees/attendance',
-        component: AttendancePage,
+        loadComponent: () =>
+          import('./pages/attendance/attendance-page').then((m) => m.AttendancePage),
         data: { personType: 'EMPLOYEE' },
         canActivate: [allowRoles(...HR_ROLES)],
       },
       {
         path: 'employees',
-        component: Employees,
+        loadComponent: () => import('./pages/employees/employees').then((m) => m.Employees),
         canActivate: [allowRoles(...EMPLOYEE_DIRECTORY_ROLES)],
         children: [
           {
             path: ':id/attendance',
-            component: PersonAttendance,
+            loadComponent: () =>
+              import('./pages/attendance/person-attendance').then((m) => m.PersonAttendance),
             data: { personType: 'EMPLOYEE' },
             canActivate: [allowRoles(...EMPLOYEE_DIRECTORY_ROLES)],
           },
@@ -177,32 +172,34 @@ export const routes: Routes = [
       },
       {
         path: 'users',
-        component: Users,
+        loadComponent: () => import('./pages/users/users').then((m) => m.Users),
         canActivate: [allowRoles(...ADMIN_ROLES)],
       },
       {
         path: 'settings/guard-display',
-        component: GuardDisplaySettings,
+        loadComponent: () =>
+          import('./pages/settings/guard-display-settings').then((m) => m.GuardDisplaySettings),
         canActivate: [allowRoles(...OSAS_ADMIN_ROLES)],
       },
       {
         path: 'settings/gate-tones',
-        component: GateTonesSettings,
+        loadComponent: () =>
+          import('./pages/settings/gate-tones-settings').then((m) => m.GateTonesSettings),
         canActivate: [allowRoles(...OSAS_ADMIN_ROLES)],
       },
       {
         path: 'tap-errors',
-        component: TapErrorLogs,
+        loadComponent: () => import('./pages/tap-errors/tap-error-logs').then((m) => m.TapErrorLogs),
         canActivate: [allowRoles(...TAP_ERROR_ROLES)],
       },
       {
         path: 'audit-logs',
-        component: AuditLogs,
+        loadComponent: () => import('./pages/audit/audit-logs').then((m) => m.AuditLogs),
         canActivate: [allowRoles(...SUPERADMIN_ROLES)],
       },
       {
         path: 'backup',
-        component: Backup,
+        loadComponent: () => import('./pages/backup/backup').then((m) => m.Backup),
         canActivate: [allowRoles(...SUPERADMIN_ROLES)],
       },
       { path: 'deleted-students', redirectTo: 'students/inactive' },
