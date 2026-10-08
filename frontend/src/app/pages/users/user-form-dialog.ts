@@ -49,6 +49,7 @@ export class UserFormDialog {
   protected password = '';
   protected role = this.context.user?.role ?? this.context.roles[0] ?? 'OSAS';
   protected location = this.context.user?.location ?? '';
+  protected employeeOnly = this.context.user?.employeeOnly ?? false;
 
   protected get needsLocation(): boolean {
     return this.role === 'GUARD' || this.role === 'LIBRARY_KIOSK' || this.role === 'OLIVE_KIOSK';
@@ -82,6 +83,7 @@ export class UserFormDialog {
       password: this.password,
       role: this.role,
       location: this.location.trim() || null,
+      employeeOnly: this.needsLocation && this.employeeOnly,
     });
   }
 }

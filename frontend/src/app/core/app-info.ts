@@ -123,7 +123,7 @@ export const RELEASES: Release[] = [
       },
       {
         title: 'Customizable gate sounds',
-        detail: 'Different sounds for time in, time out, errors, birthday, and finance.',
+        detail: 'Different sounds for time in, time out, errors, birthday, finance, and employee-only kiosks.',
       },
       {
         title: 'Guard side panel',

@@ -32,6 +32,10 @@ public class User {
     @Column(length = 100)
     private String location;
 
+    /** When true, a kiosk account rejects student taps. */
+    @Column(name = "employee_only", nullable = false)
+    private boolean employeeOnly = false;
+
     @Column(nullable = false)
     private boolean active = true;
 
@@ -79,6 +83,14 @@ public class User {
 
     public void setLocation(String location) {
         this.location = location;
+    }
+
+    public boolean isEmployeeOnly() {
+        return employeeOnly;
+    }
+
+    public void setEmployeeOnly(boolean employeeOnly) {
+        this.employeeOnly = employeeOnly;
     }
 
     public boolean isActive() {

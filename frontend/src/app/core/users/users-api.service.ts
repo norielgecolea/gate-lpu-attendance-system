@@ -8,6 +8,7 @@ export interface AppUser {
   username: string;
   role: string;
   location: string | null;
+  employeeOnly: boolean;
   active: boolean;
   createdAt: string;
 }
@@ -18,6 +19,7 @@ export interface UserPayload {
   password: string;
   role: string;
   location: string | null;
+  employeeOnly: boolean;
 }
 
 export const USER_ROLES = [

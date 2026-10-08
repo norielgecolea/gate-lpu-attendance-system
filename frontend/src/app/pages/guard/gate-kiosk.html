@@ -119,7 +119,7 @@
               <p class="gate-error-title">{{ errMsg }}</p>
               @if (errorNotFound()) {
                 <p class="gate-error-hint">{{ notFoundHint }}</p>
-              } @else {
+              } @else if (!errorEmployeeOnly()) {
                 <p class="gate-error-hint">Please tap again</p>
               }
             </div>

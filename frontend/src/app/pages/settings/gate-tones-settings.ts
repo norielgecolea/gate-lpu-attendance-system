@@ -43,6 +43,7 @@ export class GateTonesSettings {
     ERROR: null,
     FINANCE_TAGGED: null,
     BIRTHDAY: null,
+    EMPLOYEE_ONLY: null,
   });
   protected readonly loading = signal(true);
   protected readonly uploading = signal(false);
@@ -77,6 +78,11 @@ export class GateTonesSettings {
       label: 'Birthday',
       description: 'Played when someone taps on their birthday.',
     },
+    {
+      key: 'EMPLOYEE_ONLY',
+      label: 'Employees only',
+      description: 'Played when a student taps a kiosk limited to employees.',
+    },
   ];
 
   constructor() {
@@ -95,6 +101,7 @@ export class GateTonesSettings {
           ERROR: settings.assignments.ERROR ?? null,
           FINANCE_TAGGED: settings.assignments.FINANCE_TAGGED ?? null,
           BIRTHDAY: settings.assignments.BIRTHDAY ?? null,
+          EMPLOYEE_ONLY: settings.assignments.EMPLOYEE_ONLY ?? null,
         });
         this.loading.set(false);
       },
@@ -182,6 +189,7 @@ export class GateTonesSettings {
       ERROR: current.ERROR ?? '',
       FINANCE_TAGGED: current.FINANCE_TAGGED ?? '',
       BIRTHDAY: current.BIRTHDAY ?? '',
+      EMPLOYEE_ONLY: current.EMPLOYEE_ONLY ?? '',
     };
     this.api.setAssignments(payload).subscribe({
       next: (settings) => {
@@ -192,6 +200,7 @@ export class GateTonesSettings {
           ERROR: settings.assignments.ERROR ?? null,
           FINANCE_TAGGED: settings.assignments.FINANCE_TAGGED ?? null,
           BIRTHDAY: settings.assignments.BIRTHDAY ?? null,
+          EMPLOYEE_ONLY: settings.assignments.EMPLOYEE_ONLY ?? null,
         });
         this.saving.set(false);
         this.message.set('Tone assignments saved. Guard screens update instantly.');

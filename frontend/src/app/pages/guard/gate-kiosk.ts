@@ -110,6 +110,7 @@ export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
   protected readonly identifier = signal('');
   protected readonly error = signal<string | null>(null);
   protected readonly errorNotFound = signal(false);
+  protected readonly errorEmployeeOnly = signal(false);
   protected readonly current = signal<TapResponse | null>(null);
   protected readonly recent = signal<TapResponse[]>([]);
   protected readonly hasMore = signal(true);
@@ -300,11 +301,17 @@ export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
             : (body?.message ?? '');
         const notFound =
           err?.status === 404 || /record\s*not\s*found/i.test(apiMessage);
+        const employeeOnly = /employees only/i.test(apiMessage);
         // Backend also emits ATTENDANCE_TAP_ERROR — suppress that echo for this tap.
         this.ignoreTapErrorEchoUntil = Date.now() + 2000;
         this.showError(
-          notFound ? 'Record Not Found' : (apiMessage || 'Tap failed. Please try again.'),
+          employeeOnly
+            ? 'This kiosk is for Employees only'
+            : notFound
+              ? 'Record Not Found'
+              : (apiMessage || 'Tap failed. Please try again.'),
           notFound,
+          employeeOnly,
         );
         this.focusInput();
       },
@@ -363,14 +370,17 @@ export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  private showError(message: string, notFound = false): void {
+  private showError(message: string, notFound = false, employeeOnly = false): void {
     this.clearHideTimer();
     this.current.set(null);
     this.error.set(message);
     this.errorNotFound.set(notFound);
+    this.errorEmployeeOnly.set(employeeOnly);
     this.flash.set('idle');
     this.animKey.update((k) => k + 1);
-    if (notFound) {
+    if (employeeOnly) {
+      this.sounds.playEmployeeOnly();
+    } else if (notFound) {
       this.sounds.playNotFound();
     } else {
       this.sounds.playError();
@@ -380,6 +390,7 @@ export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
     this.errorTimer = setTimeout(() => {
       this.error.set(null);
       this.errorNotFound.set(false);
+      this.errorEmployeeOnly.set(false);
       this.flash.set('idle');
       this.focusInput();
     }, 5000);
@@ -388,6 +399,7 @@ export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
   private applyTap(tap: TapResponse, playSound: boolean): void {
     this.error.set(null);
     this.errorNotFound.set(false);
+    this.errorEmployeeOnly.set(false);
     this.clearErrorTimer();
     this.current.set(tap);
     this.animKey.update((k) => k + 1);

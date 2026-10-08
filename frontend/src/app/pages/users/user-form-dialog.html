@@ -74,6 +74,18 @@
       </div>
     </div>
 
+    @if (needsLocation) {
+      <label class="flex w-fit cursor-pointer items-center gap-2 text-sm font-medium">
+        <input
+          type="checkbox"
+          name="employeeOnly"
+          class="accent-primary size-4 cursor-pointer"
+          [(ngModel)]="employeeOnly"
+        />
+        Limit to employee
+      </label>
+    }
+
     <div hlmDialogFooter class="gap-2">
       <button hlmBtn type="button" variant="outline" (click)="cancel()">Cancel</button>
       <button hlmBtn type="submit">

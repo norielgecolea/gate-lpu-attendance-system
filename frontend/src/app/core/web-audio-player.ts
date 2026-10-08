@@ -103,6 +103,19 @@ export class WebAudioPlayer {
     this.chime(ctx, t + 1.14, 2637.02, 0.16, 0.72, 'sine');
   }
 
+  /** Short stop for a student tap on an employee-only kiosk. */
+  playEmployeeOnly(): void {
+    const ctx = this.ensureContext();
+    if (!ctx) {
+      return;
+    }
+    const t = ctx.currentTime;
+    this.chime(ctx, t, 523.25, 0.14, 0.9, 'triangle');
+    this.chime(ctx, t + 0.16, 523.25, 0.14, 0.9, 'triangle');
+    this.chime(ctx, t + 0.36, 311.13, 0.28, 0.95, 'triangle');
+    this.chime(ctx, t + 0.36, 155.56, 0.28, 0.35, 'sine');
+  }
+
   playFinanceWarning(): void {
     const ctx = this.ensureContext();
     if (!ctx) {

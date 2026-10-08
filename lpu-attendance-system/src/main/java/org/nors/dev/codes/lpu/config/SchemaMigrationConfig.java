@@ -252,6 +252,10 @@ public class SchemaMigrationConfig {
                     """);
         }
         jdbc.execute("""
+                ALTER TABLE users
+                    ADD COLUMN IF NOT EXISTS employee_only BOOLEAN NOT NULL DEFAULT FALSE
+                """);
+        jdbc.execute("""
                 ALTER TABLE tap_error_logs
                     ADD COLUMN IF NOT EXISTS kiosk_group VARCHAR(20) NOT NULL DEFAULT 'MAIN_GATES'
                 """);
