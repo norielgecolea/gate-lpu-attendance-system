@@ -321,8 +321,8 @@ export class Dashboard implements OnDestroy {
       });
     }
 
-    // Live updates: a TIME_OUT replaces the existing TIME_IN card for the same log,
-    // and every tap also refreshes the hero figures and department charts.
+    // Live updates: each tap is its own card (time and gate of that tap).
+    // A later tap does not replace the earlier one. Figures refresh from the summaries.
     this.wsSub = this.notifications.events$
       .pipe(filter((e) => e.type === 'ATTENDANCE_TAP'))
       .subscribe((event) => {

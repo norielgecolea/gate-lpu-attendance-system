@@ -23,6 +23,27 @@ public class AttendanceEventRepository {
         return sessionFactory.getCurrentSession();
     }
 
+    /**
+     * Newest individual taps for one campus day. One row per tap, not the daily first-in/last-out log.
+     */
+    @Transactional(readOnly = true)
+    public List<AttendanceEvent> findRecentByDate(LocalDate date, KioskGroup kioskGroup, int offset, int limit) {
+        return currentSession()
+                .createQuery(
+                        "SELECT e FROM AttendanceEvent e"
+                                + " LEFT JOIN FETCH e.student"
+                                + " LEFT JOIN FETCH e.employee"
+                                + " WHERE e.attendanceDate = :date AND e.kioskGroup = :kioskGroup"
+                                + " ORDER BY e.tappedAt DESC, e.id DESC",
+                        AttendanceEvent.class
+                )
+                .setParameter("date", date)
+                .setParameter("kioskGroup", kioskGroup)
+                .setFirstResult(Math.max(offset, 0))
+                .setMaxResults(Math.max(limit, 1))
+                .getResultList();
+    }
+
     @Transactional
     public void persist(AttendanceEvent event) {
         Session session = currentSession();

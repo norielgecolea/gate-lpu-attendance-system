@@ -292,10 +292,7 @@
             <p class="gate-recent-name">{{ personName(row) }}</p>
             <p class="gate-recent-sub">{{ personSub(row) }}</p>
             <p class="gate-recent-times">
-              {{ formatTime(row.timeIn) }}
-              @if (row.timeOut) {
-                <span> → {{ formatTime(row.timeOut) }}</span>
-              }
+              {{ formatTime(row.action === 'TIME_OUT' ? row.timeOut : row.timeIn) }}
             </p>
             @if (row.location) {
               <p class="gate-recent-gate">{{ row.location }}</p>

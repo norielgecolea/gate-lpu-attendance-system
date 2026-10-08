@@ -174,8 +174,11 @@ public class AttendanceService {
             created.setCreatedAt(now);
             created.setUpdatedAt(now);
             attendanceLogRepository.persist(created);
-            persistEvent(student, employee, today, ACTION_IN, now, gate, tappedByUserId, kioskGroup);
+            AttendanceEvent event = persistEvent(
+                    student, employee, today, ACTION_IN, now, gate, tappedByUserId, kioskGroup
+            );
             response = TapResponse.from(created, ACTION_IN, "Time in recorded");
+            broadcastTap(TapResponse.from(event));
             log.info("TIME_IN (first) {} location={} kioskGroup={}", personRef, gate, kioskGroup);
         } else if (ACTION_OUT.equals(existing.getLastAction())) {
             existing.setLastAction(ACTION_IN);
@@ -183,8 +186,11 @@ public class AttendanceService {
             existing.setTapCount(existing.getTapCount() + 1);
             existing.setUpdatedAt(now);
             attendanceLogRepository.save(existing);
-            persistEvent(student, employee, today, ACTION_IN, now, gate, tappedByUserId, kioskGroup);
+            AttendanceEvent event = persistEvent(
+                    student, employee, today, ACTION_IN, now, gate, tappedByUserId, kioskGroup
+            );
             response = TapResponse.from(existing, ACTION_IN, "Time in recorded");
+            broadcastTap(TapResponse.from(event));
             log.info("TIME_IN (again) {} firstIn={} location={} kioskGroup={}",
                     personRef, existing.getTimeIn(), existing.getTimeInLocation(), kioskGroup);
         } else {
@@ -195,29 +201,26 @@ public class AttendanceService {
             existing.setTapCount(existing.getTapCount() + 1);
             existing.setUpdatedAt(now);
             attendanceLogRepository.save(existing);
-            persistEvent(student, employee, today, ACTION_OUT, now, gate, tappedByUserId, kioskGroup);
+            AttendanceEvent event = persistEvent(
+                    student, employee, today, ACTION_OUT, now, gate, tappedByUserId, kioskGroup
+            );
             response = TapResponse.from(existing, ACTION_OUT, "Time out recorded");
+            broadcastTap(TapResponse.from(event));
             log.info("TIME_OUT {} firstIn={} lastOut={} location={} kioskGroup={}",
                     personRef, existing.getTimeIn(), existing.getTimeOut(), gate, kioskGroup);
         }
 
-        broadcastTap(response);
         return response;
     }
 
+    /** Each tap today, newest first. Time and location are for that tap, not the daily summary. */
     @Transactional(readOnly = true)
     public List<TapResponse> recent(int limit, int offset, KioskGroup kioskGroup) {
         int size = Math.min(Math.max(limit, 1), 50);
         int from = Math.max(offset, 0);
         LocalDate today = LocalDate.now(CAMPUS_ZONE);
-        return attendanceLogRepository.findRecentByDate(today, kioskGroup, from, size).stream()
-                .map(logEntry -> {
-                    String action = logEntry.getLastAction() != null
-                            ? logEntry.getLastAction()
-                            : (logEntry.getTimeOut() == null ? ACTION_IN : ACTION_OUT);
-                    String message = ACTION_OUT.equals(action) ? "Timed out" : "Timed in";
-                    return TapResponse.from(logEntry, action, message);
-                })
+        return attendanceEventRepository.findRecentByDate(today, kioskGroup, from, size).stream()
+                .map(TapResponse::from)
                 .toList();
     }
 
@@ -588,7 +591,7 @@ public class AttendanceService {
         return baos.toByteArray();
     }
 
-    private void persistEvent(
+    private AttendanceEvent persistEvent(
             Student student,
             Employee employee,
             LocalDate date,
@@ -609,6 +612,7 @@ public class AttendanceService {
         event.setKioskGroup(kioskGroup);
         event.setCreatedAt(tappedAt);
         attendanceEventRepository.persist(event);
+        return event;
     }
 
     private Map<Long, String> usernamesFor(List<AttendanceEvent> events) {
