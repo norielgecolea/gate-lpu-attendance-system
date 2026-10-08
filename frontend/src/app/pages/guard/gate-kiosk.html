@@ -159,10 +159,9 @@
                 </span>
                 <h2 class="gate-name">{{ personName(tap) }}</h2>
                 @if (tap.student?.financeTagged || tap.financeTagged) {
-                  <div class="gate-finance-banner" role="alert" aria-live="assertive">
-                    <ng-icon name="lucideCircleAlert" class="gate-finance-icon" />
-                    <p class="gate-finance-text">PLEASE VISIT FINANCE DEPARTMENT</p>
-                  </div>
+                  <p class="gate-finance-banner" role="alert" aria-live="assertive">
+                    Please visit Finance Department
+                  </p>
                 }
                 @if (tap.student; as student) {
                   <p class="gate-student-no">{{ student.studentNo }}</p>
