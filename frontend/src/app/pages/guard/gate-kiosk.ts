@@ -139,7 +139,7 @@ export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
       ? 'Please go to the Library desk'
       : this.kioskGroup === 'OLIVE_HOTEL'
         ? 'Please go to Olive Hotel reception'
-        : 'Please go to OSAS';
+        : 'Please go to OSAS / MIS Department.';
   protected readonly idleIcon =
     this.kioskGroup === 'LIBRARY'
       ? 'lucideBookOpen'
