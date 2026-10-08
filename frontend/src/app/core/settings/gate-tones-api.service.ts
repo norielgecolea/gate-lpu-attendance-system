@@ -3,7 +3,13 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
-export type GateToneEvent = 'TIME_IN' | 'TIME_OUT' | 'ERROR' | 'FINANCE_TAGGED' | 'BIRTHDAY';
+export type GateToneEvent =
+  | 'TIME_IN'
+  | 'TIME_OUT'
+  | 'ERROR'
+  | 'FINANCE_TAGGED'
+  | 'BIRTHDAY'
+  | 'EMPLOYEE_ONLY';
 
 export interface GateTone {
   id: string;

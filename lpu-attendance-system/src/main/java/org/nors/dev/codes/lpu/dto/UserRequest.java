@@ -14,6 +14,9 @@ public record UserRequest(
         @NotBlank(message = "Role is required")
         String role,
 
-        String location
+        String location,
+
+        /** Kiosk accounts only. Students are rejected when true. */
+        Boolean employeeOnly
 ) {
 }

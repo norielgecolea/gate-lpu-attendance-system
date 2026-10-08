@@ -8,6 +8,7 @@ public record UserResponse(
         String username,
         String role,
         String location,
+        boolean employeeOnly,
         boolean active,
         Instant createdAt
 ) {
@@ -17,6 +18,7 @@ public record UserResponse(
                 user.getUsername(),
                 user.getRole().name(),
                 user.getLocation(),
+                user.isEmployeeOnly(),
                 user.isActive(),
                 user.getCreatedAt()
         );

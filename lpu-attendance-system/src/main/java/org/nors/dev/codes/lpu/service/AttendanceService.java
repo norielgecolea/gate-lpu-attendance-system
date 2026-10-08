@@ -133,6 +133,10 @@ public class AttendanceService {
             broadcastTapError(identifier, blankToNull(location), kioskGroup);
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Record Not Found");
         }
+        if (student != null && employeeOnlyKiosk(tappedByUserId)) {
+            log.info("EMPLOYEE_ONLY reject studentNo={} userId={}", student.getStudentNo(), tappedByUserId);
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "This kiosk is for Employees only");
+        }
         String personRef = student != null
                 ? "studentNo=" + student.getStudentNo()
                 : "employeeNo=" + employee.getEmployeeNo();
@@ -697,6 +701,13 @@ public class AttendanceService {
         } catch (Exception ex) {
             log.warn("Failed to broadcast attendance tap error", ex);
         }
+    }
+
+    private boolean employeeOnlyKiosk(Long userId) {
+        if (userId == null) {
+            return false;
+        }
+        return userRepository.findById(userId).map(User::isEmployeeOnly).orElse(false);
     }
 
     private static String blankToNull(String value) {

@@ -23,6 +23,7 @@ export class GateSounds {
       'ERROR',
       'FINANCE_TAGGED',
       'BIRTHDAY',
+      'EMPLOYEE_ONLY',
     ] as GateToneEvent[]) {
       const rawId = settings.assignments[event];
       const toneId =
@@ -61,6 +62,10 @@ export class GateSounds {
 
   playFinanceWarning(): void {
     this.playCustomOr('FINANCE_TAGGED', () => this.player.playFinanceWarning());
+  }
+
+  playEmployeeOnly(): void {
+    this.playCustomOr('EMPLOYEE_ONLY', () => this.player.playEmployeeOnly());
   }
 
   private playCustomOr(event: GateToneEvent, fallback: () => void): void {

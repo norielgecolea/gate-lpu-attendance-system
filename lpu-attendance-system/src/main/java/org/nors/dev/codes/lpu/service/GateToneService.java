@@ -31,7 +31,8 @@ public class GateToneService {
             "TIME_OUT",
             "ERROR",
             "FINANCE_TAGGED",
-            "BIRTHDAY"
+            "BIRTHDAY",
+            "EMPLOYEE_ONLY"
     );
 
     private static final String SETTING_PREFIX = "gate.tone.";

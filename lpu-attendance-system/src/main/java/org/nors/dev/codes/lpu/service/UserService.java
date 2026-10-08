@@ -76,6 +76,7 @@ public class UserService {
         user.setPasswordHash(passwordEncoder.encode(password));
         user.setRole(newRole);
         user.setLocation(blankToNull(request.location()));
+        user.setEmployeeOnly(employeeOnlyFor(newRole, request.employeeOnly()));
         user.setActive(true);
         user.setCreatedAt(Instant.now());
         user.setUpdatedAt(Instant.now());
@@ -108,6 +109,7 @@ public class UserService {
         user.setUsername(username);
         user.setRole(newRole);
         user.setLocation(blankToNull(request.location()));
+        user.setEmployeeOnly(employeeOnlyFor(newRole, request.employeeOnly()));
         String password = request.password();
         if (password != null && !password.isBlank()) {
             if (password.length() < MIN_PASSWORD_LENGTH) {
@@ -192,6 +194,11 @@ public class UserService {
         } catch (IllegalArgumentException | NullPointerException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid role");
         }
+    }
+
+    /** Only kiosk roles may be limited to employees. Other roles always store false. */
+    private static boolean employeeOnlyFor(Role role, Boolean requested) {
+        return KioskGroups.isKioskRole(role) && Boolean.TRUE.equals(requested);
     }
 
     private static void requireKioskLocation(Role role, String location) {
