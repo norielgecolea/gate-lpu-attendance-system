@@ -339,7 +339,7 @@
               }
 
               <div class="recent-tappers-scroll flex max-h-44 min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto p-0.5 sm:max-h-56">
-                @for (tap of feedFor(venue.id); track tap.attendanceId + tap.action) {
+                @for (tap of feedFor(venue.id); track tap.attendanceId) {
                   <article
                     class="feed-row flex items-center gap-2 rounded-lg bg-slate-800/50 px-2.5 py-2"
                     [class.feed-row--alarm]="isAlarm(tap)"
@@ -354,7 +354,9 @@
                     </hlm-avatar>
                     <div class="min-w-0 flex-1 leading-tight">
                       <p class="truncate text-xs font-semibold text-slate-100">{{ personName(tap) }}</p>
-                      <p class="truncate text-[10px] text-slate-400">{{ personSub(tap) }}</p>
+                      <p class="truncate text-[10px] text-slate-400">
+                        {{ tap.location || '—' }}
+                      </p>
                     </div>
                     <div class="flex shrink-0 flex-col items-end gap-0.5">
                       <span

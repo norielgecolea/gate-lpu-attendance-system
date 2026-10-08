@@ -110,7 +110,7 @@
       </div>
       <div class="min-w-0 leading-tight">
         <h3 hlmCardTitle class="text-sm sm:text-base">Recent Taps</h3>
-        <p hlmCardDescription class="text-xs">Latest gate activity today</p>
+        <p hlmCardDescription class="text-xs">Each tap today, with its time and gate</p>
       </div>
     </div>
 
@@ -130,7 +130,7 @@
       </div>
     } @else {
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-        @for (tap of recentTaps(); track tap.attendanceId + tap.action) {
+        @for (tap of recentTaps(); track tap.attendanceId) {
           <article
             class="tap-card flex min-w-0 flex-col gap-3 rounded-xl border p-3 shadow-sm transition-shadow hover:shadow-md sm:p-4"
             [class.tap-card--alarm]="isAlarm(tap)"

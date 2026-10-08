@@ -409,7 +409,6 @@ export class GateKiosk implements OnInit, AfterViewInit, OnDestroy {
       this.confetti.set([]);
       this.balloons.set([]);
     }
-    this.mergeRecent(tap);
     this.flash.set('idle');
     queueMicrotask(() => this.flash.set(tap.action === 'TIME_OUT' ? 'out' : 'in'));
     if (playSound) {
