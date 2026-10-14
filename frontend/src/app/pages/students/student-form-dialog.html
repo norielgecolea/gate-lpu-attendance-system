@@ -124,14 +124,14 @@
       </div>
       <div hlmField>
         <label hlmFieldLabel for="student-school">School *</label>
-        <input
-          hlmInput
-          id="student-school"
-          name="school"
-          [(ngModel)]="school"
-          autocomplete="off"
-          placeholder="LPL"
-        />
+        <select hlmInput id="student-school" name="school" class="w-full" [(ngModel)]="school">
+          @if (school && !schools.includes(school)) {
+            <option [value]="school">{{ school }}</option>
+          }
+          @for (option of schools; track option) {
+            <option [value]="option">{{ option }}</option>
+          }
+        </select>
       </div>
     </div>
 
@@ -151,14 +151,21 @@
     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <div hlmField>
         <label hlmFieldLabel for="student-department">Department *</label>
-        <input
+        <select
           hlmInput
           id="student-department"
           name="department"
+          class="w-full"
           [(ngModel)]="department"
-          autocomplete="off"
-          placeholder="CCS"
-        />
+        >
+          <option value="" disabled>Select department</option>
+          @if (department && !departments.includes(department)) {
+            <option [value]="department">{{ department }}</option>
+          }
+          @for (option of departments; track option) {
+            <option [value]="option">{{ option }}</option>
+          }
+        </select>
       </div>
       <div hlmField>
         <label hlmFieldLabel for="student-course">Course *</label>
