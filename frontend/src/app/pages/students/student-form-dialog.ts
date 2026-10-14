@@ -67,6 +67,24 @@ export class StudentFormDialog {
 
   private photoFile: File | null = null;
 
+  protected readonly schools = ['LPL', 'LSC'];
+  protected readonly departments = [
+    'CITHM',
+    'CAS',
+    'CBA',
+    'CAM',
+    'LPULSJH',
+    'GRADSCHOOL',
+    'COECS',
+    'ETEEAP',
+    'LPULSSH',
+    'COM',
+    'CI',
+    'OPTO',
+    'COO',
+    'ETEAAP',
+  ];
+
   protected name = this.context.student?.name ?? '';
   protected studentNo = this.context.student?.studentNo ?? '';
   protected existingPhoto = this.context.student?.photo ?? null;
