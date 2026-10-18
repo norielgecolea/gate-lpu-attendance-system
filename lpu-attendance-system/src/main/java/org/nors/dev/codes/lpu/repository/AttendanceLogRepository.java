@@ -90,6 +90,47 @@ public class AttendanceLogRepository {
                 .uniqueResultOptional();
     }
 
+    /**
+     * Newest daily log for this person at one venue, locked for an overnight tap decision.
+     * Used by Olive Hotel, where an open time-in stays open past midnight.
+     */
+    @Transactional
+    public Optional<AttendanceLog> findLatestByStudentForUpdate(Long studentId, KioskGroup kioskGroup) {
+        return latestForUpdate(
+                "FROM AttendanceLog a WHERE a.student.id = :personId AND a.kioskGroup = :kioskGroup"
+                        + " ORDER BY a.attendanceDate DESC, a.id DESC",
+                studentId,
+                kioskGroup
+        );
+    }
+
+    @Transactional
+    public Optional<AttendanceLog> findLatestByEmployeeForUpdate(Long employeeId, KioskGroup kioskGroup) {
+        return latestForUpdate(
+                "FROM AttendanceLog a WHERE a.employee.id = :personId AND a.kioskGroup = :kioskGroup"
+                        + " ORDER BY a.attendanceDate DESC, a.id DESC",
+                employeeId,
+                kioskGroup
+        );
+    }
+
+    private Optional<AttendanceLog> latestForUpdate(String hql, Long personId, KioskGroup kioskGroup) {
+        List<Long> ids = currentSession()
+                .createQuery("SELECT a.id " + hql, Long.class)
+                .setParameter("personId", personId)
+                .setParameter("kioskGroup", kioskGroup)
+                .setMaxResults(1)
+                .getResultList();
+        if (ids.isEmpty()) {
+            return Optional.empty();
+        }
+        return currentSession()
+                .createQuery("FROM AttendanceLog a WHERE a.id = :id", AttendanceLog.class)
+                .setParameter("id", ids.get(0))
+                .setLockMode(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+                .uniqueResultOptional();
+    }
+
     @Transactional(readOnly = true)
     public List<AttendanceLog> findRecentByDate(LocalDate date, KioskGroup kioskGroup, int offset, int limit) {
         return currentSession()

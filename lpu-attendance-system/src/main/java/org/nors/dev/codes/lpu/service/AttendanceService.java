@@ -116,6 +116,8 @@ public class AttendanceService {
      * Alternating tap cycles are allowed all day.
      * Final daily record always keeps the first {@code time_in} and the latest {@code time_out}.
      * Every accepted tap is also stored as an immutable attendance event.
+     * Main Gates and Library start a new time-in each calendar day. Olive Hotel does not:
+     * an open time-in stays open past midnight, and the next tap is a time-out.
      */
     @Transactional
     public TapResponse tap(String rawIdentifier, Long tappedByUserId, String location, Role role) {
@@ -148,6 +150,9 @@ public class AttendanceService {
         AttendanceLog existing = student != null
                 ? attendanceLogRepository.findByStudentAndDateForUpdate(student.getId(), today, kioskGroup).orElse(null)
                 : attendanceLogRepository.findByEmployeeAndDateForUpdate(employee.getId(), today, kioskGroup).orElse(null);
+        if (existing == null && kioskGroup == KioskGroup.OLIVE_HOTEL) {
+            existing = openOliveStay(student, employee, today, now, personRef);
+        }
         TapResponse response;
 
         if (existing != null
@@ -211,6 +216,43 @@ public class AttendanceService {
         }
 
         return response;
+    }
+
+    /**
+     * Olive Hotel keeps an open time-in across midnight. When there is no log for today,
+     * a still-open stay from an earlier day is the record this tap should close.
+     * A log touched inside the cooldown is returned so a double tap does not start a new time-in.
+     * A previous day that already ended with time-out returns null, and today starts fresh.
+     */
+    private AttendanceLog openOliveStay(
+            Student student,
+            Employee employee,
+            LocalDate today,
+            Instant now,
+            String personRef
+    ) {
+        AttendanceLog latest = student != null
+                ? attendanceLogRepository
+                        .findLatestByStudentForUpdate(student.getId(), KioskGroup.OLIVE_HOTEL)
+                        .orElse(null)
+                : attendanceLogRepository
+                        .findLatestByEmployeeForUpdate(employee.getId(), KioskGroup.OLIVE_HOTEL)
+                        .orElse(null);
+        if (latest == null || latest.getAttendanceDate() == null || !latest.getAttendanceDate().isBefore(today)) {
+            return null;
+        }
+        boolean withinCooldown = latest.getUpdatedAt() != null
+                && now.isBefore(latest.getUpdatedAt().plus(TAP_COOLDOWN));
+        if (withinCooldown || !ACTION_OUT.equals(latest.getLastAction())) {
+            if (!withinCooldown) {
+                log.info(
+                        "OLIVE overnight open stay {} attendanceDate={} timeIn={}",
+                        personRef, latest.getAttendanceDate(), latest.getTimeIn()
+                );
+            }
+            return latest;
+        }
+        return null;
     }
 
     /** Each tap today, newest first. Time and location are for that tap, not the daily summary. */
