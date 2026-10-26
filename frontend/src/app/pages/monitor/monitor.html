@@ -3,7 +3,7 @@
   <header
     class="relative z-40 shrink-0 border-b border-slate-800/80 bg-slate-950/95 backdrop-blur-sm"
   >
-    <div class="flex items-start gap-2 px-3 py-2.5 sm:items-center sm:gap-3 sm:px-4 sm:py-3 md:px-6">
+    <div class="flex items-center gap-2 px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3 md:px-6">
       <div class="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
         <img src="/logo.svg" alt="LPU-Laguna logo" class="size-9 shrink-0 object-contain sm:size-10" />
         <div class="min-w-0 leading-tight">
@@ -12,7 +12,16 @@
         </div>
       </div>
 
-      <div class="monitor-toolbar relative z-50 flex shrink-0 items-center gap-1 sm:gap-1.5">
+      <div class="shrink-0 px-1 text-center leading-tight">
+        <p class="text-lg font-bold tracking-tight tabular-nums sm:text-2xl md:text-3xl">
+          {{ now() | date: 'h:mm:ss a' : clockTz() }}
+        </p>
+        <p class="truncate text-[11px] text-slate-400 sm:text-xs">
+          {{ now() | date: 'EEE, MMM d, y' : clockTz() }}
+        </p>
+      </div>
+
+      <div class="monitor-toolbar relative z-50 flex flex-1 items-center justify-end gap-1 sm:gap-1.5">
         @if (!isFullscreen()) {
           <button
             class="monitor-action-btn"
@@ -46,7 +55,7 @@
       </div>
     </div>
 
-    <div class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-800/60 px-3 py-2 sm:px-4 md:px-6">
+    <div class="flex flex-wrap items-center gap-2 border-t border-slate-800/60 px-3 py-2 sm:px-4 md:px-6">
       <div class="flex min-w-0 flex-wrap items-center gap-2">
         <span
           class="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold sm:px-3 sm:text-xs"
@@ -98,15 +107,6 @@
         } @else if (notifications.connected()) {
           <span class="text-[11px] font-medium text-slate-500 sm:text-xs">No kiosks online</span>
         }
-      </div>
-
-      <div class="min-w-0 text-right leading-tight">
-        <p class="text-xl font-bold tracking-tight tabular-nums sm:text-2xl md:text-3xl">
-          {{ now() | date: 'h:mm:ss a' : clockTz() }}
-        </p>
-        <p class="truncate text-[11px] text-slate-400 sm:text-xs">
-          {{ now() | date: 'EEE, MMM d, y' : clockTz() }}
-        </p>
       </div>
     </div>
   </header>
