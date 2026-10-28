@@ -58,6 +58,9 @@ public class AttendanceService {
     private static final int EXPORT_PAGE = 500;
     private static final DateTimeFormatter CSV_TIME =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(CAMPUS_ZONE);
+    /** Time In / Time Out columns are clock-only. The Date column already has the day. */
+    private static final DateTimeFormatter CSV_CLOCK =
+            DateTimeFormatter.ofPattern("HH:mm:ss").withZone(CAMPUS_ZONE);
 
     private final StudentRepository studentRepository;
     private final EmployeeRepository employeeRepository;
@@ -549,8 +552,8 @@ public class AttendanceService {
                                 csv(row.school()),
                                 csv(row.position()),
                                 row.attendanceDate(),
-                                csvTime(row.timeIn()),
-                                csvTime(row.timeOut()),
+                                csvClock(row.timeIn()),
+                                csvClock(row.timeOut()),
                                 row.tapCount(),
                                 row.status(),
                                 csv(row.timeInLocation()),
@@ -565,8 +568,8 @@ public class AttendanceService {
                                 csv(row.course()),
                                 csv(row.school()),
                                 row.attendanceDate(),
-                                csvTime(row.timeIn()),
-                                csvTime(row.timeOut()),
+                                csvClock(row.timeIn()),
+                                csvClock(row.timeOut()),
                                 row.tapCount(),
                                 row.status(),
                                 csv(row.timeInLocation()),
@@ -580,8 +583,8 @@ public class AttendanceService {
                                 csv(row.department()),
                                 csv(row.position()),
                                 row.attendanceDate(),
-                                csvTime(row.timeIn()),
-                                csvTime(row.timeOut()),
+                                csvClock(row.timeIn()),
+                                csvClock(row.timeOut()),
                                 row.tapCount(),
                                 row.status(),
                                 csv(row.timeInLocation()),
@@ -787,6 +790,10 @@ public class AttendanceService {
 
     private static String csvTime(Instant value) {
         return value == null ? "" : CSV_TIME.format(value);
+    }
+
+    private static String csvClock(Instant value) {
+        return value == null ? "" : CSV_CLOCK.format(value);
     }
 
     private record DateRange(LocalDate start, LocalDate end) {

@@ -1,8 +1,8 @@
 Manifest-Version: 1.0
 Created-By: Maven WAR Plugin 3.4.0
-Build-Jdk-Spec: 26
+Build-Jdk-Spec: 21
 Implementation-Title: lpu-attendance-system
-Implementation-Version: 2.3.6
+Implementation-Version: 2.5.0
 Main-Class: org.springframework.boot.loader.launch.WarLauncher
 Start-Class: org.nors.dev.codes.lpu.LpuAttendanceApplication
 Spring-Boot-Version: 3.4.4
