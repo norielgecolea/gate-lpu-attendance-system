@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Set;
 import org.nors.dev.codes.lpu.dto.PhotoBulkUploadResponse;
 import org.nors.dev.codes.lpu.dto.StudentAuditEventResponse;
+import org.nors.dev.codes.lpu.dto.StudentEnrollmentDeactivateResponse;
 import org.nors.dev.codes.lpu.dto.StudentFinanceTagImportResponse;
 import org.nors.dev.codes.lpu.dto.StudentImportResponse;
 import org.nors.dev.codes.lpu.dto.StudentImportRequest;
@@ -68,9 +69,12 @@ public class StudentService {
     @Transactional
     public StudentResponse create(StudentRequest request, Long actorUserId, String actorUsername) {
         String studentNo = normalizeRequired(request.studentNo(), "Student number");
-        if (studentRepository.findByStudentNo(studentNo).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Student number already exists");
-        }
+        studentRepository.findByStudentNoAnyStatus(studentNo).ifPresent(existing -> {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    existing.isDeleted() ? "Record exists but inactive" : "Student number already exists"
+            );
+        });
         rfidUniquenessService.assertAvailable(
                 normalizeOptional(request.rfid()),
                 RfidUniquenessService.OwnerType.STUDENT,
@@ -241,6 +245,82 @@ public class StudentService {
         return studentRepository.findActiveAlarmMarked().stream()
                 .map(StudentResponse::from)
                 .toList();
+    }
+
+    /**
+     * Marks every local student who is not in the enrolled-number list as inactive.
+     * Numbers in the file that are not in the system are left alone.
+     */
+    @Transactional
+    public StudentEnrollmentDeactivateResponse deactivateNotEnrolled(
+            List<String> studentNumbers,
+            Long actorUserId,
+            String actorUsername
+    ) {
+        if (studentNumbers == null || studentNumbers.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one enrolled student number is required");
+        }
+        if (studentNumbers.size() > 50_000) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Import is limited to 50,000 student numbers");
+        }
+
+        Set<String> enrolled = new HashSet<>();
+        for (String raw : studentNumbers) {
+            if (raw == null || raw.isBlank()) {
+                continue;
+            }
+            enrolled.add(raw.trim().toLowerCase(java.util.Locale.ROOT));
+        }
+        if (enrolled.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one enrolled student number is required");
+        }
+
+        java.util.Map<String, Student> local = studentRepository.findAllByStudentNoKey();
+        int deactivated = 0;
+        int alreadyInactive = 0;
+        int keptActive = 0;
+        Instant now = Instant.now();
+        for (Student student : local.values()) {
+            String key = student.getStudentNo().toLowerCase(java.util.Locale.ROOT);
+            if (enrolled.contains(key)) {
+                if (!student.isDeleted()) {
+                    keptActive++;
+                }
+                continue;
+            }
+            if (student.isDeleted()) {
+                alreadyInactive++;
+                continue;
+            }
+            student.setDeleted(true);
+            student.setUpdatedAt(now);
+            studentRepository.save(student);
+            persistAuditEvent(student, "DELETED", actorUserId, actorUsername);
+            deactivated++;
+        }
+
+        int notInSystem = 0;
+        for (String key : enrolled) {
+            if (!local.containsKey(key)) {
+                notInSystem++;
+            }
+        }
+
+        log.info(
+                "Enrollment sync deactivated={} alreadyInactive={} keptActive={} notInSystem={} enrolled={}",
+                deactivated,
+                alreadyInactive,
+                keptActive,
+                notInSystem,
+                enrolled.size()
+        );
+        return new StudentEnrollmentDeactivateResponse(
+                enrolled.size(),
+                deactivated,
+                alreadyInactive,
+                keptActive,
+                notInSystem
+        );
     }
 
     /** "Delete" only deactivates — the record stays and can be restored. */

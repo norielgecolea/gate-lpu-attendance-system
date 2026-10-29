@@ -2,7 +2,9 @@ package org.nors.dev.codes.lpu.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -18,8 +20,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.nors.dev.codes.lpu.dto.StudentRequest;
+import org.nors.dev.codes.lpu.dto.StudentEnrollmentDeactivateResponse;
 import org.nors.dev.codes.lpu.dto.StudentImportRequest;
 import org.nors.dev.codes.lpu.model.Student;
+import org.springframework.web.server.ResponseStatusException;
 import org.nors.dev.codes.lpu.model.StudentAuditEvent;
 import org.nors.dev.codes.lpu.repository.StudentAuditEventRepository;
 import org.nors.dev.codes.lpu.repository.StudentRepository;
@@ -55,7 +59,7 @@ class StudentServiceTest {
                 "BSIT",
                 "LPL"
         );
-        when(studentRepository.findByStudentNo("2026-0001")).thenReturn(Optional.empty());
+        when(studentRepository.findByStudentNoAnyStatus("2026-0001")).thenReturn(Optional.empty());
         doNothing().when(rfidUniquenessService).assertAvailable(
                 "RFID-123",
                 RfidUniquenessService.OwnerType.STUDENT,
@@ -125,5 +129,69 @@ class StudentServiceTest {
         assertEquals(0, result.imported());
         assertEquals(0, result.updated());
         assertEquals(1, result.skippedIncomplete());
+    }
+
+    @Test
+    void create_rejectsStudentNumberThatIsInactive() {
+        Student inactive = new Student();
+        inactive.setStudentNo("2026-0001");
+        inactive.setDeleted(true);
+        when(studentRepository.findByStudentNoAnyStatus("2026-0001")).thenReturn(Optional.of(inactive));
+
+        StudentRequest request = new StudentRequest(
+                "Dela Cruz, Juan A.",
+                "2026-0001",
+                null,
+                null,
+                null,
+                null,
+                "CCS",
+                "BSIT",
+                "LPL"
+        );
+
+        ResponseStatusException ex = assertThrows(
+                ResponseStatusException.class,
+                () -> studentService.create(request, 42L, "admin.user")
+        );
+        assertEquals("Record exists but inactive", ex.getReason());
+        verify(studentRepository, never()).persist(org.mockito.ArgumentMatchers.any(Student.class));
+    }
+
+    @Test
+    void deactivateNotEnrolled_marksLocalStudentsMissingFromTheList() {
+        Student enrolled = new Student();
+        enrolled.setId(1L);
+        enrolled.setStudentNo("2026-0001");
+        enrolled.setDeleted(false);
+        Student missing = new Student();
+        missing.setId(2L);
+        missing.setStudentNo("2026-0002");
+        missing.setDeleted(false);
+        Student already = new Student();
+        already.setId(3L);
+        already.setStudentNo("2026-0003");
+        already.setDeleted(true);
+        when(studentRepository.findAllByStudentNoKey()).thenReturn(Map.of(
+                "2026-0001", enrolled,
+                "2026-0002", missing,
+                "2026-0003", already
+        ));
+
+        StudentEnrollmentDeactivateResponse result = studentService.deactivateNotEnrolled(
+                java.util.List.of("2026-0001", "9999-0000"),
+                42L,
+                "admin.user"
+        );
+
+        assertEquals(2, result.enrolled());
+        assertEquals(1, result.deactivated());
+        assertEquals(1, result.alreadyInactive());
+        assertEquals(1, result.keptActive());
+        assertEquals(1, result.notInSystem());
+        assertEquals(true, missing.isDeleted());
+        assertEquals(false, enrolled.isDeleted());
+        verify(studentRepository).save(missing);
+        verify(studentRepository, never()).save(enrolled);
     }
 }

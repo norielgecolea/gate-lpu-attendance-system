@@ -36,6 +36,13 @@ export interface StudentFinanceTagImportResult {
   alreadyTagged: number;
   notFound: number;
 }
+export interface StudentEnrollmentDeactivateResult {
+  enrolled: number;
+  deactivated: number;
+  alreadyInactive: number;
+  keptActive: number;
+  notInSystem: number;
+}
 export interface StudentPage {
   items: Student[];
   total: number;
@@ -64,6 +71,13 @@ export class StudentsApiService {
       .set('offset', offset)
       .set('limit', limit);
     return this.http.get<StudentPage>(`${this.baseUrl}/page`, { params });
+  }
+
+  deactivateNotEnrolled(studentNumbers: string[]): Observable<StudentEnrollmentDeactivateResult> {
+    return this.http.post<StudentEnrollmentDeactivateResult>(
+      `${this.baseUrl}/inactive/enrolled`,
+      studentNumbers,
+    );
   }
 
   listInactive(): Observable<Student[]> {

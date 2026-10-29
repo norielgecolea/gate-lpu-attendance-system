@@ -16,10 +16,41 @@
       />
     </div>
 
+    <button
+      hlmBtn
+      class="gap-1.5"
+      type="button"
+      [disabled]="importing()"
+      (click)="csvInput.click()"
+    >
+      <ng-icon name="lucideUpload" class="text-base" />
+      {{ importing() ? 'Applying…' : 'Upload enrolled CSV' }}
+    </button>
+    <input
+      #csvInput
+      class="hidden"
+      type="file"
+      accept=".csv,text/csv"
+      [disabled]="importing()"
+      (change)="importEnrolled($event)"
+    />
   </div>
+
+  <p class="text-muted-foreground text-sm">
+    Upload a one-column CSV of currently enrolled student numbers. Every local student who is not
+    in the file is marked inactive.
+  </p>
 
   @if (error()) {
     <p class="text-destructive text-sm" role="alert">{{ error() }}</p>
+  }
+  @if (importMessage()) {
+    <p
+      class="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-900"
+      role="status"
+    >
+      {{ importMessage() }}
+    </p>
   }
 
   <!-- Table -->

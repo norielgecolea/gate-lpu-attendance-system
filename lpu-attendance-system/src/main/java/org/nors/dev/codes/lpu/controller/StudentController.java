@@ -10,6 +10,7 @@ import org.nors.dev.codes.lpu.dto.PersonAttendanceSummaryResponse;
 import org.nors.dev.codes.lpu.dto.PhotoBulkUploadResponse;
 import org.nors.dev.codes.lpu.dto.PhotoUploadResponse;
 import org.nors.dev.codes.lpu.dto.StudentAuditEventResponse;
+import org.nors.dev.codes.lpu.dto.StudentEnrollmentDeactivateResponse;
 import org.nors.dev.codes.lpu.dto.StudentFinanceTagImportResponse;
 import org.nors.dev.codes.lpu.dto.StudentImportResponse;
 import org.nors.dev.codes.lpu.dto.StudentImportRequest;
@@ -76,6 +77,16 @@ public class StudentController {
     @GetMapping("/inactive")
     public ResponseEntity<List<StudentResponse>> listInactive() {
         return ResponseEntity.ok(studentService.listInactive());
+    }
+
+    @PostMapping("/inactive/enrolled")
+    public ResponseEntity<StudentEnrollmentDeactivateResponse> deactivateNotEnrolled(
+            @RequestBody List<String> studentNumbers,
+            @AuthenticationPrincipal AuthenticatedUser user
+    ) {
+        Long actorUserId = user != null ? user.getId() : null;
+        String actorUsername = user != null ? user.getUsername() : null;
+        return ResponseEntity.ok(studentService.deactivateNotEnrolled(studentNumbers, actorUserId, actorUsername));
     }
 
     @GetMapping("/finance-tagged")
