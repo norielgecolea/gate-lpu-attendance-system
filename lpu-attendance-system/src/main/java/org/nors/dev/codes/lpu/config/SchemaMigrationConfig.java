@@ -28,6 +28,13 @@ public class SchemaMigrationConfig {
                 )
                 """);
 
+        jdbc.update("""
+                UPDATE app_settings
+                SET setting_value = 'NONE', updated_at = NOW()
+                WHERE setting_key = 'guard.display.mode'
+                  AND setting_value = 'RECENT_TAPS'
+                """);
+
         jdbc.execute("""
                 CREATE TABLE IF NOT EXISTS guard_videos (
                     id            BIGSERIAL PRIMARY KEY,

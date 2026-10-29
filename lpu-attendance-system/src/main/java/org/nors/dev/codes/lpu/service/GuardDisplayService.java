@@ -20,14 +20,14 @@ import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Controls what the guard gate display shows in its side panel:
- * live recent taps, an admin-uploaded video playlist, or nothing.
+ * an admin-uploaded video playlist, or nothing.
  */
 @Service
 public class GuardDisplayService {
 
     public static final String MODE_KEY = "guard.display.mode";
-    public static final Set<String> MODES = Set.of("RECENT_TAPS", "VIDEO", "NONE");
-    private static final String DEFAULT_MODE = "RECENT_TAPS";
+    public static final Set<String> MODES = Set.of("VIDEO", "NONE");
+    private static final String DEFAULT_MODE = "NONE";
 
     private static final Logger log = LogManager.getLogger(GuardDisplayService.class);
 
@@ -67,7 +67,7 @@ public class GuardDisplayService {
         if (!MODES.contains(mode)) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "mode must be one of RECENT_TAPS, VIDEO, NONE"
+                    "mode must be one of VIDEO, NONE"
             );
         }
         AppSetting setting = settingRepository.findByKey(MODE_KEY).orElseGet(() -> {

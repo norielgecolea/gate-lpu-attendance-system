@@ -4,7 +4,7 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { appMediaUrl } from '../students/student-photo.util';
 
-export type GuardDisplayMode = 'RECENT_TAPS' | 'VIDEO' | 'NONE';
+export type GuardDisplayMode = 'VIDEO' | 'NONE';
 
 export interface GuardVideo {
   id: string;
