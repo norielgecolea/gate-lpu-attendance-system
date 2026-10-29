@@ -6,10 +6,9 @@
 
 -- ---------------------------------------------------------------------------
 -- users
--- Default accounts (local Docker only — rotate in production):
---   superadmin / SuperAdmin@123
---   guard      / Guard@123      (Gate 1)
---   guard2     / Guard@123      (Gate 2)
+-- The first superadmin is created by the app. Its one-time password is written
+-- to the secrets directory (data/secrets/initial-admin-password). Kiosk accounts
+-- are created in the admin portal.
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS users (
     id              BIGSERIAL PRIMARY KEY,
@@ -18,38 +17,11 @@ CREATE TABLE IF NOT EXISTS users (
     role            VARCHAR(50)  NOT NULL,
     location        VARCHAR(100),
     active          BOOLEAN      NOT NULL DEFAULT TRUE,
+    session_version INTEGER      NOT NULL DEFAULT 0,
+    password_change_required BOOLEAN NOT NULL DEFAULT FALSE,
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
-
-INSERT INTO users (username, password_hash, role, active)
-VALUES (
-    'superadmin',
-    '$2b$10$wLzyCFwyRlwIcB4ZU0L9q.9tnLT9BOlnds9B8x41tpZlFck9d0ukq',
-    'SUPERADMIN',
-    TRUE
-)
-ON CONFLICT (username) DO NOTHING;
-
-INSERT INTO users (username, password_hash, role, location, active)
-VALUES (
-    'guard',
-    '$2b$10$Z4nIU2XOAczl4gTo8G9bROr3OMdFKQhZEtajEIL7yO0A/NBBABfX2',
-    'GUARD',
-    'Gate 1',
-    TRUE
-)
-ON CONFLICT (username) DO NOTHING;
-
-INSERT INTO users (username, password_hash, role, location, active)
-VALUES (
-    'guard2',
-    '$2b$10$Z4nIU2XOAczl4gTo8G9bROr3OMdFKQhZEtajEIL7yO0A/NBBABfX2',
-    'GUARD',
-    'Gate 2',
-    TRUE
-)
-ON CONFLICT (username) DO NOTHING;
 
 -- ---------------------------------------------------------------------------
 -- students

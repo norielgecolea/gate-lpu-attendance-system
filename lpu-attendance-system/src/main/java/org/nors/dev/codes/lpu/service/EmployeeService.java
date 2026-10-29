@@ -20,6 +20,8 @@ import org.nors.dev.codes.lpu.model.Employee;
 import org.nors.dev.codes.lpu.model.EmployeeAuditEvent;
 import org.nors.dev.codes.lpu.repository.EmployeeAuditEventRepository;
 import org.nors.dev.codes.lpu.repository.EmployeeRepository;
+import org.nors.dev.codes.lpu.security.CsvCells;
+import org.nors.dev.codes.lpu.security.MediaPaths;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -362,7 +364,7 @@ public class EmployeeService {
     private void applyRequest(Employee employee, EmployeeRequest request, String employeeNo) {
         employee.setName(normalizeRequired(request.name(), "Name"));
         employee.setEmployeeNo(employeeNo);
-        employee.setPhoto(normalizeOptional(request.photo()));
+        employee.setPhoto(MediaPaths.storedPhoto(request.photo()));
         employee.setRfid(normalizeOptional(request.rfid()));
         employee.setBirthdate(request.birthdate());
         employee.setLpuEmail(normalizeOptional(request.lpuEmail()));
@@ -374,7 +376,7 @@ public class EmployeeService {
     private void applyImportUpdate(Employee employee, EmployeeImportRequest request, String employeeNo) {
         employee.setEmployeeNo(employeeNo);
         setWhenPresent(request.name(), employee::setName);
-        setWhenPresent(request.photo(), employee::setPhoto);
+        MediaPaths.setPhotoIfPresent(request.photo(), employee::setPhoto);
         setWhenPresent(request.rfid(), employee::setRfid);
         if (request.birthdate() != null) {
             employee.setBirthdate(request.birthdate());
@@ -423,14 +425,7 @@ public class EmployeeService {
     }
 
     private static String csv(String value) {
-        if (value == null) {
-            return "";
-        }
-        String escaped = value.replace("\"", "\"\"");
-        if (escaped.contains(",") || escaped.contains("\"") || escaped.contains("\n")) {
-            return "\"" + escaped + "\"";
-        }
-        return escaped;
+        return CsvCells.cell(value);
     }
 
     private void persistAuditEvent(Employee employee, String action, Long actorUserId, String actorUsername) {

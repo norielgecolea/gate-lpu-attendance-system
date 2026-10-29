@@ -1,15 +1,26 @@
 import { environment } from '../../../environments/environment';
 
-/** Resolves a stored photo path (/pictures/...) to a browser URL under the WAR context. */
-export function studentPhotoUrl(photo: string | null | undefined): string | null {
-  if (!photo) {
+/** Resolves a stored media path (/pictures, /videos, /tones) under the WAR context. */
+export function appMediaUrl(path: string | null | undefined): string | null {
+  if (!path) {
     return null;
   }
-  if (photo.startsWith('http://') || photo.startsWith('https://') || photo.startsWith('data:')) {
-    return photo;
+  const value = path.trim();
+  if (
+    value.startsWith('http://') ||
+    value.startsWith('https://') ||
+    value.startsWith('data:') ||
+    value.startsWith('//')
+  ) {
+    return null;
   }
-  if (photo.startsWith(environment.contextPath)) {
-    return photo;
+  if (value.startsWith(environment.contextPath + '/') || value === environment.contextPath) {
+    return value;
   }
-  return `${environment.contextPath}${photo.startsWith('/') ? photo : `/${photo}`}`;
+  return `${environment.contextPath}${value.startsWith('/') ? value : `/${value}`}`;
+}
+
+/** Resolves a stored photo path (/pictures/...) to a browser URL under the WAR context. */
+export function studentPhotoUrl(photo: string | null | undefined): string | null {
+  return appMediaUrl(photo);
 }

@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { appMediaUrl } from '../students/student-photo.util';
 
 export type GuardDisplayMode = 'RECENT_TAPS' | 'VIDEO' | 'NONE';
 
@@ -21,13 +22,7 @@ export interface GuardDisplaySettings {
 
 /** Resolves a stored video path (/videos/...) to a browser URL under the WAR context. */
 export function guardVideoUrl(url: string): string {
-  if (url.startsWith('http://') || url.startsWith('https://')) {
-    return url;
-  }
-  if (url.startsWith(environment.contextPath)) {
-    return url;
-  }
-  return `${environment.contextPath}${url.startsWith('/') ? url : `/${url}`}`;
+  return appMediaUrl(url) ?? '';
 }
 
 @Injectable({ providedIn: 'root' })

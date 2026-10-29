@@ -11,12 +11,21 @@ export interface LoginResponse {
   role: string;
   location?: string | null;
   expiresInMs: number;
+  passwordChangeRequired?: boolean;
 }
 
 export interface AuthUser {
   username: string;
   role: string;
   location?: string | null;
+  passwordChangeRequired?: boolean;
+}
+
+export interface PasswordChangeResponse {
+  message: string;
+  token?: string;
+  tokenType?: string;
+  expiresInMs?: number;
 }
 
 export interface ChangePasswordRequest {

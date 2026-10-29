@@ -23,6 +23,8 @@ import org.nors.dev.codes.lpu.model.StudentAuditEvent;
 import org.nors.dev.codes.lpu.model.Student;
 import org.nors.dev.codes.lpu.repository.StudentAuditEventRepository;
 import org.nors.dev.codes.lpu.repository.StudentRepository;
+import org.nors.dev.codes.lpu.security.CsvCells;
+import org.nors.dev.codes.lpu.security.MediaPaths;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -431,7 +433,7 @@ public class StudentService {
     private void applyRequest(Student student, StudentRequest request, String studentNo) {
         student.setName(normalizeRequired(request.name(), "Name"));
         student.setStudentNo(studentNo);
-        student.setPhoto(normalizeOptional(request.photo()));
+        student.setPhoto(MediaPaths.storedPhoto(request.photo()));
         student.setRfid(normalizeOptional(request.rfid()));
         student.setBirthdate(request.birthdate());
         student.setLpuEmail(normalizeOptional(request.lpuEmail()));
@@ -444,7 +446,7 @@ public class StudentService {
     private void applyImportUpdate(Student student, StudentImportRequest request, String studentNo) {
         student.setStudentNo(studentNo);
         setWhenPresent(request.name(), student::setName);
-        setWhenPresent(request.photo(), student::setPhoto);
+        MediaPaths.setPhotoIfPresent(request.photo(), student::setPhoto);
         setWhenPresent(request.rfid(), student::setRfid);
         if (request.birthdate() != null) {
             student.setBirthdate(request.birthdate());
@@ -498,14 +500,7 @@ public class StudentService {
     }
 
     private static String csv(String value) {
-        if (value == null) {
-            return "";
-        }
-        String escaped = value.replace("\"", "\"\"");
-        if (escaped.contains(",") || escaped.contains("\"") || escaped.contains("\n")) {
-            return "\"" + escaped + "\"";
-        }
-        return escaped;
+        return CsvCells.cell(value);
     }
 
     private void persistAuditEvent(Student student, String action, Long actorUserId, String actorUsername) {

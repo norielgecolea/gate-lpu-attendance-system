@@ -54,7 +54,7 @@
         <property name="driverClass" value="org.postgresql.Driver" />
         <property name="jdbcUrl" value="jdbc:postgresql://localhost:5432/lpu_reservation" />
         <property name="user" value="postgres" />
-        <property name="password" value="Lpu-1234" />
+        <property name="password" value="${JDBC_PASSWORD}" />
 
         <!-- C3P0-specific pool settings -->
         <property name="minPoolSize" value="20" />

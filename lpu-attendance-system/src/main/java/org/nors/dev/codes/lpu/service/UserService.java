@@ -11,6 +11,7 @@ import org.nors.dev.codes.lpu.model.KioskGroups;
 import org.nors.dev.codes.lpu.model.Role;
 import org.nors.dev.codes.lpu.model.User;
 import org.nors.dev.codes.lpu.repository.UserRepository;
+import org.nors.dev.codes.lpu.security.DefaultPasswords;
 import org.nors.dev.codes.lpu.security.UserRoleAccess;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -60,12 +61,7 @@ public class UserService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Username already exists");
         }
         String password = request.password() == null ? "" : request.password();
-        if (password.length() < MIN_PASSWORD_LENGTH) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Password must be at least " + MIN_PASSWORD_LENGTH + " characters"
-            );
-        }
+        requireAcceptablePassword(password);
 
         Role newRole = parseRole(request.role());
         UserRoleAccess.ensureCanManage(actingRole, newRole);
@@ -106,19 +102,20 @@ public class UserService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "You cannot change your own role");
         }
 
+        boolean rotateSession = !user.getUsername().equals(username) || newRole != user.getRole();
         user.setUsername(username);
         user.setRole(newRole);
         user.setLocation(blankToNull(request.location()));
         user.setEmployeeOnly(employeeOnlyFor(newRole, request.employeeOnly()));
         String password = request.password();
         if (password != null && !password.isBlank()) {
-            if (password.length() < MIN_PASSWORD_LENGTH) {
-                throw new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST,
-                        "Password must be at least " + MIN_PASSWORD_LENGTH + " characters"
-                );
-            }
+            requireAcceptablePassword(password);
             user.setPasswordHash(passwordEncoder.encode(password));
+            user.setPasswordChangeRequired(false);
+            rotateSession = true;
+        }
+        if (rotateSession) {
+            user.rotateSession();
         }
         user.setUpdatedAt(Instant.now());
         userRepository.save(user);
@@ -140,6 +137,9 @@ public class UserService {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "At least one active Superadmin is required");
             }
         }
+        if (!active) {
+            user.rotateSession();
+        }
         user.setActive(active);
         user.setUpdatedAt(Instant.now());
         userRepository.save(user);
@@ -149,7 +149,17 @@ public class UserService {
     }
 
     @Transactional
-    public void changeOwnPassword(Long userId, String currentPassword, String newPassword) {
+    public void markPasswordChangeRequired(Long userId) {
+        User user = requireUser(userId);
+        if (!user.isPasswordChangeRequired()) {
+            user.setPasswordChangeRequired(true);
+            user.setUpdatedAt(Instant.now());
+            userRepository.save(user);
+        }
+    }
+
+    @Transactional
+    public User changeOwnPassword(Long userId, String currentPassword, String newPassword) {
         if (userId == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
         }
@@ -158,12 +168,7 @@ public class UserService {
                 || !passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Current password is incorrect");
         }
-        if (newPassword == null || newPassword.length() < MIN_PASSWORD_LENGTH) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Password must be at least " + MIN_PASSWORD_LENGTH + " characters"
-            );
-        }
+        requireAcceptablePassword(newPassword);
         if (passwordEncoder.matches(newPassword, user.getPasswordHash())) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
@@ -171,9 +176,24 @@ public class UserService {
             );
         }
         user.setPasswordHash(passwordEncoder.encode(newPassword));
+        user.setPasswordChangeRequired(false);
+        user.rotateSession();
         user.setUpdatedAt(Instant.now());
         userRepository.save(user);
         log.info("Changed password for user id={} username={}", user.getId(), user.getUsername());
+        return user;
+    }
+
+    private static void requireAcceptablePassword(String password) {
+        if (password == null || password.length() < MIN_PASSWORD_LENGTH) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Password must be at least " + MIN_PASSWORD_LENGTH + " characters"
+            );
+        }
+        if (DefaultPasswords.isRetired(password)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Choose a password that was not published with the app");
+        }
     }
 
     private User requireUser(Long id) {

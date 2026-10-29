@@ -6,6 +6,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class JwtProperties {
 
     private String secret;
+    /** Used when {@code secret} is blank or is the key that used to ship in the repo. */
+    private String secretFile = "data/secrets/jwt-secret";
     /** Default session length when "Remember me" is off (8 hours). */
     private long expirationMs = 28_800_000L;
     /**
@@ -20,6 +22,14 @@ public class JwtProperties {
 
     public void setSecret(String secret) {
         this.secret = secret;
+    }
+
+    public String getSecretFile() {
+        return secretFile;
+    }
+
+    public void setSecretFile(String secretFile) {
+        this.secretFile = secretFile;
     }
 
     public long getExpirationMs() {

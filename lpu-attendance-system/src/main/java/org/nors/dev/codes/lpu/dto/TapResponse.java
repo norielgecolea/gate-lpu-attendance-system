@@ -102,4 +102,26 @@ public record TapResponse(
                 employee != null ? EmployeeResponse.from(employee) : null
         );
     }
+
+    public TapResponse forKiosk() {
+        return new TapResponse(
+                action,
+                message,
+                attendanceId,
+                attendanceDate,
+                timeIn,
+                timeOut,
+                location,
+                timeInLocation,
+                timeOutLocation,
+                birthday,
+                financeTagged,
+                alarmMarked,
+                warningMessage,
+                personType,
+                kioskGroup,
+                student == null ? null : student.forKiosk(),
+                employee == null ? null : employee.forKiosk()
+        );
+    }
 }

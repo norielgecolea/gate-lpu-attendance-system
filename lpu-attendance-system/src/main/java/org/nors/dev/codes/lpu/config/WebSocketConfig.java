@@ -1,5 +1,6 @@
 package org.nors.dev.codes.lpu.config;
 
+import org.nors.dev.codes.lpu.security.CorsOrigins;
 import org.nors.dev.codes.lpu.websocket.AuthWebSocketHandler;
 import org.nors.dev.codes.lpu.websocket.JwtHandshakeInterceptor;
 import org.springframework.context.annotation.Configuration;
@@ -26,6 +27,6 @@ public class WebSocketConfig implements WebSocketConfigurer {
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         registry.addHandler(authWebSocketHandler, "/ws/notifications")
                 .addInterceptors(jwtHandshakeInterceptor)
-                .setAllowedOriginPatterns("*");
+                .setAllowedOriginPatterns(CorsOrigins.PATTERNS.toArray(String[]::new));
     }
 }

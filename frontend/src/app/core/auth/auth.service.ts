@@ -4,7 +4,13 @@ import { Injectable, PLATFORM_ID, computed, inject, signal } from '@angular/core
 import { Router } from '@angular/router';
 import { Observable, catchError, of, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { AuthUser, ChangePasswordRequest, LoginRequest, LoginResponse } from './auth.models';
+import {
+  AuthUser,
+  ChangePasswordRequest,
+  LoginRequest,
+  LoginResponse,
+  PasswordChangeResponse,
+} from './auth.models';
 import { NotificationService } from '../notifications/notification.service';
 
 const TOKEN_KEY = 'lpu_auth_token';
@@ -45,7 +51,12 @@ export class AuthService {
       this.isOlive(),
   );
 
+  readonly passwordChangeRequired = computed(() => !!this.userSignal()?.passwordChangeRequired);
+
   homeRoute(): string {
+    if (this.passwordChangeRequired()) {
+      return '/password-required';
+    }
     if (this.isKiosk()) {
       return '/guard';
     }
@@ -67,16 +78,40 @@ export class AuthService {
       .pipe(
         tap((response) => {
           this.persistSession(response, rememberMe);
-          this.notifications.connect(response.token);
+          if (!response.passwordChangeRequired) {
+            this.notifications.connect(response.token);
+          }
         }),
       );
   }
 
-  changePassword(request: ChangePasswordRequest): Observable<{ message: string }> {
-    return this.http.post<{ message: string }>(
-      `${environment.apiBaseUrl}/auth/change-password`,
-      request,
-    );
+  changePassword(request: ChangePasswordRequest): Observable<PasswordChangeResponse> {
+    return this.http
+      .post<PasswordChangeResponse>(`${environment.apiBaseUrl}/auth/change-password`, request)
+      .pipe(
+        tap((response) => {
+          if (response.token) {
+            this.replaceToken(response.token);
+          }
+          this.clearPasswordChangeFlag();
+          if (response.token) {
+            this.notifications.connect(response.token);
+          }
+        }),
+      );
+  }
+
+  /** Sends an already signed-in account to the required password change screen. */
+  requirePasswordChange(): void {
+    const user = this.userSignal();
+    if (user && !user.passwordChangeRequired) {
+      this.writeUser({ ...user, passwordChangeRequired: true });
+    }
+    this.notifications.disconnect();
+    const path = this.router.url.split('?')[0];
+    if (path !== '/password-required') {
+      void this.router.navigateByUrl('/password-required');
+    }
   }
 
   logout(): Observable<unknown> {
@@ -113,7 +148,11 @@ export class AuthService {
 
   restoreSession(): void {
     const token = this.tokenSignal();
-    if (token && (this.isAdminPortal() || this.isKiosk() || this.isMonitoring())) {
+    if (
+      token &&
+      !this.passwordChangeRequired() &&
+      (this.isAdminPortal() || this.isKiosk() || this.isMonitoring())
+    ) {
       this.notifications.connect(token);
     }
   }
@@ -128,6 +167,7 @@ export class AuthService {
       username: response.username,
       role: response.role,
       location: response.location ?? null,
+      passwordChangeRequired: !!response.passwordChangeRequired,
     };
     this.tokenSignal.set(response.token);
     this.userSignal.set(user);
@@ -142,6 +182,39 @@ export class AuthService {
     other.removeItem(USER_KEY);
     storage.setItem(TOKEN_KEY, response.token);
     storage.setItem(USER_KEY, JSON.stringify(user));
+  }
+
+  private replaceToken(token: string): void {
+    this.tokenSignal.set(token);
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+    if (localStorage.getItem(TOKEN_KEY)) {
+      localStorage.setItem(TOKEN_KEY, token);
+    } else {
+      sessionStorage.setItem(TOKEN_KEY, token);
+    }
+  }
+
+  private clearPasswordChangeFlag(): void {
+    const user = this.userSignal();
+    if (!user?.passwordChangeRequired) {
+      return;
+    }
+    this.writeUser({ ...user, passwordChangeRequired: false });
+  }
+
+  private writeUser(user: AuthUser): void {
+    this.userSignal.set(user);
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+    const raw = JSON.stringify(user);
+    if (localStorage.getItem(USER_KEY)) {
+      localStorage.setItem(USER_KEY, raw);
+    } else if (sessionStorage.getItem(USER_KEY)) {
+      sessionStorage.setItem(USER_KEY, raw);
+    }
   }
 
   private clearSession(): void {

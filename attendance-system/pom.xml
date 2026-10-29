@@ -395,8 +395,8 @@
                     <version>2.2</version>
                     <configuration>
                         <url>http://localhost:8080/manager/text</url>
-                        <username>admin</username>
-                        <password>admin123</password>
+                        <username>${tomcat.manager.username}</username>
+                        <password>${tomcat.manager.password}</password>
                         <path>/lpu-reservation-system</path>
                     </configuration>
                 </plugin>
@@ -414,8 +414,8 @@
                     <version>2.2</version>
                     <configuration>
                         <url>http://10.1.101.60:8080/manager/text</url>
-                        <username>admin</username>
-                        <password>admin123</password>
+                        <username>${tomcat.manager.username}</username>
+                        <password>${tomcat.manager.password}</password>
                         <path>/lpu-reservation-system</path>
                     </configuration>
                 </plugin>

@@ -1,6 +1,6 @@
--- Default SUPERADMIN credentials (local Docker only — rotate in production):
---   username: superadmin
---   password: SuperAdmin@123
+-- Accounts are created by the application.
+-- A fresh database gets one superadmin; the one-time password is written to
+-- the secrets directory and must be changed at first sign-in.
 
 CREATE TABLE IF NOT EXISTS users (
     id              BIGSERIAL PRIMARY KEY,
@@ -10,15 +10,8 @@ CREATE TABLE IF NOT EXISTS users (
     location        VARCHAR(100),
     employee_only   BOOLEAN      NOT NULL DEFAULT FALSE,
     active          BOOLEAN      NOT NULL DEFAULT TRUE,
+    session_version INTEGER      NOT NULL DEFAULT 0,
+    password_change_required BOOLEAN NOT NULL DEFAULT FALSE,
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
-
-INSERT INTO users (username, password_hash, role, active)
-VALUES (
-    'superadmin',
-    '$2b$10$wLzyCFwyRlwIcB4ZU0L9q.9tnLT9BOlnds9B8x41tpZlFck9d0ukq',
-    'SUPERADMIN',
-    TRUE
-)
-ON CONFLICT (username) DO NOTHING;
