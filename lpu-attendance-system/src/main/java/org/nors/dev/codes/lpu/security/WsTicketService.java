@@ -4,6 +4,7 @@ import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import org.nors.dev.codes.lpu.model.KioskGroups;
 import org.nors.dev.codes.lpu.model.User;
 import org.nors.dev.codes.lpu.repository.UserRepository;
 import org.springframework.stereotype.Service;
@@ -44,7 +45,7 @@ public class WsTicketService {
         }
         return userRepository.findById(stored.userId())
                 .filter(User::isActive)
-                .filter(user -> !user.isPasswordChangeRequired())
+                .filter(user -> KioskGroups.isKioskRole(user.getRole()) || !user.isPasswordChangeRequired())
                 .filter(user -> user.getSessionVersion() == stored.sessionVersion());
     }
 

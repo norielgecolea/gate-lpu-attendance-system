@@ -11,6 +11,7 @@ import {
   LoginResponse,
   PasswordChangeResponse,
 } from './auth.models';
+import { isKioskRole } from '../kiosk/kiosk-group';
 import { NotificationService } from '../notifications/notification.service';
 
 const TOKEN_KEY = 'lpu_auth_token';
@@ -51,7 +52,9 @@ export class AuthService {
       this.isOlive(),
   );
 
-  readonly passwordChangeRequired = computed(() => !!this.userSignal()?.passwordChangeRequired);
+  readonly passwordChangeRequired = computed(
+    () => !!this.userSignal()?.passwordChangeRequired && !this.isKiosk(),
+  );
 
   homeRoute(): string {
     if (this.passwordChangeRequired()) {
@@ -78,7 +81,7 @@ export class AuthService {
       .pipe(
         tap((response) => {
           this.persistSession(response, rememberMe);
-          if (!response.passwordChangeRequired) {
+          if (!this.passwordChangeRequired()) {
             this.notifications.connect(response.token);
           }
         }),
@@ -103,6 +106,9 @@ export class AuthService {
 
   /** Sends an already signed-in account to the required password change screen. */
   requirePasswordChange(): void {
+    if (this.isKiosk()) {
+      return;
+    }
     const user = this.userSignal();
     if (user && !user.passwordChangeRequired) {
       this.writeUser({ ...user, passwordChangeRequired: true });
@@ -167,7 +173,7 @@ export class AuthService {
       username: response.username,
       role: response.role,
       location: response.location ?? null,
-      passwordChangeRequired: !!response.passwordChangeRequired,
+      passwordChangeRequired: !!response.passwordChangeRequired && !isKioskRole(response.role),
     };
     this.tokenSignal.set(response.token);
     this.userSignal.set(user);

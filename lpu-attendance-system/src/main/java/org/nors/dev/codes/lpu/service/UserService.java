@@ -151,6 +151,9 @@ public class UserService {
     @Transactional
     public void markPasswordChangeRequired(Long userId) {
         User user = requireUser(userId);
+        if (KioskGroups.isKioskRole(user.getRole())) {
+            return;
+        }
         if (!user.isPasswordChangeRequired()) {
             user.setPasswordChangeRequired(true);
             user.setUpdatedAt(Instant.now());

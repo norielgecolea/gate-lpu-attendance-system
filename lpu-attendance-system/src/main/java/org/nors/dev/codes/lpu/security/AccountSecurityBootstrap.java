@@ -10,6 +10,7 @@ import java.util.EnumSet;
 import java.util.Set;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.nors.dev.codes.lpu.model.KioskGroups;
 import org.nors.dev.codes.lpu.model.Role;
 import org.nors.dev.codes.lpu.model.User;
 import org.nors.dev.codes.lpu.repository.UserRepository;
@@ -51,6 +52,14 @@ public class AccountSecurityBootstrap implements ApplicationRunner {
             return;
         }
         for (User user : userRepository.findAll()) {
+            if (KioskGroups.isKioskRole(user.getRole())) {
+                if (user.isPasswordChangeRequired()) {
+                    user.setPasswordChangeRequired(false);
+                    user.setUpdatedAt(Instant.now());
+                    userRepository.save(user);
+                }
+                continue;
+            }
             if (user.isPasswordChangeRequired()) {
                 continue;
             }

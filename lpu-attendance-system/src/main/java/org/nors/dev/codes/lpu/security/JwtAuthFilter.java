@@ -5,6 +5,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import org.nors.dev.codes.lpu.model.KioskGroups;
 import org.nors.dev.codes.lpu.model.User;
 import org.nors.dev.codes.lpu.repository.UserRepository;
 import org.nors.dev.codes.lpu.service.JwtService;
@@ -62,7 +63,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 user.getRole(),
                 user.getLocation(),
                 jwtService.isRememberMe(token),
-                user.isPasswordChangeRequired(),
+                user.isPasswordChangeRequired() && !KioskGroups.isKioskRole(user.getRole()),
                 user.getSessionVersion()
         );
         UsernamePasswordAuthenticationToken authentication =

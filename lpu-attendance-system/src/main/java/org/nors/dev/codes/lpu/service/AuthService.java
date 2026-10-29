@@ -7,6 +7,7 @@ import org.nors.dev.codes.lpu.dto.ChangePasswordRequest;
 import org.nors.dev.codes.lpu.dto.LoginRequest;
 import org.nors.dev.codes.lpu.dto.LoginResponse;
 import org.nors.dev.codes.lpu.dto.PasswordChangeResponse;
+import org.nors.dev.codes.lpu.model.KioskGroups;
 import org.nors.dev.codes.lpu.model.User;
 import org.nors.dev.codes.lpu.security.AuthenticatedUser;
 import org.nors.dev.codes.lpu.security.DefaultPasswords;
@@ -72,8 +73,7 @@ public class AuthService {
         }
 
         loginRateLimiter.clear(username);
-        boolean passwordChangeRequired = user.isPasswordChangeRequired()
-                || DefaultPasswords.matchesHash(passwordEncoder, user.getPasswordHash());
+        boolean passwordChangeRequired = requiresPasswordChange(user);
         if (passwordChangeRequired && !user.isPasswordChangeRequired()) {
             userService.markPasswordChangeRequired(user.getId());
         }
@@ -99,6 +99,15 @@ public class AuthService {
                 jwtService.getExpirationMs(rememberMe),
                 passwordChangeRequired
         );
+    }
+
+    /** Gate, library, and Olive kiosks keep working on their current password. */
+    private boolean requiresPasswordChange(User user) {
+        if (KioskGroups.isKioskRole(user.getRole())) {
+            return false;
+        }
+        return user.isPasswordChangeRequired()
+                || DefaultPasswords.matchesHash(passwordEncoder, user.getPasswordHash());
     }
 
     public void logout(String username) {
