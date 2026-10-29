@@ -11,8 +11,8 @@
         class="bg-card w-full pl-9"
         type="search"
         placeholder="Search inactive students"
-        [ngModel]="filter()"
-        (ngModelChange)="filter.set($event)"
+        [ngModel]="search()"
+        (ngModelChange)="onSearchChange($event)"
       />
     </div>
 
@@ -54,7 +54,11 @@
   }
 
   <!-- Table -->
-  <div hlmTableContainer class="bg-card min-h-0 flex-1 overflow-y-auto rounded-lg border shadow-sm">
+  <div
+    hlmTableContainer
+    class="bg-card min-h-0 flex-1 overflow-y-auto rounded-lg border shadow-sm"
+    (scroll)="onTableScroll($event)"
+  >
     <table hlmTable class="text-sm">
       <thead hlmTHead class="sticky top-0 z-10">
         <tr hlmTr class="bg-primary hover:bg-primary [&>th]:text-primary-foreground">
@@ -74,7 +78,7 @@
             </td>
           </tr>
         } @else {
-          @for (student of filtered(); track student.id) {
+          @for (student of scroll.take(students()); track student.id) {
             <tr hlmTr>
               <td hlmTd>
                 <div class="flex items-center gap-3">
@@ -136,6 +140,19 @@
             <tr hlmTr>
               <td hlmTd colspan="6" class="text-muted-foreground py-10 text-center">
                 No inactive students.
+              </td>
+            </tr>
+          }
+          @if (students().length > 0) {
+            <tr hlmTr>
+              <td hlmTd colspan="6" class="text-muted-foreground py-3 text-center text-xs">
+                @if (loadingMore()) {
+                  Loading more students…
+                } @else if (hasMore()) {
+                  Showing {{ students().length }} of {{ total() }} students — scroll to load more
+                } @else {
+                  Showing all {{ total() }} student(s)
+                }
               </td>
             </tr>
           }

@@ -79,6 +79,15 @@ public class StudentController {
         return ResponseEntity.ok(studentService.listInactive());
     }
 
+    @GetMapping("/inactive/page")
+    public ResponseEntity<StudentPageResponse> inactivePage(
+            @RequestParam(defaultValue = "") String search,
+            @RequestParam(defaultValue = "0") int offset,
+            @RequestParam(defaultValue = "50") int limit
+    ) {
+        return ResponseEntity.ok(studentService.pageInactive(search, offset, limit));
+    }
+
     @PostMapping("/inactive/enrolled")
     public ResponseEntity<StudentEnrollmentDeactivateResponse> deactivateNotEnrolled(
             @RequestBody List<String> studentNumbers,

@@ -1,4 +1,5 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideRotateCcw, lucideSearch, lucideTrash2, lucideUpload } from '@ng-icons/lucide';
@@ -6,13 +7,17 @@ import { HlmAvatarImports } from '@spartan-ng/helm/avatar';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmInput } from '@spartan-ng/helm/input';
 import { HlmTableImports } from '@spartan-ng/helm/table';
+import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 import {
   StudentsApiService,
   type StudentEnrollmentDeactivateResult,
 } from '../../core/students/students-api.service';
 import { studentPhotoUrl } from '../../core/students/student-photo.util';
+import { infiniteScroll } from '../../shared/infinite-scroll';
 import { PhotoPreview } from '../../shared/photo-preview/photo-preview.directive';
 import type { Student } from './students.store';
+
+const PAGE_SIZE = 50;
 
 @Component({
   selector: 'app-inactive-students',
@@ -25,29 +30,46 @@ export class InactiveStudents {
   private readonly api = inject(StudentsApiService);
 
   protected readonly students = signal<Student[]>([]);
+  protected readonly total = signal(0);
+  protected readonly hasMore = signal(false);
   protected readonly loading = signal(false);
+  protected readonly loadingMore = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly restoringId = signal<string | null>(null);
   protected readonly deletingId = signal<string | null>(null);
-  protected readonly filter = signal('');
+  protected readonly search = signal('');
   protected readonly importing = signal(false);
   protected readonly importMessage = signal<string | null>(null);
+  protected readonly scroll = infiniteScroll();
 
-  protected readonly filtered = computed(() => {
-    const term = this.filter().trim().toLowerCase();
-    if (!term) {
-      return this.students();
-    }
-    return this.students().filter((s) =>
-      [s.name, s.studentNo, s.rfid ?? '', s.department, s.course]
-        .join(' ')
-        .toLowerCase()
-        .includes(term),
-    );
-  });
+  /** How many rows the server has already returned for the current search. */
+  private fetched = 0;
+  private requestId = 0;
+  private readonly searchChanges = new Subject<string>();
 
   constructor() {
     this.reload();
+    this.searchChanges
+      .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed())
+      .subscribe((term) => {
+        this.scroll.reset();
+        this.loadPage(term, true);
+      });
+  }
+
+  protected onSearchChange(term: string): void {
+    this.search.set(term);
+    this.searchChanges.next(term.trim());
+  }
+
+  /** Grows the visible window and fetches the next server page near the bottom. */
+  protected onTableScroll(event: Event): void {
+    const loaded = this.students().length;
+    this.scroll.onScroll(event, loaded);
+    const el = event.target as HTMLElement;
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 200 && this.scroll.visible() >= loaded) {
+      this.loadMore();
+    }
   }
 
   protected async importEnrolled(event: Event): Promise<void> {
@@ -92,18 +114,57 @@ export class InactiveStudents {
   }
 
   protected reload(): void {
-    this.loading.set(true);
-    this.error.set(null);
-    this.api.listInactive().subscribe({
-      next: (students) => {
-        this.students.set(students);
+    this.scroll.reset();
+    this.loadPage(this.search().trim(), true);
+  }
+
+  private loadPage(term: string, replace: boolean): void {
+    if (!replace && (this.loading() || this.loadingMore() || !this.hasMore())) {
+      return;
+    }
+    const request = ++this.requestId;
+    const offset = replace ? 0 : this.fetched;
+    if (replace) {
+      this.loading.set(true);
+      this.error.set(null);
+      this.fetched = 0;
+    } else {
+      this.loadingMore.set(true);
+    }
+
+    this.api.pageInactive(term, offset, PAGE_SIZE).subscribe({
+      next: (page) => {
+        if (request !== this.requestId) {
+          return;
+        }
+        this.students.update((list) => (replace ? page.items : [...list, ...page.items]));
+        this.fetched = offset + page.items.length;
+        this.total.set(page.total);
+        this.hasMore.set(this.fetched < page.total);
         this.loading.set(false);
+        this.loadingMore.set(false);
       },
       error: (err: { error?: { message?: string } }) => {
+        if (request !== this.requestId) {
+          return;
+        }
         this.loading.set(false);
-        this.error.set(err?.error?.message ?? 'Failed to load inactive students');
+        this.loadingMore.set(false);
+        if (replace) {
+          this.error.set(err?.error?.message ?? 'Failed to load inactive students');
+        }
       },
     });
+  }
+
+  private loadMore(): void {
+    this.loadPage(this.search().trim(), false);
+  }
+
+  private dropFromList(id: string): void {
+    this.students.update((list) => list.filter((s) => s.id !== id));
+    this.total.update((count) => Math.max(count - 1, 0));
+    this.hasMore.set(this.fetched < this.total());
   }
 
   protected restore(student: Student): void {
@@ -114,7 +175,7 @@ export class InactiveStudents {
     this.restoringId.set(student.id);
     this.api.restore(student.id).subscribe({
       next: () => {
-        this.students.update((list) => list.filter((s) => s.id !== student.id));
+        this.dropFromList(student.id);
         this.restoringId.set(null);
       },
       error: (err: { error?: { message?: string } }) => {
@@ -136,7 +197,7 @@ export class InactiveStudents {
     this.deletingId.set(student.id);
     this.api.permanentlyDelete(student.id).subscribe({
       next: () => {
-        this.students.update((list) => list.filter((s) => s.id !== student.id));
+        this.dropFromList(student.id);
         this.deletingId.set(null);
       },
       error: (err: { error?: { message?: string } }) => {

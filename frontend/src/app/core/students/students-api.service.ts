@@ -84,6 +84,14 @@ export class StudentsApiService {
     return this.http.get<Student[]>(`${this.baseUrl}/inactive`);
   }
 
+  pageInactive(search: string, offset: number, limit: number): Observable<StudentPage> {
+    const params = new HttpParams()
+      .set('search', search)
+      .set('offset', offset)
+      .set('limit', limit);
+    return this.http.get<StudentPage>(`${this.baseUrl}/inactive/page`, { params });
+  }
+
   listFinanceTagged(): Observable<Student[]> {
     return this.http.get<Student[]>(`${this.baseUrl}/finance-tagged`);
   }

@@ -227,6 +227,16 @@ public class StudentService {
     }
 
     @Transactional(readOnly = true)
+    public StudentPageResponse pageInactive(String search, int offset, int limit) {
+        int size = Math.min(Math.max(limit, 1), 200);
+        int from = Math.max(offset, 0);
+        List<StudentResponse> items = studentRepository.searchInactive(search, from, size).stream()
+                .map(StudentResponse::from)
+                .toList();
+        return new StudentPageResponse(items, studentRepository.countInactive(search));
+    }
+
+    @Transactional(readOnly = true)
     public List<StudentResponse> listInactive() {
         return studentRepository.findAllInactive().stream()
                 .map(StudentResponse::from)
