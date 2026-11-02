@@ -10,6 +10,7 @@ import org.nors.dev.codes.lpu.dto.PersonAttendanceSummaryResponse;
 import org.nors.dev.codes.lpu.dto.PhotoBulkUploadResponse;
 import org.nors.dev.codes.lpu.dto.PhotoUploadResponse;
 import org.nors.dev.codes.lpu.dto.StudentAuditEventResponse;
+import org.nors.dev.codes.lpu.dto.StudentEnrollmentDeactivateResponse;
 import org.nors.dev.codes.lpu.dto.StudentFinanceTagImportResponse;
 import org.nors.dev.codes.lpu.dto.StudentImportResponse;
 import org.nors.dev.codes.lpu.dto.StudentImportRequest;
@@ -19,6 +20,7 @@ import org.nors.dev.codes.lpu.dto.StudentResponse;
 import org.nors.dev.codes.lpu.model.KioskGroup;
 import org.nors.dev.codes.lpu.model.KioskGroups;
 import org.nors.dev.codes.lpu.security.AuthenticatedUser;
+import org.nors.dev.codes.lpu.security.MediaUrlSigner;
 import org.nors.dev.codes.lpu.service.AttendanceService;
 import org.nors.dev.codes.lpu.service.PhotoStorageService;
 import org.nors.dev.codes.lpu.service.StudentService;
@@ -75,6 +77,25 @@ public class StudentController {
     @GetMapping("/inactive")
     public ResponseEntity<List<StudentResponse>> listInactive() {
         return ResponseEntity.ok(studentService.listInactive());
+    }
+
+    @GetMapping("/inactive/page")
+    public ResponseEntity<StudentPageResponse> inactivePage(
+            @RequestParam(defaultValue = "") String search,
+            @RequestParam(defaultValue = "0") int offset,
+            @RequestParam(defaultValue = "50") int limit
+    ) {
+        return ResponseEntity.ok(studentService.pageInactive(search, offset, limit));
+    }
+
+    @PostMapping("/inactive/enrolled")
+    public ResponseEntity<StudentEnrollmentDeactivateResponse> deactivateNotEnrolled(
+            @RequestBody List<String> studentNumbers,
+            @AuthenticationPrincipal AuthenticatedUser user
+    ) {
+        Long actorUserId = user != null ? user.getId() : null;
+        String actorUsername = user != null ? user.getUsername() : null;
+        return ResponseEntity.ok(studentService.deactivateNotEnrolled(studentNumbers, actorUserId, actorUsername));
     }
 
     @GetMapping("/finance-tagged")
@@ -167,7 +188,7 @@ public class StudentController {
     @PostMapping(value = "/photo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<PhotoUploadResponse> uploadPhoto(@RequestPart("file") MultipartFile file) {
         String photoPath = photoStorageService.store(file);
-        return ResponseEntity.status(HttpStatus.CREATED).body(new PhotoUploadResponse(photoPath));
+        return ResponseEntity.status(HttpStatus.CREATED).body(new PhotoUploadResponse(MediaUrlSigner.signStored(photoPath)));
     }
 
     @PostMapping(value = "/photos/bulk", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

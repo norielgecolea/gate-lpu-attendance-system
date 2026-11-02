@@ -14,6 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.nors.dev.codes.lpu.dto.AuthEventMessage;
+import org.nors.dev.codes.lpu.dto.TapResponse;
 import org.nors.dev.codes.lpu.model.KioskGroup;
 import org.nors.dev.codes.lpu.model.KioskGroups;
 import org.nors.dev.codes.lpu.model.Role;
@@ -31,6 +32,7 @@ public class NotificationService {
     private static final long PING_TIMEOUT_NANOS = 8_000_000_000L;
 
     private final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
+    private final Map<String, Role> sessionRoles = new ConcurrentHashMap<>();
     /** sessionId → connected kiosk (location label + venue). */
     private final Map<String, OnlineKiosk> onlineKiosks = new ConcurrentHashMap<>();
     private final ObjectMapper objectMapper;
@@ -46,6 +48,7 @@ public class NotificationService {
                 SEND_BUFFER_LIMIT
         );
         sessions.put(session.getId(), safe);
+        sessionRoles.put(session.getId(), role);
         log.info(
                 "WebSocket session registered: {} user={} role={} location={} (active={})",
                 session.getId(),
@@ -74,6 +77,7 @@ public class NotificationService {
 
     public void unregister(WebSocketSession session) {
         sessions.remove(session.getId());
+        sessionRoles.remove(session.getId());
         OnlineKiosk removed = onlineKiosks.remove(session.getId());
         log.info(
                 "WebSocket session unregistered: {} (active={}, wasKiosk={})",
@@ -170,6 +174,7 @@ public class NotificationService {
         }
     }
 
+    /** Login and password events go to superadmins only, not to kiosk screens. */
     public void broadcast(AuthEventMessage event) {
         String payload;
         try {
@@ -178,7 +183,49 @@ public class NotificationService {
             log.error("Failed to serialize auth event", ex);
             return;
         }
-        broadcastRaw(payload);
+        sendToRoles(payload, Role.SUPERADMIN);
+    }
+
+    public void sendTap(TapResponse response) {
+        KioskGroup group = parseGroup(response.kioskGroup());
+        String full = tapPayload(response);
+        String redacted = tapPayload(response.forKiosk());
+        if (full == null) {
+            return;
+        }
+        List<String> dead = new ArrayList<>();
+        for (Map.Entry<String, WebSocketSession> entry : sessions.entrySet()) {
+            Role role = sessionRoles.get(entry.getKey());
+            if (!receivesVenue(role, group)) {
+                continue;
+            }
+            String body = KioskGroups.isKioskRole(role) && redacted != null ? redacted : full;
+            if (!send(entry.getValue(), body)) {
+                dead.add(entry.getKey());
+            }
+        }
+        drop(dead);
+    }
+
+    public void sendTapError(String identifier, String location, KioskGroup group, String tappedAt) {
+        KioskGroup venue = group != null ? group : KioskGroup.MAIN_GATES;
+        String full = tapErrorPayload(identifier, location, venue, tappedAt);
+        String redacted = tapErrorPayload(null, location, venue, tappedAt);
+        if (full == null) {
+            return;
+        }
+        List<String> dead = new ArrayList<>();
+        for (Map.Entry<String, WebSocketSession> entry : sessions.entrySet()) {
+            Role role = sessionRoles.get(entry.getKey());
+            if (!receivesVenue(role, venue)) {
+                continue;
+            }
+            String body = KioskGroups.isKioskRole(role) ? redacted : full;
+            if (!send(entry.getValue(), body)) {
+                dead.add(entry.getKey());
+            }
+        }
+        drop(dead);
     }
 
     public void broadcastRaw(String payload) {
@@ -197,10 +244,7 @@ public class NotificationService {
                 dead.add(entry.getKey());
             }
         }
-        for (String id : dead) {
-            sessions.remove(id);
-            onlineKiosks.remove(id);
-        }
+        drop(dead);
     }
 
     private void sendPing(String sessionId, OnlineKiosk kiosk) {
@@ -219,6 +263,7 @@ public class NotificationService {
         } catch (Exception ex) {
             log.warn("Failed to ping kiosk session {}", sessionId, ex);
             sessions.remove(sessionId);
+            sessionRoles.remove(sessionId);
             if (onlineKiosks.remove(sessionId) != null) {
                 broadcastGuardPresence();
             }
@@ -238,6 +283,103 @@ public class NotificationService {
             return;
         }
         broadcastGuardPresence();
+    }
+
+    private void sendToRoles(String payload, Role... allowed) {
+        List<String> dead = new ArrayList<>();
+        for (Map.Entry<String, WebSocketSession> entry : sessions.entrySet()) {
+            Role role = sessionRoles.get(entry.getKey());
+            boolean match = false;
+            for (Role allowedRole : allowed) {
+                if (allowedRole == role) {
+                    match = true;
+                    break;
+                }
+            }
+            if (!match) {
+                continue;
+            }
+            if (!send(entry.getValue(), payload)) {
+                dead.add(entry.getKey());
+            }
+        }
+        drop(dead);
+    }
+
+    private boolean send(WebSocketSession session, String payload) {
+        if (session == null || payload == null || !session.isOpen()) {
+            return false;
+        }
+        try {
+            session.sendMessage(new TextMessage(payload));
+            return true;
+        } catch (Exception ex) {
+            log.warn("Failed to send WS message to session {}", session.getId(), ex);
+            return false;
+        }
+    }
+
+    private void drop(List<String> dead) {
+        for (String id : dead) {
+            sessions.remove(id);
+            sessionRoles.remove(id);
+            onlineKiosks.remove(id);
+        }
+    }
+
+    private static boolean receivesVenue(Role role, KioskGroup group) {
+        if (role == null || group == null) {
+            return false;
+        }
+        if (role == Role.SUPERADMIN || role == Role.MONITORING || role == Role.OSAS || role == Role.HR) {
+            return true;
+        }
+        return KioskGroups.fromRole(role) == group;
+    }
+
+    private static KioskGroup parseGroup(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return KioskGroup.MAIN_GATES;
+        }
+        try {
+            return KioskGroup.valueOf(raw);
+        } catch (IllegalArgumentException ex) {
+            return KioskGroup.MAIN_GATES;
+        }
+    }
+
+    private String tapPayload(TapResponse response) {
+        try {
+            Map<String, Object> event = new LinkedHashMap<>();
+            event.put("type", "ATTENDANCE_TAP");
+            event.put("action", response.action());
+            event.put("message", response.message());
+            event.put("payload", response);
+            return objectMapper.writeValueAsString(event);
+        } catch (IOException ex) {
+            log.warn("Failed to serialize attendance tap", ex);
+            return null;
+        }
+    }
+
+    private String tapErrorPayload(String identifier, String location, KioskGroup group, String tappedAt) {
+        try {
+            Map<String, Object> event = new LinkedHashMap<>();
+            event.put("type", "ATTENDANCE_TAP_ERROR");
+            event.put("message", "Unrecognized ID/RFID tapped");
+            Map<String, Object> payload = new LinkedHashMap<>();
+            if (identifier != null) {
+                payload.put("identifier", identifier);
+            }
+            payload.put("location", location);
+            payload.put("kioskGroup", group.name());
+            payload.put("tappedAt", tappedAt);
+            event.put("payload", payload);
+            return objectMapper.writeValueAsString(event);
+        } catch (IOException ex) {
+            log.warn("Failed to serialize attendance tap error", ex);
+            return null;
+        }
     }
 
     private void sendRaw(WebSocketSession session, String payload) {

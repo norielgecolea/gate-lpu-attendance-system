@@ -1,4 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 import { Injectable, PLATFORM_ID, inject, signal } from '@angular/core';
 import { Subject } from 'rxjs';
 import { environment } from '../../../environments/environment';
@@ -23,7 +24,9 @@ export function pingTone(ms: number | null | undefined): PingTone | null {
 @Injectable({ providedIn: 'root' })
 export class NotificationService {
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly http = inject(HttpClient);
   private readonly presenceApi = inject(GuardPresenceApiService);
+  private socketGeneration = 0;
   private socket: WebSocket | null = null;
   private token: string | null = null;
   private reconnectTimer?: ReturnType<typeof setTimeout>;
@@ -92,6 +95,7 @@ export class NotificationService {
 
   disconnect(): void {
     this.intentionalClose = true;
+    this.socketGeneration += 1;
     this.clearReconnect();
     this.token = null;
     if (this.socket) {
@@ -113,7 +117,24 @@ export class NotificationService {
     if (!this.token) {
       return;
     }
+    const generation = ++this.socketGeneration;
+    this.http.get<{ ticket: string }>(`${environment.apiBaseUrl}/auth/ws-ticket`).subscribe({
+      next: (response) => {
+        if (generation !== this.socketGeneration || this.intentionalClose || !response.ticket) {
+          return;
+        }
+        this.connectWithTicket(response.ticket);
+      },
+      error: () => {
+        if (generation !== this.socketGeneration || this.intentionalClose) {
+          return;
+        }
+        this.scheduleReconnect();
+      },
+    });
+  }
 
+  private connectWithTicket(ticket: string): void {
     if (this.socket) {
       this.socket.onclose = null;
       this.socket.onerror = null;
@@ -124,13 +145,13 @@ export class NotificationService {
     }
 
     this.presenceFromSocket = false;
-    const url = `${environment.wsUrl}?token=${encodeURIComponent(this.token)}`;
+    const url = `${environment.wsUrl}?ticket=${encodeURIComponent(ticket)}`;
     this.socket = new WebSocket(url);
 
     this.socket.onopen = () => {
       this.reconnectAttempt = 0;
       this.connected.set(true);
-      if (!this.canReadGuardPresence(this.token)) {
+      if (!this.canReadGuardPresence()) {
         return;
       }
       // HTTP snapshot for admin/monitor; guards are not allowed on this endpoint.
@@ -209,15 +230,16 @@ export class NotificationService {
     this.socket.send(JSON.stringify({ type: 'KIOSK_PONG', id }));
   }
 
-  private canReadGuardPresence(token: string | null): boolean {
-    if (!token) {
+  private canReadGuardPresence(): boolean {
+    if (!isPlatformBrowser(this.platformId)) {
+      return false;
+    }
+    const raw = localStorage.getItem('lpu_auth_user') ?? sessionStorage.getItem('lpu_auth_user');
+    if (!raw) {
       return false;
     }
     try {
-      const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))) as {
-        role?: string;
-      };
-      const role = payload.role ?? '';
+      const role = (JSON.parse(raw) as { role?: string }).role ?? '';
       return (
         role === 'SUPERADMIN' ||
         role === 'MONITORING' ||

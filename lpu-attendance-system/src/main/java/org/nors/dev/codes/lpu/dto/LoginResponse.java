@@ -6,6 +6,7 @@ public record LoginResponse(
         String username,
         String role,
         String location,
-        long expiresInMs
+        long expiresInMs,
+        boolean passwordChangeRequired
 ) {
 }

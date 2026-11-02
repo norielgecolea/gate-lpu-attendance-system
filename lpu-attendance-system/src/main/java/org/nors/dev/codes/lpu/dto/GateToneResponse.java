@@ -2,6 +2,7 @@ package org.nors.dev.codes.lpu.dto;
 
 import java.time.Instant;
 import org.nors.dev.codes.lpu.model.GateTone;
+import org.nors.dev.codes.lpu.security.MediaUrlSigner;
 
 public record GateToneResponse(
         String id,
@@ -14,7 +15,7 @@ public record GateToneResponse(
     public static GateToneResponse from(GateTone tone) {
         return new GateToneResponse(
                 String.valueOf(tone.getId()),
-                tone.getFilePath(),
+                MediaUrlSigner.signStored(tone.getFilePath()),
                 tone.getOriginalName(),
                 tone.getContentType(),
                 tone.getSizeBytes(),

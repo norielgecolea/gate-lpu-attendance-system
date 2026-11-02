@@ -58,6 +58,6 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     /** UUID media filenames never change in place, so kiosks can keep the file locally. */
     private static CacheControl mediaCacheControl() {
-        return CacheControl.maxAge(Duration.ofDays(365)).cachePublic();
+        return CacheControl.maxAge(Duration.ofDays(1)).cachePrivate();
     }
 }

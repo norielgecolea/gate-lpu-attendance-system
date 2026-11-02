@@ -3,6 +3,9 @@ import { CanActivateFn, Router } from '@angular/router';
 import { AuthService } from './auth.service';
 
 function redirectAuthenticated(auth: AuthService, router: Router) {
+  if (auth.passwordChangeRequired()) {
+    return router.createUrlTree(['/password-required']);
+  }
   if (auth.isKiosk()) {
     return router.createUrlTree(['/guard']);
   }
@@ -15,10 +18,34 @@ function redirectAuthenticated(auth: AuthService, router: Router) {
   return router.createUrlTree(['/']);
 }
 
+function passwordGate(auth: AuthService, router: Router) {
+  if (auth.isAuthenticated() && auth.passwordChangeRequired()) {
+    return router.createUrlTree(['/password-required']);
+  }
+  return null;
+}
+
+/** Signed-in accounts that still use a published seed password. */
+export const passwordChangeGuard: CanActivateFn = () => {
+  const auth = inject(AuthService);
+  const router = inject(Router);
+  if (!auth.isAuthenticated()) {
+    return router.createUrlTree(['/']);
+  }
+  if (!auth.passwordChangeRequired()) {
+    return redirectAuthenticated(auth, router);
+  }
+  return true;
+};
+
 /** Superadmin, OSAS, and HR admin portal. */
 export const adminPortalGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
   const router = inject(Router);
+  const gated = passwordGate(auth, router);
+  if (gated) {
+    return gated;
+  }
 
   if (auth.isAuthenticated() && auth.isAdminPortal()) {
     return true;
@@ -32,6 +59,10 @@ export const adminPortalGuard: CanActivateFn = () => {
 export const superAdminGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
   const router = inject(Router);
+  const gated = passwordGate(auth, router);
+  if (gated) {
+    return gated;
+  }
 
   if (auth.isAuthenticated() && auth.isSuperAdmin()) {
     return true;
@@ -46,6 +77,10 @@ export function allowRoles(...roles: string[]): CanActivateFn {
   return () => {
     const auth = inject(AuthService);
     const router = inject(Router);
+    const gated = passwordGate(auth, router);
+    if (gated) {
+      return gated;
+    }
     const role = auth.user()?.role;
 
     if (auth.isAuthenticated() && role && roles.includes(role)) {
@@ -61,6 +96,10 @@ export function allowRoles(...roles: string[]): CanActivateFn {
 export const guardRoleGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
   const router = inject(Router);
+  const gated = passwordGate(auth, router);
+  if (gated) {
+    return gated;
+  }
 
   if (auth.isAuthenticated() && auth.isKiosk()) {
     return true;
@@ -75,6 +114,10 @@ export const guardRoleGuard: CanActivateFn = () => {
 export const monitoringGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
   const router = inject(Router);
+  const gated = passwordGate(auth, router);
+  if (gated) {
+    return gated;
+  }
 
   if (auth.isAuthenticated() && (auth.isMonitoring() || auth.isSuperAdmin())) {
     return true;

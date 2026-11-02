@@ -12,6 +12,7 @@
 #
 # Context path: /attendance-system
 # Login API: POST http://localhost:8080/attendance-system/api/auth/login
-# WebSocket:  ws://localhost:8080/attendance-system/ws/notifications?token=<JWT>
+# WebSocket:  ws://localhost:8080/attendance-system/ws/notifications?ticket=<short-lived ticket>
 #
-# Default SUPERADMIN (local only): superadmin / SuperAdmin@123
+# The first superadmin password is written to data/secrets/initial-admin-password
+# and must be changed at first sign-in. Create kiosk accounts from the admin portal.

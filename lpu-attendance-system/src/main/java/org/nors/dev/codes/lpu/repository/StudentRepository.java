@@ -24,11 +24,17 @@ public class StudentRepository {
         return sessionFactory.getCurrentSession();
     }
 
-    private static final String ACTIVE_SEARCH_WHERE =
-            " WHERE s.deleted = false AND (:term = '' OR lower(s.name) LIKE :term"
+    private static final String SEARCH_MATCH =
+            "(:term = '' OR lower(s.name) LIKE :term"
                     + " OR lower(s.studentNo) LIKE :term OR lower(coalesce(s.rfid, '')) LIKE :term"
                     + " OR lower(s.department) LIKE :term OR lower(s.course) LIKE :term"
                     + " OR lower(s.school) LIKE :term)";
+
+    private static final String ACTIVE_SEARCH_WHERE =
+            " WHERE s.deleted = false AND " + SEARCH_MATCH;
+
+    private static final String INACTIVE_SEARCH_WHERE =
+            " WHERE s.deleted = true AND " + SEARCH_MATCH;
 
     @Transactional(readOnly = true)
     public List<Student> findAllActive() {
@@ -80,6 +86,25 @@ public class StudentRepository {
             return "";
         }
         return "%" + term.trim().toLowerCase() + "%";
+    }
+
+    @Transactional(readOnly = true)
+    public List<Student> searchInactive(String term, int offset, int limit) {
+        return currentSession()
+                .createQuery("FROM Student s" + INACTIVE_SEARCH_WHERE + " ORDER BY s.name ASC", Student.class)
+                .setParameter("term", likeTerm(term))
+                .setFirstResult(offset)
+                .setMaxResults(limit)
+                .getResultList();
+    }
+
+    @Transactional(readOnly = true)
+    public long countInactive(String term) {
+        Long count = currentSession()
+                .createQuery("SELECT COUNT(s.id) FROM Student s" + INACTIVE_SEARCH_WHERE, Long.class)
+                .setParameter("term", likeTerm(term))
+                .uniqueResult();
+        return count != null ? count : 0;
     }
 
     @Transactional(readOnly = true)

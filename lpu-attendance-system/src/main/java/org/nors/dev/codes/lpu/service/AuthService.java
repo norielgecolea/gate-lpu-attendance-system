@@ -6,8 +6,12 @@ import org.nors.dev.codes.lpu.dto.AuthEventMessage;
 import org.nors.dev.codes.lpu.dto.ChangePasswordRequest;
 import org.nors.dev.codes.lpu.dto.LoginRequest;
 import org.nors.dev.codes.lpu.dto.LoginResponse;
+import org.nors.dev.codes.lpu.dto.PasswordChangeResponse;
+import org.nors.dev.codes.lpu.model.KioskGroups;
 import org.nors.dev.codes.lpu.model.User;
 import org.nors.dev.codes.lpu.security.AuthenticatedUser;
+import org.nors.dev.codes.lpu.security.DefaultPasswords;
+import org.nors.dev.codes.lpu.security.LoginRateLimiter;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -23,25 +27,36 @@ public class AuthService {
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
     private final NotificationService notificationService;
+    private final LoginRateLimiter loginRateLimiter;
+    private final String dummyPasswordHash;
 
     public AuthService(
             UserService userService,
             JwtService jwtService,
             PasswordEncoder passwordEncoder,
-            NotificationService notificationService
+            NotificationService notificationService,
+            LoginRateLimiter loginRateLimiter
     ) {
         this.userService = userService;
         this.jwtService = jwtService;
         this.passwordEncoder = passwordEncoder;
         this.notificationService = notificationService;
+        this.loginRateLimiter = loginRateLimiter;
+        this.dummyPasswordHash = passwordEncoder.encode("login-timing-placeholder");
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public LoginResponse login(LoginRequest request) {
         String username = request.username().trim();
+        loginRateLimiter.ensureAllowed(username);
 
         User user = userService.findByUsername(username).orElse(null);
-        if (user == null || !passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+        boolean passwordMatches = user != null && passwordEncoder.matches(request.password(), user.getPasswordHash());
+        if (user == null) {
+            passwordEncoder.matches(request.password(), dummyPasswordHash);
+        }
+        if (!passwordMatches) {
+            loginRateLimiter.recordFailure(username);
             log.warn("Login failed for username={}", username);
             notificationService.broadcast(
                     AuthEventMessage.of("AUTH_LOGIN_FAILURE", username, "Invalid credentials")
@@ -55,6 +70,12 @@ public class AuthService {
                     AuthEventMessage.of("AUTH_LOGIN_FAILURE", username, "Account is inactive")
             );
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Account is inactive");
+        }
+
+        loginRateLimiter.clear(username);
+        boolean passwordChangeRequired = requiresPasswordChange(user);
+        if (passwordChangeRequired && !user.isPasswordChangeRequired()) {
+            userService.markPasswordChangeRequired(user.getId());
         }
 
         // All defined roles may sign in; what each role can access is enforced per endpoint.
@@ -75,8 +96,18 @@ public class AuthService {
                 user.getUsername(),
                 user.getRole().name(),
                 user.getLocation(),
-                jwtService.getExpirationMs(rememberMe)
+                jwtService.getExpirationMs(rememberMe),
+                passwordChangeRequired
         );
+    }
+
+    /** Gate, library, and Olive kiosks keep working on their current password. */
+    private boolean requiresPasswordChange(User user) {
+        if (KioskGroups.isKioskRole(user.getRole())) {
+            return false;
+        }
+        return user.isPasswordChangeRequired()
+                || DefaultPasswords.matchesHash(passwordEncoder, user.getPasswordHash());
     }
 
     public void logout(String username) {
@@ -87,13 +118,20 @@ public class AuthService {
     }
 
     @Transactional
-    public void changePassword(AuthenticatedUser actor, ChangePasswordRequest request) {
+    public PasswordChangeResponse changePassword(AuthenticatedUser actor, ChangePasswordRequest request) {
         if (actor == null || actor.getId() == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
         }
-        userService.changeOwnPassword(actor.getId(), request.currentPassword(), request.newPassword());
+        User updated = userService.changeOwnPassword(actor.getId(), request.currentPassword(), request.newPassword());
+        boolean rememberMe = actor.isRememberMe();
         notificationService.broadcast(
                 AuthEventMessage.of("AUTH_PASSWORD_CHANGED", actor.getUsername(), "Password changed")
+        );
+        return new PasswordChangeResponse(
+                "Password updated",
+                jwtService.generateToken(updated, rememberMe),
+                "Bearer",
+                jwtService.getExpirationMs(rememberMe)
         );
     }
 }

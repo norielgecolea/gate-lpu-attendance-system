@@ -39,6 +39,14 @@ public class User {
     @Column(nullable = false)
     private boolean active = true;
 
+    /** Incremented when credentials or role change so older tokens stop working. */
+    @Column(name = "session_version", nullable = false)
+    private int sessionVersion;
+
+    /** True when the account must replace a published seed password before using the app. */
+    @Column(name = "password_change_required", nullable = false)
+    private boolean passwordChangeRequired;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 
@@ -99,6 +107,26 @@ public class User {
 
     public void setActive(boolean active) {
         this.active = active;
+    }
+
+    public int getSessionVersion() {
+        return sessionVersion;
+    }
+
+    public void setSessionVersion(int sessionVersion) {
+        this.sessionVersion = sessionVersion;
+    }
+
+    public void rotateSession() {
+        this.sessionVersion++;
+    }
+
+    public boolean isPasswordChangeRequired() {
+        return passwordChangeRequired;
+    }
+
+    public void setPasswordChangeRequired(boolean passwordChangeRequired) {
+        this.passwordChangeRequired = passwordChangeRequired;
     }
 
     public Instant getCreatedAt() {

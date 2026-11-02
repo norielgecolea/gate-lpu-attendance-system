@@ -93,6 +93,10 @@ export class Login implements OnDestroy {
     this.loading.set(true);
     try {
       await firstValueFrom(this.auth.login({ username, password }, this.rememberMe()));
+      if (this.auth.passwordChangeRequired()) {
+        await this.router.navigateByUrl('/password-required');
+        return;
+      }
       // Fullscreen only for kiosk roles — admin must never enter then exit.
       if (this.auth.isKiosk() || this.auth.isMonitoring()) {
         await this.fullscreen.enter();

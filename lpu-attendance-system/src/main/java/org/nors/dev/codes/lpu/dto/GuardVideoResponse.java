@@ -2,6 +2,7 @@ package org.nors.dev.codes.lpu.dto;
 
 import java.time.Instant;
 import org.nors.dev.codes.lpu.model.GuardVideo;
+import org.nors.dev.codes.lpu.security.MediaUrlSigner;
 
 public record GuardVideoResponse(
         String id,
@@ -14,7 +15,7 @@ public record GuardVideoResponse(
     public static GuardVideoResponse from(GuardVideo video) {
         return new GuardVideoResponse(
                 String.valueOf(video.getId()),
-                video.getFilePath(),
+                MediaUrlSigner.signStored(video.getFilePath()),
                 video.getOriginalName(),
                 video.getContentType(),
                 video.getSizeBytes(),

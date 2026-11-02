@@ -1,10 +1,14 @@
 package org.nors.dev.codes.lpu.config;
 
 import java.util.List;
-import org.nors.dev.codes.lpu.security.SyncApiKeyFilter;
+import org.nors.dev.codes.lpu.security.CorsOrigins;
 import org.nors.dev.codes.lpu.security.JwtAuthEntryPoint;
 import org.nors.dev.codes.lpu.security.JwtAuthFilter;
+import org.nors.dev.codes.lpu.security.MediaSignatureFilter;
+import org.nors.dev.codes.lpu.security.PasswordChangeRequiredFilter;
+import org.nors.dev.codes.lpu.security.SyncApiKeyFilter;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -30,15 +34,21 @@ public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
     private final SyncApiKeyFilter syncApiKeyFilter;
+    private final PasswordChangeRequiredFilter passwordChangeRequiredFilter;
+    private final MediaSignatureFilter mediaSignatureFilter;
     private final JwtAuthEntryPoint jwtAuthEntryPoint;
 
     public SecurityConfig(
             JwtAuthFilter jwtAuthFilter,
             SyncApiKeyFilter syncApiKeyFilter,
+            PasswordChangeRequiredFilter passwordChangeRequiredFilter,
+            MediaSignatureFilter mediaSignatureFilter,
             JwtAuthEntryPoint jwtAuthEntryPoint
     ) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.syncApiKeyFilter = syncApiKeyFilter;
+        this.passwordChangeRequiredFilter = passwordChangeRequiredFilter;
+        this.mediaSignatureFilter = mediaSignatureFilter;
         this.jwtAuthEntryPoint = jwtAuthEntryPoint;
     }
 
@@ -119,8 +129,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/**").hasRole("SUPERADMIN")
                         .anyRequest().permitAll()
                 )
+                .addFilterBefore(mediaSignatureFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(syncApiKeyFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterAfter(jwtAuthFilter, SyncApiKeyFilter.class);
+                .addFilterAfter(jwtAuthFilter, SyncApiKeyFilter.class)
+                .addFilterAfter(passwordChangeRequiredFilter, JwtAuthFilter.class);
 
         return http.build();
     }
@@ -130,21 +142,30 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
+    /** These filters belong only in the security chain. A second servlet registration would run after the response is written. */
+    @Bean
+    public FilterRegistrationBean<MediaSignatureFilter> mediaSignatureFilterRegistration(
+            MediaSignatureFilter filter
+    ) {
+        FilterRegistrationBean<MediaSignatureFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    @Bean
+    public FilterRegistrationBean<PasswordChangeRequiredFilter> passwordChangeFilterRegistration(
+            PasswordChangeRequiredFilter filter
+    ) {
+        FilterRegistrationBean<PasswordChangeRequiredFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         // Origin has no path — trailing /* would reject browser CORS and return 403
-        configuration.setAllowedOriginPatterns(List.of(
-                "http://localhost:*",
-                "http://127.0.0.1:*",
-                "https://attendance.norielgecolea.com",
-                "https://*.norielgecolea.com",
-                "https://attendance.lpulaguna.com",
-                "https://rfidattendance.lpulaguna.com",
-                "https://*.lpulaguna.com",
-                "https://attendancev2.lpu-laguna.edu.ph",
-                "https://*.lpu-laguna.edu.ph"
-        ));
+        configuration.setAllowedOriginPatterns(CorsOrigins.PATTERNS);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);

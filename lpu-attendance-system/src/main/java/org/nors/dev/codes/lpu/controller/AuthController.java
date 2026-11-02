@@ -5,24 +5,30 @@ import java.util.Map;
 import org.nors.dev.codes.lpu.dto.ChangePasswordRequest;
 import org.nors.dev.codes.lpu.dto.LoginRequest;
 import org.nors.dev.codes.lpu.dto.LoginResponse;
+import org.nors.dev.codes.lpu.dto.PasswordChangeResponse;
 import org.nors.dev.codes.lpu.security.AuthenticatedUser;
+import org.nors.dev.codes.lpu.security.WsTicketService;
 import org.nors.dev.codes.lpu.service.AuthService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
 
     private final AuthService authService;
+    private final WsTicketService wsTicketService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, WsTicketService wsTicketService) {
         this.authService = authService;
+        this.wsTicketService = wsTicketService;
     }
 
     @PostMapping("/login")
@@ -38,12 +44,19 @@ public class AuthController {
     }
 
     @PostMapping("/change-password")
-    public ResponseEntity<Map<String, String>> changePassword(
+    public ResponseEntity<PasswordChangeResponse> changePassword(
             @Valid @RequestBody ChangePasswordRequest request,
             @AuthenticationPrincipal AuthenticatedUser user
     ) {
-        authService.changePassword(user, request);
-        return ResponseEntity.ok(Map.of("message", "Password updated"));
+        return ResponseEntity.ok(authService.changePassword(user, request));
+    }
+
+    @GetMapping("/ws-ticket")
+    public ResponseEntity<Map<String, String>> wsTicket(@AuthenticationPrincipal AuthenticatedUser user) {
+        if (user == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
+        }
+        return ResponseEntity.ok(Map.of("ticket", wsTicketService.issue(user)));
     }
 
     @GetMapping("/me")

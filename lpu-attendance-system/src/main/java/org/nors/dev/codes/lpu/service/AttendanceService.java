@@ -1,6 +1,5 @@
 package org.nors.dev.codes.lpu.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
@@ -35,6 +34,7 @@ import org.nors.dev.codes.lpu.model.Student;
 import org.nors.dev.codes.lpu.model.SyncDeletionTombstone;
 import org.nors.dev.codes.lpu.model.User;
 import org.nors.dev.codes.lpu.repository.AttendanceEventRepository;
+import org.nors.dev.codes.lpu.security.CsvCells;
 import org.nors.dev.codes.lpu.repository.AttendanceLogRepository;
 import org.nors.dev.codes.lpu.repository.EmployeeRepository;
 import org.nors.dev.codes.lpu.repository.StudentRepository;
@@ -71,7 +71,6 @@ public class AttendanceService {
     private final TapErrorLogService tapErrorLogService;
     private final NotificationService notificationService;
     private final PhotoStorageService photoStorageService;
-    private final ObjectMapper objectMapper;
 
     public AttendanceService(
             StudentRepository studentRepository,
@@ -82,8 +81,7 @@ public class AttendanceService {
             UserRepository userRepository,
             TapErrorLogService tapErrorLogService,
             NotificationService notificationService,
-            PhotoStorageService photoStorageService,
-            ObjectMapper objectMapper
+            PhotoStorageService photoStorageService
     ) {
         this.studentRepository = studentRepository;
         this.employeeRepository = employeeRepository;
@@ -94,7 +92,6 @@ public class AttendanceService {
         this.tapErrorLogService = tapErrorLogService;
         this.notificationService = notificationService;
         this.photoStorageService = photoStorageService;
-        this.objectMapper = objectMapper;
     }
 
     /**
@@ -716,16 +713,7 @@ public class AttendanceService {
     }
 
     private void broadcastTap(TapResponse response) {
-        try {
-            java.util.Map<String, Object> event = new java.util.LinkedHashMap<>();
-            event.put("type", "ATTENDANCE_TAP");
-            event.put("action", response.action());
-            event.put("message", response.message());
-            event.put("payload", response);
-            notificationService.broadcastRaw(objectMapper.writeValueAsString(event));
-        } catch (Exception ex) {
-            log.warn("Failed to broadcast attendance tap", ex);
-        }
+        notificationService.sendTap(response);
     }
 
     /** Persists and broadcasts when a tapped ID/RFID matches no record at a gate. */
@@ -736,20 +724,12 @@ public class AttendanceService {
         } catch (Exception ex) {
             log.warn("Failed to persist attendance tap error", ex);
         }
-        try {
-            java.util.Map<String, Object> event = new java.util.LinkedHashMap<>();
-            event.put("type", "ATTENDANCE_TAP_ERROR");
-            event.put("message", "Unrecognized ID/RFID tapped");
-            java.util.Map<String, Object> payload = new java.util.LinkedHashMap<>();
-            payload.put("identifier", identifier);
-            payload.put("location", location);
-            payload.put("kioskGroup", kioskGroup != null ? kioskGroup.name() : KioskGroup.MAIN_GATES.name());
-            payload.put("tappedAt", tappedAt.toString());
-            event.put("payload", payload);
-            notificationService.broadcastRaw(objectMapper.writeValueAsString(event));
-        } catch (Exception ex) {
-            log.warn("Failed to broadcast attendance tap error", ex);
-        }
+        notificationService.sendTapError(
+                identifier,
+                location,
+                kioskGroup,
+                tappedAt.toString()
+        );
     }
 
     private boolean employeeOnlyKiosk(Long userId) {
@@ -778,14 +758,7 @@ public class AttendanceService {
     }
 
     private static String csv(String value) {
-        if (value == null) {
-            return "";
-        }
-        String escaped = value.replace("\"", "\"\"");
-        if (escaped.contains(",") || escaped.contains("\"") || escaped.contains("\n")) {
-            return "\"" + escaped + "\"";
-        }
-        return escaped;
+        return CsvCells.cell(value);
     }
 
     private static String csvTime(Instant value) {

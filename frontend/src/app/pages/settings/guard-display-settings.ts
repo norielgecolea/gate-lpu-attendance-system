@@ -2,7 +2,6 @@ import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
-  lucideClock,
   lucideMonitorOff,
   lucideTrash2,
   lucideUpload,
@@ -27,7 +26,7 @@ interface ModeOption {
   selector: 'app-guard-display-settings',
   imports: [DatePipe, DecimalPipe, NgIcon, HlmButton],
   viewProviders: [
-    provideIcons({ lucideClock, lucideVideo, lucideMonitorOff, lucideUpload, lucideTrash2 }),
+    provideIcons({ lucideVideo, lucideMonitorOff, lucideUpload, lucideTrash2 }),
   ],
   templateUrl: './guard-display-settings.html',
   host: { class: 'flex h-full flex-col' },
@@ -35,7 +34,7 @@ interface ModeOption {
 export class GuardDisplaySettings {
   private readonly api = inject(GuardDisplayApiService);
 
-  protected readonly mode = signal<GuardDisplayMode>('RECENT_TAPS');
+  protected readonly mode = signal<GuardDisplayMode>('NONE');
   protected readonly videos = signal<GuardVideo[]>([]);
   protected readonly loading = signal(true);
   protected readonly savingMode = signal(false);
@@ -44,12 +43,6 @@ export class GuardDisplaySettings {
   protected readonly error = signal<string | null>(null);
 
   protected readonly modeOptions: ModeOption[] = [
-    {
-      value: 'RECENT_TAPS',
-      label: 'Recent Taps',
-      description: 'Live feed of today\u2019s taps beside the scan result.',
-      icon: 'lucideClock',
-    },
     {
       value: 'VIDEO',
       label: 'Video',
@@ -67,7 +60,7 @@ export class GuardDisplaySettings {
   constructor() {
     this.api.getDisplay().subscribe({
       next: (settings) => {
-        this.mode.set(settings.mode);
+        this.mode.set(settings.mode === 'VIDEO' ? 'VIDEO' : 'NONE');
         this.videos.set(settings.videos);
         this.loading.set(false);
       },
@@ -88,7 +81,7 @@ export class GuardDisplaySettings {
     this.error.set(null);
     this.api.setMode(mode).subscribe({
       next: (settings) => {
-        this.mode.set(settings.mode);
+        this.mode.set(settings.mode === 'VIDEO' ? 'VIDEO' : 'NONE');
         this.videos.set(settings.videos);
         this.savingMode.set(false);
       },

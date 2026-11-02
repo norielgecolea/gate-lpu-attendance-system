@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Set;
 import org.nors.dev.codes.lpu.dto.PhotoBulkUploadResponse;
 import org.nors.dev.codes.lpu.dto.StudentAuditEventResponse;
+import org.nors.dev.codes.lpu.dto.StudentEnrollmentDeactivateResponse;
 import org.nors.dev.codes.lpu.dto.StudentFinanceTagImportResponse;
 import org.nors.dev.codes.lpu.dto.StudentImportResponse;
 import org.nors.dev.codes.lpu.dto.StudentImportRequest;
@@ -23,6 +24,8 @@ import org.nors.dev.codes.lpu.model.StudentAuditEvent;
 import org.nors.dev.codes.lpu.model.Student;
 import org.nors.dev.codes.lpu.repository.StudentAuditEventRepository;
 import org.nors.dev.codes.lpu.repository.StudentRepository;
+import org.nors.dev.codes.lpu.security.CsvCells;
+import org.nors.dev.codes.lpu.security.MediaPaths;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -66,9 +69,12 @@ public class StudentService {
     @Transactional
     public StudentResponse create(StudentRequest request, Long actorUserId, String actorUsername) {
         String studentNo = normalizeRequired(request.studentNo(), "Student number");
-        if (studentRepository.findByStudentNo(studentNo).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Student number already exists");
-        }
+        studentRepository.findByStudentNoAnyStatus(studentNo).ifPresent(existing -> {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    existing.isDeleted() ? "Record exists but inactive" : "Student number already exists"
+            );
+        });
         rfidUniquenessService.assertAvailable(
                 normalizeOptional(request.rfid()),
                 RfidUniquenessService.OwnerType.STUDENT,
@@ -221,6 +227,16 @@ public class StudentService {
     }
 
     @Transactional(readOnly = true)
+    public StudentPageResponse pageInactive(String search, int offset, int limit) {
+        int size = Math.min(Math.max(limit, 1), 200);
+        int from = Math.max(offset, 0);
+        List<StudentResponse> items = studentRepository.searchInactive(search, from, size).stream()
+                .map(StudentResponse::from)
+                .toList();
+        return new StudentPageResponse(items, studentRepository.countInactive(search));
+    }
+
+    @Transactional(readOnly = true)
     public List<StudentResponse> listInactive() {
         return studentRepository.findAllInactive().stream()
                 .map(StudentResponse::from)
@@ -239,6 +255,82 @@ public class StudentService {
         return studentRepository.findActiveAlarmMarked().stream()
                 .map(StudentResponse::from)
                 .toList();
+    }
+
+    /**
+     * Marks every local student who is not in the enrolled-number list as inactive.
+     * Numbers in the file that are not in the system are left alone.
+     */
+    @Transactional
+    public StudentEnrollmentDeactivateResponse deactivateNotEnrolled(
+            List<String> studentNumbers,
+            Long actorUserId,
+            String actorUsername
+    ) {
+        if (studentNumbers == null || studentNumbers.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one enrolled student number is required");
+        }
+        if (studentNumbers.size() > 50_000) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Import is limited to 50,000 student numbers");
+        }
+
+        Set<String> enrolled = new HashSet<>();
+        for (String raw : studentNumbers) {
+            if (raw == null || raw.isBlank()) {
+                continue;
+            }
+            enrolled.add(raw.trim().toLowerCase(java.util.Locale.ROOT));
+        }
+        if (enrolled.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one enrolled student number is required");
+        }
+
+        java.util.Map<String, Student> local = studentRepository.findAllByStudentNoKey();
+        int deactivated = 0;
+        int alreadyInactive = 0;
+        int keptActive = 0;
+        Instant now = Instant.now();
+        for (Student student : local.values()) {
+            String key = student.getStudentNo().toLowerCase(java.util.Locale.ROOT);
+            if (enrolled.contains(key)) {
+                if (!student.isDeleted()) {
+                    keptActive++;
+                }
+                continue;
+            }
+            if (student.isDeleted()) {
+                alreadyInactive++;
+                continue;
+            }
+            student.setDeleted(true);
+            student.setUpdatedAt(now);
+            studentRepository.save(student);
+            persistAuditEvent(student, "DELETED", actorUserId, actorUsername);
+            deactivated++;
+        }
+
+        int notInSystem = 0;
+        for (String key : enrolled) {
+            if (!local.containsKey(key)) {
+                notInSystem++;
+            }
+        }
+
+        log.info(
+                "Enrollment sync deactivated={} alreadyInactive={} keptActive={} notInSystem={} enrolled={}",
+                deactivated,
+                alreadyInactive,
+                keptActive,
+                notInSystem,
+                enrolled.size()
+        );
+        return new StudentEnrollmentDeactivateResponse(
+                enrolled.size(),
+                deactivated,
+                alreadyInactive,
+                keptActive,
+                notInSystem
+        );
     }
 
     /** "Delete" only deactivates — the record stays and can be restored. */
@@ -431,7 +523,7 @@ public class StudentService {
     private void applyRequest(Student student, StudentRequest request, String studentNo) {
         student.setName(normalizeRequired(request.name(), "Name"));
         student.setStudentNo(studentNo);
-        student.setPhoto(normalizeOptional(request.photo()));
+        student.setPhoto(MediaPaths.storedPhoto(request.photo()));
         student.setRfid(normalizeOptional(request.rfid()));
         student.setBirthdate(request.birthdate());
         student.setLpuEmail(normalizeOptional(request.lpuEmail()));
@@ -444,7 +536,7 @@ public class StudentService {
     private void applyImportUpdate(Student student, StudentImportRequest request, String studentNo) {
         student.setStudentNo(studentNo);
         setWhenPresent(request.name(), student::setName);
-        setWhenPresent(request.photo(), student::setPhoto);
+        MediaPaths.setPhotoIfPresent(request.photo(), student::setPhoto);
         setWhenPresent(request.rfid(), student::setRfid);
         if (request.birthdate() != null) {
             student.setBirthdate(request.birthdate());
@@ -498,14 +590,7 @@ public class StudentService {
     }
 
     private static String csv(String value) {
-        if (value == null) {
-            return "";
-        }
-        String escaped = value.replace("\"", "\"\"");
-        if (escaped.contains(",") || escaped.contains("\"") || escaped.contains("\n")) {
-            return "\"" + escaped + "\"";
-        }
-        return escaped;
+        return CsvCells.cell(value);
     }
 
     private void persistAuditEvent(Student student, String action, Long actorUserId, String actorUsername) {

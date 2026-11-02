@@ -3,7 +3,8 @@ package org.nors.dev.codes.lpu.websocket;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
-import org.nors.dev.codes.lpu.service.JwtService;
+import org.nors.dev.codes.lpu.model.User;
+import org.nors.dev.codes.lpu.security.WsTicketService;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.stereotype.Component;
@@ -13,10 +14,10 @@ import org.springframework.web.socket.server.HandshakeInterceptor;
 @Component
 public class JwtHandshakeInterceptor implements HandshakeInterceptor {
 
-    private final JwtService jwtService;
+    private final WsTicketService wsTicketService;
 
-    public JwtHandshakeInterceptor(JwtService jwtService) {
-        this.jwtService = jwtService;
+    public JwtHandshakeInterceptor(WsTicketService wsTicketService) {
+        this.wsTicketService = wsTicketService;
     }
 
     @Override
@@ -32,15 +33,16 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
         }
         for (String part : query.split("&")) {
             String[] kv = part.split("=", 2);
-            if (kv.length == 2 && "token".equals(kv[0])) {
-                String token = URLDecoder.decode(kv[1], StandardCharsets.UTF_8);
-                if (jwtService.isTokenValid(token)) {
-                    attributes.put("token", token);
-                    attributes.put("username", jwtService.extractUsername(token));
-                    attributes.put("role", jwtService.extractRole(token));
-                    attributes.put("location", jwtService.extractLocation(token));
-                    return true;
+            if (kv.length == 2 && "ticket".equals(kv[0])) {
+                String ticket = URLDecoder.decode(kv[1], StandardCharsets.UTF_8);
+                User user = wsTicketService.authenticate(ticket).orElse(null);
+                if (user == null) {
+                    return false;
                 }
+                attributes.put("username", user.getUsername());
+                attributes.put("role", user.getRole());
+                attributes.put("location", user.getLocation() != null ? user.getLocation() : "");
+                return true;
             }
         }
         return false;

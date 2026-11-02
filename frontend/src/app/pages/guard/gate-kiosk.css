@@ -730,17 +730,6 @@
   line-height: 1.3;
 }
 
-.gate-recent {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  border-radius: var(--gate-radius);
-  background: rgba(255, 255, 255, 0.78);
-  border: 1px solid var(--gate-line);
-  backdrop-filter: blur(10px);
-  padding: 0.55rem 0.6rem 0.6rem;
-}
-
 /* Admin-selected side panel: hero spans the full width when nothing is shown. */
 .gate-body.no-side {
   grid-template-columns: minmax(0, 1fr);
@@ -764,8 +753,8 @@
 
 /* ========== VIDEO MODE ==========
    The video keeps to the right side of the stage (bottom on portrait
-   screens); the clock / scan result stays on the left, like the recent-taps
-   layout but with a wider panel so 16:9 footage reads well. */
+   screens); the clock / scan result stays on the left, with a wider panel
+   so 16:9 footage reads well. */
 .gate-body.video-mode {
   grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
@@ -821,180 +810,10 @@
   }
 }
 
-.gate-recent-title {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  margin-bottom: 0.45rem;
-  font-size: 0.78rem;
-  font-weight: 750;
-  letter-spacing: 0.02em;
-  color: var(--gate-ink);
-  flex-shrink: 0;
-}
-
-.gate-recent-count {
-  margin-left: auto;
-  min-width: 1.35rem;
-  height: 1.35rem;
-  padding: 0 0.4rem;
-  display: inline-grid;
-  place-items: center;
-  border-radius: 999px;
-  background: rgba(15, 23, 42, 0.06);
-  font-size: 0.68rem;
-  font-weight: 750;
-  color: var(--gate-muted);
-}
-
-.gate-recent-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  /* Cards keep natural size; extra cards overflow + scroll instead of squeezing rows to fit. */
-  grid-auto-rows: max-content;
-  gap: 0.45rem;
-  align-content: start;
-  min-height: 0;
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding-right: 0.15rem;
-  /* Ticker carousel — no visible scrollbar. */
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.gate-recent-list::-webkit-scrollbar {
-  display: none;
-}
-
-.gate-recent-card {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border-radius: 0.7rem;
-  background: rgba(248, 250, 252, 0.9);
-  border: 1px solid var(--gate-line);
-  animation: gate-slide-in 0.35s ease both;
-}
-
-.gate-recent-photo {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  flex-shrink: 0;
-}
-
-.gate-recent-photo .gate-pill {
-  position: absolute;
-  top: 0.3rem;
-  right: 0.3rem;
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.25);
-}
-
-.gate-recent-avatar,
-.gate-recent-avatar-fallback {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center top;
-}
-
-.gate-recent-avatar-fallback {
-  display: grid;
-  place-items: center;
-  background: #e2e8f0;
-  color: #64748b;
-}
-
-.gate-recent-fallback-icon {
-  font-size: 1.75rem;
-  opacity: 0.75;
-}
-
-.gate-recent-body {
-  min-width: 0;
-  padding: 0.35rem 0.45rem 0.45rem;
-}
-
-.gate-recent-name {
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: var(--gate-ink);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.gate-pill {
-  flex-shrink: 0;
-  padding: 0.1rem 0.4rem;
-  border-radius: 999px;
-  font-size: 0.6rem;
-  font-weight: 750;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: #fff;
-}
-
-.gate-pill.in {
-  background: var(--gate-in);
-}
-
-.gate-pill.out {
-  background: var(--gate-out);
-}
-
-.gate-recent-sub,
-.gate-recent-times {
-  font-size: 0.72rem;
-  color: var(--gate-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.gate-recent-times {
-  margin-top: 0.05rem;
-  font-variant-numeric: tabular-nums;
-}
-
-.gate-recent-gate {
-  margin-top: 0.2rem;
-  font-size: 0.65rem;
-  font-weight: 750;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--gate-accent);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.gate-recent-empty {
-  grid-column: 1 / -1;
-  color: #94a3b8;
-  font-size: 0.8rem;
-  padding: 0.75rem 0;
-  text-align: center;
-  width: 100%;
-}
-
-.gate-recent-loading,
-.gate-recent-end {
-  grid-column: 1 / -1;
-  padding: 0.6rem 0;
-  text-align: center;
-  font-size: 0.7rem;
-  font-weight: 650;
-  letter-spacing: 0.04em;
-  color: #94a3b8;
-}
-
 /* ========== PORTRAIT ========== */
 @media (orientation: portrait) {
   .gate-body {
-    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-rows: minmax(0, 1fr);
   }
 
   .gate-result {
@@ -1084,53 +903,6 @@
     align-self: center;
   }
 
-  .gate-recent {
-    height: 32vh;
-    max-height: none;
-  }
-
-  /* Short panel: compact horizontal rows instead of tall square cards. */
-  .gate-recent-list {
-    grid-template-columns: 1fr;
-    gap: 0.4rem;
-  }
-
-  .gate-recent-card {
-    position: relative;
-    flex-direction: row;
-    align-items: center;
-    padding: 0.35rem 0.45rem;
-  }
-
-  .gate-recent-photo {
-    position: static;
-    width: 3.25rem;
-    height: 3.25rem;
-    flex-shrink: 0;
-  }
-
-  .gate-recent-avatar,
-  .gate-recent-avatar-fallback {
-    border-radius: 0.55rem;
-  }
-
-  .gate-recent-fallback-icon {
-    font-size: 1.35rem;
-  }
-
-  /* Pill moves off the tiny photo to the card's right edge. */
-  .gate-recent-photo .gate-pill {
-    top: 50%;
-    right: 0.5rem;
-    transform: translateY(-50%);
-  }
-
-  .gate-recent-body {
-    flex: 1;
-    min-width: 0;
-    padding: 0.1rem 3rem 0.1rem 0.55rem;
-  }
-
   .gate-error-panel {
     flex-direction: column;
     text-align: center;
@@ -1141,7 +913,7 @@
 /* ========== LANDSCAPE ========== */
 @media (orientation: landscape) {
   .gate-body {
-    grid-template-columns: minmax(0, 1fr) clamp(190px, 20vw, 260px);
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: 1fr;
     gap: 0.65rem;
   }
@@ -1170,15 +942,6 @@
     height: 100%;
     max-width: none;
     max-height: none;
-  }
-
-  .gate-recent {
-    height: 100%;
-  }
-
-  /* Narrow sidebar: one big square card per row. */
-  .gate-recent-list {
-    grid-template-columns: 1fr;
   }
 
   .gate-meta-user .gate-user,
@@ -1492,17 +1255,6 @@
   }
 }
 
-@keyframes gate-slide-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 @keyframes gate-flash-ring {
   0% {
     opacity: 0.9;
@@ -1530,7 +1282,6 @@
   .gate-error-panel,
   .gate-error-icon,
   .gate-finance-banner,
-  .gate-recent-card,
   .gate-flow-blob,
   .gate-galaxy,
   .gate-confetti,

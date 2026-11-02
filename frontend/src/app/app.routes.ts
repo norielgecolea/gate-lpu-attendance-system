@@ -5,6 +5,7 @@ import {
   guardRoleGuard,
   guestGuard,
   monitoringGuard,
+  passwordChangeGuard,
 } from './core/auth/auth.guards';
 
 const ADMIN_ROLES = ['SUPERADMIN', 'OSAS', 'HR'] as const;
@@ -26,6 +27,12 @@ export const routes: Routes = [
     pathMatch: 'full',
   },
   { path: 'login', redirectTo: '' },
+  {
+    path: 'password-required',
+    loadComponent: () =>
+      import('./pages/password-required/password-required').then((m) => m.PasswordRequired),
+    canActivate: [passwordChangeGuard],
+  },
   {
     path: 'about',
     loadComponent: () => import('./pages/about/about').then((m) => m.About),

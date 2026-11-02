@@ -9,7 +9,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "${POSTGRES_PORT}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - ./data/postgres-data:/var/lib/postgresql/data
       - ./data/postgres/init:/docker-entrypoint-initdb.d
@@ -30,7 +30,9 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
-      APP_JWT_SECRET: ${APP_JWT_SECRET:-bHB1LWdhdGUtYXR0ZW5kYW5jZS1qd3Qtc2VjcmV0LWtleS0zMmJ5dGVzIQ==}
+      APP_JWT_SECRET: ${APP_JWT_SECRET:-}
+      APP_JWT_SECRET_FILE: /usr/local/tomcat/secrets/jwt-secret
+      APP_SECRETS_DIR: /usr/local/tomcat/secrets
       APP_SYNC_API_KEY: ${APP_SYNC_API_KEY:-}
       APP_PICTURES_DIR: /usr/local/tomcat/pictures
       APP_VIDEOS_DIR: /usr/local/tomcat/videos
@@ -45,6 +47,7 @@ services:
       - ./data/pictures:/usr/local/tomcat/pictures
       - ./data/videos:/usr/local/tomcat/videos
       - ./data/tones:/usr/local/tomcat/tones
+      - ./data/secrets:/usr/local/tomcat/secrets
     depends_on:
       postgres:
         condition: service_healthy
