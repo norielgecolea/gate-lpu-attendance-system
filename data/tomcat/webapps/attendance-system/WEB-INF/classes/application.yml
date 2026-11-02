@@ -9,7 +9,7 @@ spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/postgres}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
-    password: ${SPRING_DATASOURCE_PASSWORD:Lpu-1234}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 10
@@ -30,9 +30,13 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
 app:
+  security:
+    secrets-dir: ${APP_SECRETS_DIR:data/secrets}
   jwt:
-    # Base64-encoded 256-bit secret (override via APP_JWT_SECRET in production)
-    secret: ${APP_JWT_SECRET:bHB1LWdhdGUtYXR0ZW5kYW5jZS1qd3Qtc2VjcmV0LWtleS0zMmJ5dGVzIQ==}
+    # Leave blank to generate a private key under app.security.secrets-dir.
+    # The key that used to be checked in here is rejected.
+    secret: ${APP_JWT_SECRET:}
+    secret-file: ${APP_JWT_SECRET_FILE:data/secrets/jwt-secret}
     expiration-ms: ${APP_JWT_EXPIRATION_MS:28800000}
     # ~10 years — "Remember me" sessions last until explicit logout
     remember-expiration-ms: ${APP_JWT_REMEMBER_EXPIRATION_MS:315360000000}
