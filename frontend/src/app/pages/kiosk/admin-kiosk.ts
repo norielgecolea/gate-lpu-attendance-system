@@ -12,7 +12,9 @@ import { FormsModule } from '@angular/forms';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideCircleAlert, lucideScanBarcode } from '@ng-icons/lucide';
 import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmDialogService } from '@spartan-ng/helm/dialog';
 import { HlmInput } from '@spartan-ng/helm/input';
+import { take } from 'rxjs';
 import {
   AttendanceApiService,
   type TapResponse,
@@ -20,8 +22,18 @@ import {
 import { applyScanInput } from '../../core/rfid/wedge-scan-buffer';
 import { studentPhotoUrl } from '../../core/students/student-photo.util';
 import { UsersApiService } from '../../core/users/users-api.service';
+import {
+  KioskTimeDialog,
+  campusTimestamp,
+  isKioskTimeResult,
+  manilaFieldsFromTimestamp,
+  manilaNowFields,
+} from './kiosk-time-dialog';
 
 const LOCATION_KEY = 'admin-kiosk-location';
+
+type ClockMode = 'today' | 'manual';
+type DirectedAction = 'TIME_IN' | 'TIME_OUT';
 
 @Component({
   selector: 'app-admin-kiosk',
@@ -35,6 +47,7 @@ export class AdminKiosk implements OnInit, AfterViewInit {
 
   private readonly usersApi = inject(UsersApiService);
   private readonly attendanceApi = inject(AttendanceApiService);
+  private readonly dialog = inject(HlmDialogService);
 
   protected readonly locations = signal<string[]>([]);
   protected readonly locationsLoading = signal(true);
@@ -42,8 +55,12 @@ export class AdminKiosk implements OnInit, AfterViewInit {
   protected readonly location = signal(sessionLocation());
   protected readonly identifier = signal('');
   protected readonly tapping = signal(false);
+  protected readonly pendingAction = signal<DirectedAction | null>(null);
   protected readonly error = signal<string | null>(null);
   protected readonly result = signal<TapResponse | null>(null);
+  protected readonly clockMode = signal<ClockMode>('today');
+  /** Campus timestamp (`+08:00`) used when clock mode is manual. */
+  protected readonly manualAt = signal<string | null>(null);
 
   private lastScanInputAt = 0;
 
@@ -93,11 +110,36 @@ export class AdminKiosk implements OnInit, AfterViewInit {
     this.identifier.set(cleaned);
   }
 
-  protected submit(): void {
+  protected useToday(): void {
+    this.clockMode.set('today');
+    this.focusInput();
+  }
+
+  protected openManualPicker(): void {
+    const current = this.manualAt();
+    const fields = current ? manilaFieldsFromTimestamp(current) : manilaNowFields();
+    KioskTimeDialog.open(this.dialog, fields)
+      .closed$.pipe(take(1))
+      .subscribe((picked) => {
+        if (isKioskTimeResult(picked)) {
+          this.manualAt.set(campusTimestamp(picked.date, picked.time));
+          this.clockMode.set('manual');
+        }
+        this.focusInput();
+      });
+  }
+
+  protected submit(action: DirectedAction): void {
     const gate = this.location().trim();
     const el = this.idInput?.nativeElement;
     const value = (el?.value ?? this.identifier()).trim();
     if (!gate || !value || this.tapping()) {
+      return;
+    }
+    const tappedAt = this.clockMode() === 'manual' ? this.manualAt() : null;
+    if (this.clockMode() === 'manual' && !tappedAt) {
+      this.error.set('Choose a date and time.');
+      this.openManualPicker();
       return;
     }
 
@@ -107,16 +149,19 @@ export class AdminKiosk implements OnInit, AfterViewInit {
       el.value = '';
     }
     this.tapping.set(true);
+    this.pendingAction.set(action);
     this.error.set(null);
 
-    this.attendanceApi.tap(value, gate).subscribe({
+    this.attendanceApi.tap(value, gate, { action, tappedAt }).subscribe({
       next: (tap) => {
         this.tapping.set(false);
+        this.pendingAction.set(null);
         this.result.set(tap);
         this.focusInput();
       },
       error: (err: { status?: number; error?: { message?: string } | string }) => {
         this.tapping.set(false);
+        this.pendingAction.set(null);
         this.result.set(null);
         const body = err?.error;
         const apiMessage = typeof body === 'string' ? body : (body?.message ?? '');

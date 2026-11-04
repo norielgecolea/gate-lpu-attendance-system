@@ -1,6 +1,7 @@
 package org.nors.dev.codes.lpu.controller;
 
 import jakarta.validation.Valid;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import org.nors.dev.codes.lpu.dto.AttendanceDepartmentCountResponse;
@@ -17,6 +18,7 @@ import org.nors.dev.codes.lpu.security.AuthenticatedUser;
 import org.nors.dev.codes.lpu.service.AttendanceService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -26,6 +28,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api/attendance")
@@ -45,8 +48,18 @@ public class AttendanceController {
         Long userId = user != null ? user.getId() : null;
         Role role = user != null ? user.getRole() : null;
         String location = user != null ? user.getLocation() : null;
+        boolean directed = hasText(request.action()) || request.tappedAt() != null;
+        if (directed && role != Role.SUPERADMIN) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Custom time is not allowed");
+        }
         if (role == Role.SUPERADMIN) {
             location = attendanceService.resolveGuardLocation(request.location());
+            if (directed) {
+                Instant tappedAt = request.tappedAt() == null ? null : request.tappedAt().toInstant();
+                return ResponseEntity.ok(attendanceService.tapDirected(
+                        request.identifier(), userId, location, Role.GUARD, request.action(), tappedAt
+                ));
+            }
             role = Role.GUARD;
         }
         return ResponseEntity.ok(attendanceService.tap(request.identifier(), userId, location, role));
@@ -192,5 +205,9 @@ public class AttendanceController {
     private static KioskGroup exportGroup(AuthenticatedUser user, String requested) {
         Role role = user != null ? user.getRole() : null;
         return KioskGroups.resolveForExport(role, requested);
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 }
