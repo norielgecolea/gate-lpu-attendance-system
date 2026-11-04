@@ -31,24 +31,85 @@
       }
     </div>
 
-    <form class="flex flex-col gap-2" (submit)="$event.preventDefault(); submit()">
+    <div>
+      <span class="text-foreground mb-1.5 block text-sm font-medium">Date and time</span>
+      <div class="flex flex-wrap items-center gap-2">
+        <div class="flex gap-1">
+          <button
+            hlmBtn
+            type="button"
+            size="sm"
+            [variant]="clockMode() === 'today' ? 'default' : 'outline'"
+            (click)="useToday()"
+          >
+            Today
+          </button>
+          <button
+            hlmBtn
+            type="button"
+            size="sm"
+            [variant]="clockMode() === 'manual' ? 'default' : 'outline'"
+            (click)="openManualPicker()"
+          >
+            Manual
+          </button>
+        </div>
+        @if (clockMode() === 'manual' && manualAt(); as when) {
+          <button
+            hlmBtn
+            type="button"
+            size="sm"
+            variant="outline"
+            class="tabular-nums"
+            (click)="openManualPicker()"
+          >
+            {{ when | date: 'MMM d, y, h:mm a' : 'Asia/Manila' }}
+          </button>
+        }
+      </div>
+      <p class="text-muted-foreground mt-2 text-sm">
+        @if (clockMode() === 'manual') {
+          Time in and time out are saved at the selected date and time.
+        } @else {
+          Time in and time out use the current time.
+        }
+      </p>
+    </div>
+
+    <form class="flex flex-col gap-2" (submit)="$event.preventDefault()">
       <label class="text-foreground text-sm font-medium" for="kiosk-id">Student or employee ID</label>
+      <input
+        #idInput
+        hlmInput
+        id="kiosk-id"
+        class="bg-card w-full"
+        type="text"
+        name="identifier"
+        autocomplete="off"
+        placeholder="Scan or type an ID"
+        [ngModel]="identifier()"
+        (input)="onScanInput($event)"
+        [disabled]="!location() || tapping()"
+      />
       <div class="flex gap-2">
-        <input
-          #idInput
-          hlmInput
-          id="kiosk-id"
-          class="bg-card min-w-0 flex-1"
-          type="text"
-          name="identifier"
-          autocomplete="off"
-          placeholder="Scan or type an ID"
-          [ngModel]="identifier()"
-          (input)="onScanInput($event)"
+        <button
+          hlmBtn
+          type="button"
+          class="flex-1"
           [disabled]="!location() || tapping()"
-        />
-        <button hlmBtn type="submit" [disabled]="!location() || tapping()">
-          {{ tapping() ? 'Tapping…' : 'Tap' }}
+          (click)="submit('TIME_IN')"
+        >
+          {{ pendingAction() === 'TIME_IN' ? 'Saving…' : 'Time in' }}
+        </button>
+        <button
+          hlmBtn
+          type="button"
+          variant="outline"
+          class="flex-1"
+          [disabled]="!location() || tapping()"
+          (click)="submit('TIME_OUT')"
+        >
+          {{ pendingAction() === 'TIME_OUT' ? 'Saving…' : 'Time out' }}
         </button>
       </div>
     </form>
@@ -80,9 +141,9 @@
           }
         </p>
         <p class="text-muted-foreground mt-1 text-xs tabular-nums">
-          In {{ tap.timeIn | date: 'h:mm:ss a' : 'Asia/Manila' }}
+          In {{ tap.timeIn | date: 'MMM d, y, h:mm:ss a' : 'Asia/Manila' }}
           @if (tap.timeOut) {
-            · Out {{ tap.timeOut | date: 'h:mm:ss a' : 'Asia/Manila' }}
+            · Out {{ tap.timeOut | date: 'MMM d, y, h:mm:ss a' : 'Asia/Manila' }}
           }
         </p>
       </div>

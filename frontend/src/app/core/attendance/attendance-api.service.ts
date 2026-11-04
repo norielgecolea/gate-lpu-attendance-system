@@ -131,10 +131,16 @@ export class AttendanceApiService {
   private readonly studentsUrl = `${environment.apiBaseUrl}/students`;
   private readonly employeesUrl = `${environment.apiBaseUrl}/employees`;
 
-  tap(identifier: string, location?: string | null): Observable<TapResponse> {
+  tap(
+    identifier: string,
+    location?: string | null,
+    options?: { action?: 'TIME_IN' | 'TIME_OUT'; tappedAt?: string | null },
+  ): Observable<TapResponse> {
     return this.http.post<TapResponse>(`${this.baseUrl}/tap`, {
       identifier,
       ...(location ? { location } : {}),
+      ...(options?.action ? { action: options.action } : {}),
+      ...(options?.tappedAt ? { tappedAt: options.tappedAt } : {}),
     });
   }
 

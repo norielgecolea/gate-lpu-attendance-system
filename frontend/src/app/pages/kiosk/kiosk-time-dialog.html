@@ -1,0 +1,45 @@
+<div class="flex flex-col gap-4 p-1">
+  <div hlmDialogHeader>
+    <h2 hlmDialogTitle>Date and time</h2>
+    <p hlmDialogDescription>Choose when this time in or time out should be recorded.</p>
+  </div>
+
+  @if (error()) {
+    <p class="bg-destructive/10 text-destructive rounded-md px-3 py-2 text-sm" role="alert">
+      {{ error() }}
+    </p>
+  }
+
+  <form class="flex flex-col gap-4" (submit)="$event.preventDefault(); apply()">
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div hlmField>
+        <label hlmFieldLabel for="kiosk-manual-date">Date</label>
+        <input
+          #dateInput
+          hlmInput
+          id="kiosk-manual-date"
+          type="date"
+          name="manualDate"
+          [max]="todayDate"
+          [(ngModel)]="date"
+        />
+      </div>
+      <div hlmField>
+        <label hlmFieldLabel for="kiosk-manual-time">Time</label>
+        <input
+          hlmInput
+          id="kiosk-manual-time"
+          type="time"
+          name="manualTime"
+          step="60"
+          [(ngModel)]="time"
+        />
+      </div>
+    </div>
+
+    <div hlmDialogFooter class="gap-2">
+      <button hlmBtn type="button" variant="outline" (click)="cancel()">Cancel</button>
+      <button hlmBtn type="submit">Use this time</button>
+    </div>
+  </form>
+</div>

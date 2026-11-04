@@ -11,6 +11,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import org.apache.logging.log4j.LogManager;
@@ -216,6 +217,185 @@ public class AttendanceService {
         }
 
         return response;
+    }
+
+    /**
+     * Superadmin kiosk: record an explicit time in or time out.
+     * {@code tappedAt} null means the current instant. A custom instant is stored on that
+     * campus calendar day. A custom time in replaces that day's time in. A time out requires
+     * a time in on the same day and must not be earlier than it.
+     * Past days are saved without a live gate broadcast.
+     */
+    @Transactional
+    public TapResponse tapDirected(
+            String rawIdentifier,
+            Long tappedByUserId,
+            String location,
+            Role role,
+            String rawAction,
+            Instant tappedAt
+    ) {
+        String action = normalizeDirectedAction(rawAction);
+        Instant instant = tappedAt != null ? tappedAt : Instant.now();
+        if (instant.isAfter(Instant.now().plusSeconds(90))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Time cannot be in the future");
+        }
+        boolean customClock = tappedAt != null;
+
+        String identifier = rawIdentifier == null ? "" : rawIdentifier.trim();
+        if (identifier.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "ID or RFID is required");
+        }
+        KioskGroup kioskGroup = KioskGroups.fromRole(role);
+
+        Student student = studentRepository.findByRfidOrStudentNo(identifier).orElse(null);
+        Employee employee = student == null
+                ? employeeRepository.findByRfidOrEmployeeNo(identifier).orElse(null)
+                : null;
+        if (student == null && employee == null) {
+            broadcastTapError(identifier, blankToNull(location), kioskGroup);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Record Not Found");
+        }
+        if (student != null && employeeOnlyKiosk(tappedByUserId)) {
+            log.info("EMPLOYEE_ONLY reject studentNo={} userId={}", student.getStudentNo(), tappedByUserId);
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "This kiosk is for Employees only");
+        }
+        String personRef = student != null
+                ? "studentNo=" + student.getStudentNo()
+                : "employeeNo=" + employee.getEmployeeNo();
+
+        LocalDate day = LocalDate.ofInstant(instant, CAMPUS_ZONE);
+        String gate = blankToNull(location);
+        Instant savedAt = Instant.now();
+
+        AttendanceLog existing = student != null
+                ? attendanceLogRepository.findByStudentAndDateForUpdate(student.getId(), day, kioskGroup).orElse(null)
+                : attendanceLogRepository.findByEmployeeAndDateForUpdate(employee.getId(), day, kioskGroup).orElse(null);
+
+        TapResponse response;
+        if (ACTION_IN.equals(action)) {
+            response = directedTimeIn(
+                    student, employee, existing, day, instant, customClock, gate, tappedByUserId, kioskGroup, savedAt, personRef
+            );
+        } else {
+            response = directedTimeOut(
+                    student, employee, existing, day, instant, gate, tappedByUserId, kioskGroup, savedAt, personRef
+            );
+        }
+        return response;
+    }
+
+    private TapResponse directedTimeIn(
+            Student student,
+            Employee employee,
+            AttendanceLog existing,
+            LocalDate day,
+            Instant instant,
+            boolean customClock,
+            String gate,
+            Long tappedByUserId,
+            KioskGroup kioskGroup,
+            Instant savedAt,
+            String personRef
+    ) {
+        if (existing == null) {
+            AttendanceLog created = new AttendanceLog();
+            created.setStudent(student);
+            created.setEmployee(employee);
+            created.setAttendanceDate(day);
+            created.setTimeIn(instant);
+            created.setTimeOut(null);
+            created.setLastAction(ACTION_IN);
+            created.setTappedByUserId(tappedByUserId);
+            created.setTimeInLocation(gate);
+            created.setTapCount(1);
+            created.setKioskGroup(kioskGroup);
+            created.setCreatedAt(savedAt);
+            created.setUpdatedAt(savedAt);
+            attendanceLogRepository.persist(created);
+            broadcastDirected(
+                    persistEvent(student, employee, day, ACTION_IN, instant, gate, tappedByUserId, kioskGroup),
+                    day
+            );
+            log.info("TIME_IN (directed) {} at={} location={} kioskGroup={}", personRef, instant, gate, kioskGroup);
+            return TapResponse.from(created, ACTION_IN, "Time in recorded");
+        }
+
+        if (customClock) {
+            if (existing.getTimeOut() != null && !instant.isBefore(existing.getTimeOut())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Time in must be before time out");
+            }
+            existing.setTimeIn(instant);
+            existing.setTimeInLocation(gate);
+            if (existing.getTimeOut() == null) {
+                existing.setLastAction(ACTION_IN);
+            }
+        } else {
+            existing.setLastAction(ACTION_IN);
+        }
+        existing.setTappedByUserId(tappedByUserId);
+        existing.setTapCount(existing.getTapCount() + 1);
+        existing.setUpdatedAt(savedAt);
+        attendanceLogRepository.save(existing);
+        broadcastDirected(
+                persistEvent(student, employee, day, ACTION_IN, instant, gate, tappedByUserId, kioskGroup),
+                day
+        );
+        log.info("TIME_IN (directed) {} timeIn={} location={} kioskGroup={}",
+                personRef, existing.getTimeIn(), gate, kioskGroup);
+        return TapResponse.from(existing, ACTION_IN, "Time in recorded");
+    }
+
+    private TapResponse directedTimeOut(
+            Student student,
+            Employee employee,
+            AttendanceLog existing,
+            LocalDate day,
+            Instant instant,
+            String gate,
+            Long tappedByUserId,
+            KioskGroup kioskGroup,
+            Instant savedAt,
+            String personRef
+    ) {
+        if (existing == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Time in first for this date");
+        }
+        if (!instant.isAfter(existing.getTimeIn())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Time out must be after time in");
+        }
+        existing.setTimeOut(instant);
+        existing.setLastAction(ACTION_OUT);
+        existing.setTappedByUserId(tappedByUserId);
+        existing.setTimeOutLocation(gate);
+        existing.setTapCount(existing.getTapCount() + 1);
+        existing.setUpdatedAt(savedAt);
+        attendanceLogRepository.save(existing);
+        broadcastDirected(
+                persistEvent(student, employee, day, ACTION_OUT, instant, gate, tappedByUserId, kioskGroup),
+                day
+        );
+        log.info("TIME_OUT (directed) {} timeIn={} timeOut={} location={} kioskGroup={}",
+                personRef, existing.getTimeIn(), existing.getTimeOut(), gate, kioskGroup);
+        return TapResponse.from(existing, ACTION_OUT, "Time out recorded");
+    }
+
+    /** Live boards only hear taps for the current campus day. */
+    private void broadcastDirected(AttendanceEvent event, LocalDate day) {
+        if (day.equals(LocalDate.now(CAMPUS_ZONE))) {
+            broadcastTap(TapResponse.from(event));
+        }
+    }
+
+    private static String normalizeDirectedAction(String rawAction) {
+        if (rawAction == null || rawAction.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Time in or time out is required");
+        }
+        String action = rawAction.trim().toUpperCase(Locale.ROOT);
+        if (!ACTION_IN.equals(action) && !ACTION_OUT.equals(action)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Action must be TIME_IN or TIME_OUT");
+        }
+        return action;
     }
 
     /**
