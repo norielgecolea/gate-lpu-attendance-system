@@ -8,6 +8,7 @@ import org.nors.dev.codes.lpu.dto.LoginRequest;
 import org.nors.dev.codes.lpu.dto.LoginResponse;
 import org.nors.dev.codes.lpu.dto.PasswordChangeResponse;
 import org.nors.dev.codes.lpu.model.KioskGroups;
+import org.nors.dev.codes.lpu.model.Role;
 import org.nors.dev.codes.lpu.model.User;
 import org.nors.dev.codes.lpu.security.AuthenticatedUser;
 import org.nors.dev.codes.lpu.security.DefaultPasswords;
@@ -79,7 +80,9 @@ public class AuthService {
         }
 
         // All defined roles may sign in; what each role can access is enforced per endpoint.
-        boolean rememberMe = Boolean.TRUE.equals(request.rememberMe());
+        // Kiosk browsers are restarted overnight. Their session has to survive that
+        // even when the operator leaves "Remember me" unchecked.
+        boolean rememberMe = issueRememberMeToken(user.getRole(), request.rememberMe());
         String token = jwtService.generateToken(user, rememberMe);
         log.info("Login success for username={} role={} rememberMe={}", username, user.getRole(), rememberMe);
         notificationService.broadcast(
@@ -98,6 +101,43 @@ public class AuthService {
                 user.getLocation(),
                 jwtService.getExpirationMs(rememberMe),
                 passwordChangeRequired
+        );
+    }
+
+    /**
+     * Gate, library, and Olive kiosks always receive the long-lived session.
+     * Other roles get it only when Remember me was checked.
+     */
+    public static boolean issueRememberMeToken(Role role, Boolean requested) {
+        return KioskGroups.isKioskRole(role) || Boolean.TRUE.equals(requested);
+    }
+
+    /**
+     * Replaces a short kiosk token (issued before durable kiosk sessions)
+     * with one that survives a browser restart.
+     */
+    public LoginResponse renewKioskSession(AuthenticatedUser actor) {
+        if (actor == null || actor.getId() == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
+        }
+        if (!KioskGroups.isKioskRole(actor.getRole())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kiosk session only");
+        }
+        User user = new User();
+        user.setId(actor.getId());
+        user.setUsername(actor.getUsername());
+        user.setRole(actor.getRole());
+        user.setLocation(actor.getLocation());
+        user.setSessionVersion(actor.getSessionVersion());
+        String token = jwtService.generateToken(user, true);
+        return new LoginResponse(
+                token,
+                "Bearer",
+                user.getUsername(),
+                user.getRole().name(),
+                user.getLocation(),
+                jwtService.getExpirationMs(true),
+                false
         );
     }
 

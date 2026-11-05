@@ -36,6 +36,11 @@ public class AuthController {
         return ResponseEntity.ok(authService.login(request));
     }
 
+    @PostMapping("/kiosk-session")
+    public ResponseEntity<LoginResponse> renewKioskSession(@AuthenticationPrincipal AuthenticatedUser user) {
+        return ResponseEntity.ok(authService.renewKioskSession(user));
+    }
+
     @PostMapping("/logout")
     public ResponseEntity<Map<String, String>> logout(@AuthenticationPrincipal AuthenticatedUser user) {
         String username = user != null ? user.getUsername() : "unknown";

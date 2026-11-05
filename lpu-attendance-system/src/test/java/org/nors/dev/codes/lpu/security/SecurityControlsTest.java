@@ -11,6 +11,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import org.nors.dev.codes.lpu.config.JwtProperties;
+import org.nors.dev.codes.lpu.model.Role;
+import org.nors.dev.codes.lpu.service.AuthService;
 import org.nors.dev.codes.lpu.service.JwtService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
@@ -69,6 +71,18 @@ class SecurityControlsTest {
         assertEquals("Ana", CsvCells.cell("Ana"));
         assertEquals("\"'=1+1\"", CsvCells.cell("=1+1"));
         assertEquals("\"Ana, Cruz\"", CsvCells.cell("Ana, Cruz"));
+    }
+
+    @Test
+    void kioskLoginsAlwaysIssueADurableSession() {
+        assertTrue(AuthService.issueRememberMeToken(Role.GUARD, false));
+        assertTrue(AuthService.issueRememberMeToken(Role.GUARD, null));
+        assertTrue(AuthService.issueRememberMeToken(Role.LIBRARY_KIOSK, false));
+        assertTrue(AuthService.issueRememberMeToken(Role.OLIVE_KIOSK, null));
+        assertFalse(AuthService.issueRememberMeToken(Role.SUPERADMIN, false));
+        assertFalse(AuthService.issueRememberMeToken(Role.SUPERADMIN, null));
+        assertFalse(AuthService.issueRememberMeToken(Role.MONITORING, false));
+        assertTrue(AuthService.issueRememberMeToken(Role.SUPERADMIN, true));
     }
 
     @Test

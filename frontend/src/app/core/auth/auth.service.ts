@@ -1,5 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, catchError, of, tap } from 'rxjs';
@@ -153,6 +153,10 @@ export class AuthService {
   }
 
   restoreSession(): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+    this.promoteKioskSession();
     const token = this.tokenSignal();
     if (
       token &&
@@ -160,6 +164,13 @@ export class AuthService {
       (this.isAdminPortal() || this.isKiosk() || this.isMonitoring())
     ) {
       this.notifications.connect(token);
+    }
+    if (this.isKiosk() && token) {
+      if (isDurableToken(token)) {
+        this.dropRejectedKioskSession();
+      } else {
+        this.renewKioskSession();
+      }
     }
   }
 
@@ -182,8 +193,10 @@ export class AuthService {
       return;
     }
 
-    const storage = rememberMe ? localStorage : sessionStorage;
-    const other = rememberMe ? sessionStorage : localStorage;
+    // Kiosk terminals reboot. Keep the session in localStorage either way.
+    const durable = rememberMe || isKioskRole(response.role);
+    const storage = durable ? localStorage : sessionStorage;
+    const other = durable ? sessionStorage : localStorage;
     other.removeItem(TOKEN_KEY);
     other.removeItem(USER_KEY);
     storage.setItem(TOKEN_KEY, response.token);
@@ -223,6 +236,71 @@ export class AuthService {
     }
   }
 
+  /** Moves a kiosk session out of sessionStorage so the next reboot still has it. */
+  private promoteKioskSession(): void {
+    if (!isKioskRole(this.userSignal()?.role)) {
+      return;
+    }
+    const token = localStorage.getItem(TOKEN_KEY) ?? sessionStorage.getItem(TOKEN_KEY);
+    const rawUser = localStorage.getItem(USER_KEY) ?? sessionStorage.getItem(USER_KEY);
+    if (!token || !rawUser) {
+      return;
+    }
+    localStorage.setItem(TOKEN_KEY, token);
+    localStorage.setItem(USER_KEY, rawUser);
+    sessionStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(USER_KEY);
+    this.tokenSignal.set(token);
+  }
+
+  /**
+   * A session issued before kiosk logins were durable expires after 8 hours
+   * and disappears on restart. Trade it for the long-lived token while it
+   * is still accepted.
+   */
+  private renewKioskSession(): void {
+    this.http.post<LoginResponse>(`${environment.apiBaseUrl}/auth/kiosk-session`, {}).subscribe({
+      next: (response) => {
+        this.storeDurableToken(response.token);
+        if (!this.passwordChangeRequired()) {
+          this.notifications.connect(response.token);
+        }
+      },
+      error: (err: unknown) => {
+        if (err instanceof HttpErrorResponse && err.status === 401) {
+          this.clearSession();
+          void this.router.navigateByUrl('/');
+        }
+      },
+    });
+  }
+
+  /** A remembered token the server no longer accepts should land on the login screen. */
+  private dropRejectedKioskSession(): void {
+    this.http.get(`${environment.apiBaseUrl}/auth/me`).subscribe({
+      error: (err: unknown) => {
+        if (err instanceof HttpErrorResponse && err.status === 401) {
+          this.clearSession();
+          void this.router.navigateByUrl('/');
+        }
+      },
+    });
+  }
+
+  private storeDurableToken(token: string): void {
+    this.tokenSignal.set(token);
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+    const raw = localStorage.getItem(USER_KEY) ?? sessionStorage.getItem(USER_KEY);
+    localStorage.setItem(TOKEN_KEY, token);
+    if (raw) {
+      localStorage.setItem(USER_KEY, raw);
+    }
+    sessionStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(USER_KEY);
+  }
+
   private clearSession(): void {
     this.tokenSignal.set(null);
     this.userSignal.set(null);
@@ -255,5 +333,28 @@ export class AuthService {
     } catch {
       return null;
     }
+  }
+}
+
+/** Remember-me tokens last years. A normal login lasts 8 hours. */
+function isDurableToken(token: string): boolean {
+  try {
+    const part = token.split('.')[1];
+    if (!part) {
+      return false;
+    }
+    const base64 = part.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+    const json = atob(padded);
+    const payload = JSON.parse(json) as { exp?: number; iat?: number; rm?: boolean };
+    if (payload.rm === true) {
+      return true;
+    }
+    if (typeof payload.exp !== 'number' || typeof payload.iat !== 'number') {
+      return false;
+    }
+    return payload.exp - payload.iat > 86_400;
+  } catch {
+    return false;
   }
 }
