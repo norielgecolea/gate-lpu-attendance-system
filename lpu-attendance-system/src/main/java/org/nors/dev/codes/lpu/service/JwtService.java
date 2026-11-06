@@ -1,6 +1,7 @@
 package org.nors.dev.codes.lpu.service;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -9,6 +10,7 @@ import java.nio.file.Path;
 import java.util.Date;
 import javax.crypto.SecretKey;
 import org.nors.dev.codes.lpu.config.JwtProperties;
+import org.nors.dev.codes.lpu.model.KioskGroups;
 import org.nors.dev.codes.lpu.model.Role;
 import org.nors.dev.codes.lpu.model.User;
 import org.nors.dev.codes.lpu.security.JwtSecretResolver;
@@ -125,8 +127,8 @@ public class JwtService {
 
     public boolean isTokenValid(String token) {
         try {
-            Claims claims = parseClaims(token);
-            return claims.getExpiration().after(new Date());
+            parseClaims(token);
+            return true;
         } catch (Exception ex) {
             return false;
         }
@@ -142,11 +144,38 @@ public class JwtService {
                 : jwtProperties.getExpirationMs();
     }
 
+    /**
+     * Gate, library, and Olive kiosks stay signed in across a reboot. Their token
+     * still has to be signed by this server, but it does not expire.
+     */
     private Claims parseClaims(String token) {
+        try {
+            return signedClaims(token);
+        } catch (ExpiredJwtException ex) {
+            Claims claims = ex.getClaims();
+            if (claims != null && isKioskRoleClaim(claims.get("role", String.class))) {
+                return claims;
+            }
+            throw ex;
+        }
+    }
+
+    private Claims signedClaims(String token) {
         return Jwts.parser()
                 .verifyWith(secretKey)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
+    }
+
+    private static boolean isKioskRoleClaim(String role) {
+        if (role == null || role.isBlank()) {
+            return false;
+        }
+        try {
+            return KioskGroups.isKioskRole(Role.valueOf(role));
+        } catch (IllegalArgumentException ex) {
+            return false;
+        }
     }
 }

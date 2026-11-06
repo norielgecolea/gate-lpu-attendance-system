@@ -54,7 +54,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             return;
         }
         User user = userRepository.findById(userId).orElse(null);
-        if (user == null || !user.isActive() || user.getSessionVersion() != jwtService.extractSessionVersion(token)) {
+        if (user == null || !user.isActive()) {
+            return;
+        }
+        // A kiosk reboot must not demand a fresh login. Password and role changes
+        // still end every other session; a kiosk stays signed in while the account is active.
+        if (!KioskGroups.isKioskRole(user.getRole())
+                && user.getSessionVersion() != jwtService.extractSessionVersion(token)) {
             return;
         }
         AuthenticatedUser principal = new AuthenticatedUser(

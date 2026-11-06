@@ -12,6 +12,7 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import org.nors.dev.codes.lpu.config.JwtProperties;
 import org.nors.dev.codes.lpu.model.Role;
+import org.nors.dev.codes.lpu.model.User;
 import org.nors.dev.codes.lpu.service.AuthService;
 import org.nors.dev.codes.lpu.service.JwtService;
 import org.springframework.http.HttpStatus;
@@ -83,6 +84,37 @@ class SecurityControlsTest {
         assertFalse(AuthService.issueRememberMeToken(Role.SUPERADMIN, null));
         assertFalse(AuthService.issueRememberMeToken(Role.MONITORING, false));
         assertTrue(AuthService.issueRememberMeToken(Role.SUPERADMIN, true));
+    }
+
+    @Test
+    void expiredKioskTokenStaysValidAndExpiredAdminTokenDoesNot() {
+        JwtProperties properties = new JwtProperties();
+        properties.setSecret("test-only-private-signing-key-32bytes");
+        properties.setSecretFile("unused-secret-file");
+        properties.setExpirationMs(-60_000L);
+        properties.setRememberExpirationMs(-60_000L);
+        JwtService jwt = new JwtService(properties);
+
+        User guard = user(1L, "gate", Role.GUARD);
+        User library = user(2L, "library", Role.LIBRARY_KIOSK);
+        User olive = user(3L, "olive", Role.OLIVE_KIOSK);
+        User admin = user(4L, "superadmin", Role.SUPERADMIN);
+
+        assertTrue(jwt.isTokenValid(jwt.generateToken(guard, false)));
+        assertTrue(jwt.isTokenValid(jwt.generateToken(library, true)));
+        assertTrue(jwt.isTokenValid(jwt.generateToken(olive, false)));
+        assertEquals(Role.GUARD, jwt.extractRole(jwt.generateToken(guard, false)));
+        assertFalse(jwt.isTokenValid(jwt.generateToken(admin, false)));
+        assertFalse(jwt.isTokenValid(jwt.generateToken(admin, true)));
+    }
+
+    private static User user(Long id, String username, Role role) {
+        User user = new User();
+        user.setId(id);
+        user.setUsername(username);
+        user.setRole(role);
+        user.setSessionVersion(1);
+        return user;
     }
 
     @Test

@@ -1,5 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Injectable, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, catchError, of, tap } from 'rxjs';
@@ -16,6 +16,9 @@ import { NotificationService } from '../notifications/notification.service';
 
 const TOKEN_KEY = 'lpu_auth_token';
 const USER_KEY = 'lpu_auth_user';
+/** Survives a kiosk reboot even when the browser drops localStorage. */
+const KIOSK_COOKIE = 'lpu_kiosk_session';
+const KIOSK_COOKIE_MAX_AGE = 60 * 60 * 24 * 365 * 10;
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -146,7 +149,9 @@ export class AuthService {
     return this.http.get<AuthUser>(`${environment.apiBaseUrl}/auth/me`).pipe(
       tap((user) => this.userSignal.set(user)),
       catchError(() => {
-        this.clearSession();
+        if (!isKioskRole(this.userSignal()?.role)) {
+          this.clearSession();
+        }
         return of(null);
       }),
     );
@@ -165,12 +170,10 @@ export class AuthService {
     ) {
       this.notifications.connect(token);
     }
-    if (this.isKiosk() && token) {
-      if (isDurableToken(token)) {
-        this.dropRejectedKioskSession();
-      } else {
-        this.renewKioskSession();
-      }
+    // A short token is upgraded in the background. Failure must not sign the kiosk out:
+    // the server still accepts an expired kiosk token, and a reboot often races Tomcat.
+    if (this.isKiosk() && token && !isDurableToken(token)) {
+      this.renewKioskSession();
     }
   }
 
@@ -201,6 +204,11 @@ export class AuthService {
     other.removeItem(USER_KEY);
     storage.setItem(TOKEN_KEY, response.token);
     storage.setItem(USER_KEY, JSON.stringify(user));
+    if (isKioskRole(response.role)) {
+      this.writeKioskCookie(response.token, JSON.stringify(user));
+    } else {
+      this.clearKioskCookie();
+    }
   }
 
   private replaceToken(token: string): void {
@@ -241,8 +249,9 @@ export class AuthService {
     if (!isKioskRole(this.userSignal()?.role)) {
       return;
     }
-    const token = localStorage.getItem(TOKEN_KEY) ?? sessionStorage.getItem(TOKEN_KEY);
-    const rawUser = localStorage.getItem(USER_KEY) ?? sessionStorage.getItem(USER_KEY);
+    const cookie = readKioskCookie();
+    const token = localStorage.getItem(TOKEN_KEY) ?? sessionStorage.getItem(TOKEN_KEY) ?? cookie?.token;
+    const rawUser = localStorage.getItem(USER_KEY) ?? sessionStorage.getItem(USER_KEY) ?? cookie?.user;
     if (!token || !rawUser) {
       return;
     }
@@ -250,14 +259,11 @@ export class AuthService {
     localStorage.setItem(USER_KEY, rawUser);
     sessionStorage.removeItem(TOKEN_KEY);
     sessionStorage.removeItem(USER_KEY);
+    this.writeKioskCookie(token, rawUser);
     this.tokenSignal.set(token);
   }
 
-  /**
-   * A session issued before kiosk logins were durable expires after 8 hours
-   * and disappears on restart. Trade it for the long-lived token while it
-   * is still accepted.
-   */
+  /** Replaces an 8-hour kiosk token with the long-lived one. A failure leaves the kiosk signed in. */
   private renewKioskSession(): void {
     this.http.post<LoginResponse>(`${environment.apiBaseUrl}/auth/kiosk-session`, {}).subscribe({
       next: (response) => {
@@ -266,23 +272,8 @@ export class AuthService {
           this.notifications.connect(response.token);
         }
       },
-      error: (err: unknown) => {
-        if (err instanceof HttpErrorResponse && err.status === 401) {
-          this.clearSession();
-          void this.router.navigateByUrl('/');
-        }
-      },
-    });
-  }
-
-  /** A remembered token the server no longer accepts should land on the login screen. */
-  private dropRejectedKioskSession(): void {
-    this.http.get(`${environment.apiBaseUrl}/auth/me`).subscribe({
-      error: (err: unknown) => {
-        if (err instanceof HttpErrorResponse && err.status === 401) {
-          this.clearSession();
-          void this.router.navigateByUrl('/');
-        }
+      error: () => {
+        // Leave the stored kiosk session in place.
       },
     });
   }
@@ -292,10 +283,11 @@ export class AuthService {
     if (!isPlatformBrowser(this.platformId)) {
       return;
     }
-    const raw = localStorage.getItem(USER_KEY) ?? sessionStorage.getItem(USER_KEY);
+    const raw = localStorage.getItem(USER_KEY) ?? sessionStorage.getItem(USER_KEY) ?? readKioskCookie()?.user;
     localStorage.setItem(TOKEN_KEY, token);
     if (raw) {
       localStorage.setItem(USER_KEY, raw);
+      this.writeKioskCookie(token, raw);
     }
     sessionStorage.removeItem(TOKEN_KEY);
     sessionStorage.removeItem(USER_KEY);
@@ -311,20 +303,42 @@ export class AuthService {
     localStorage.removeItem(USER_KEY);
     sessionStorage.removeItem(TOKEN_KEY);
     sessionStorage.removeItem(USER_KEY);
+    this.clearKioskCookie();
   }
 
   private readStoredToken(): string | null {
     if (!isPlatformBrowser(this.platformId)) {
       return null;
     }
-    return localStorage.getItem(TOKEN_KEY) ?? sessionStorage.getItem(TOKEN_KEY);
+    return (
+      localStorage.getItem(TOKEN_KEY) ??
+      sessionStorage.getItem(TOKEN_KEY) ??
+      readKioskCookie()?.token ??
+      null
+    );
+  }
+
+  private writeKioskCookie(token: string, userJson: string): void {
+    if (!isPlatformBrowser(this.platformId) || typeof document === 'undefined') {
+      return;
+    }
+    const value = encodeURIComponent(JSON.stringify({ token, user: userJson }));
+    const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+    document.cookie = `${KIOSK_COOKIE}=${value}; Max-Age=${KIOSK_COOKIE_MAX_AGE}; Path=/; SameSite=Lax${secure}`;
+  }
+
+  private clearKioskCookie(): void {
+    if (!isPlatformBrowser(this.platformId) || typeof document === 'undefined') {
+      return;
+    }
+    document.cookie = `${KIOSK_COOKIE}=; Max-Age=0; Path=/; SameSite=Lax`;
   }
 
   private readStoredUser(): AuthUser | null {
     if (!isPlatformBrowser(this.platformId)) {
       return null;
     }
-    const raw = localStorage.getItem(USER_KEY) ?? sessionStorage.getItem(USER_KEY);
+    const raw = localStorage.getItem(USER_KEY) ?? sessionStorage.getItem(USER_KEY) ?? readKioskCookie()?.user;
     if (!raw) {
       return null;
     }
@@ -334,6 +348,32 @@ export class AuthService {
       return null;
     }
   }
+}
+
+function readKioskCookie(): { token: string; user: string } | null {
+  if (typeof document === 'undefined') {
+    return null;
+  }
+  const prefix = `${KIOSK_COOKIE}=`;
+  for (const part of document.cookie.split(';')) {
+    const entry = part.trim();
+    if (!entry.startsWith(prefix)) {
+      continue;
+    }
+    try {
+      const parsed = JSON.parse(decodeURIComponent(entry.slice(prefix.length))) as {
+        token?: string;
+        user?: string;
+      };
+      if (!parsed.token || !parsed.user) {
+        return null;
+      }
+      return { token: parsed.token, user: parsed.user };
+    } catch {
+      return null;
+    }
+  }
+  return null;
 }
 
 /** Remember-me tokens last years. A normal login lasts 8 hours. */
