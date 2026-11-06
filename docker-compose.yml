@@ -9,7 +9,9 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+      # Other campus systems (helpdesk, etc.) connect to this host on the LAN.
+      # Set POSTGRES_BIND=127.0.0.1 to accept connections from this machine only.
+      - "${POSTGRES_BIND:-0.0.0.0}:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - ./data/postgres-data:/var/lib/postgresql/data
       - ./data/postgres/init:/docker-entrypoint-initdb.d
